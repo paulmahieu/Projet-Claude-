@@ -1,0 +1,6 @@
+# Fichiers générés par `rojo build` (sauf la place fournie dans build/)
+*.rbxl
+*.rbxlx
+!build/FantasyTycoon.rbxl
+sourcemap.json
+.DS_Store
