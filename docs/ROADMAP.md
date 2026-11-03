@@ -1,43 +1,39 @@
-# Feuille de route
+# Feuille de route (cahier §15)
 
-Les phases sont ordonnées pour avoir **un jeu testable à chaque étape**. À réviser quand le cahier
-des charges complet sera dans le dépôt.
+Légende : ✅ implémenté · 🧪 testé automatiquement (Lune) · 🔍 à vérifier dans Studio · ⏳ prévu
 
-## Phase 1 — Socle jouable ✅ (ce commit)
-- [x] Structure Rojo, configuration séparée, tests Lune
-- [x] Sauvegarde sécurisée (verrou de session, BindToClose, migrations)
-- [x] Parcelles, bâtiments, pads d'achat, production passive
-- [x] Entraînement AFK sur mannequin, niveaux
-- [x] Gains hors ligne
-- [x] Boutique et traitement des achats (idempotent)
-- [ ] **Vérification en jeu dans Studio** (scénario du README)
+## Étape 1 — Fondations jouables
+- ✅🧪 Structure Rojo, configuration centralisée, tests Lune (32)
+- ✅🔍 Carte générée (hub, 8 parcelles, bosquets), réexécution sans doublon
+- ✅🧪🔍 Groupes persistants : bastion solo automatique, invitations acceptées en jeu, rôles,
+  transfert d'administration, exclusion, départ, dernier membre
+- ✅🧪🔍 Base partagée : matériaux communs, constructions communes, accès sans l'administrateur
+- ✅🧪🔍 Verrou d'autorité du groupe et des profils, sauvegardes étalées, état « Remote » / « ReadOnly »
+- ✅🧪🔍 Achats prédéfinis (6 constructions) avec coût, prérequis et effet affichés
+- ✅🔍 Récolte minimale (bois, pierre) vers la réserve du groupe
+- ✅🔍 Tapis d'entraînement : XP -> niveau -> Puissance, or personnel
+- ✅🔍 Améliorations personnelles (Concentration, Robustesse)
+- ✅🧪🔍 Gains hors ligne (25 %, 8 h, rendement durable sauvegardé)
+- ✅🔍 Interface : HUD, objectif, menu Groupe / Améliorations / Boutique ; clavier, manette, tactile
+- ✅🧪 Boutique : catalogue de 13 offres, traitement des reçus, simulation Studio (ventes désactivées)
 
-## Phase 2 — Coopération (dépend de D1)
-- [ ] Invitation d'amis / groupe (selon D1)
-- [ ] Sauvegarde de la base de groupe sur une clé dédiée (T3)
-- [ ] Serveurs réservés pour réunir un groupe, verrou MemoryStore
-- [ ] Chantiers communs avec contributions individuelles visibles
+## Étape 2 — Persistance et construction complètes
+- ⏳ Annuaire MemoryStore groupe -> serveur, téléportation vers le bastion (décision R2)
+- ⏳ Serveur plein, échec de téléportation, attente sans copie modifiable
+- ⏳ Placement libre sur grille : aperçu, rotation, validation, annulation, limites, zones protégées
+- ⏳ Récompenses quotidiennes (7 jours cumulés, 00:00 UTC) et de temps de jeu (5/10/20/30 min)
+- ⏳ Mode de simulation des changements de journée (Studio)
+- ⏳ Propositions P2 / P3 si retenues
 
-## Phase 3 — Exploration et boss (dépend de D4)
-- [ ] Portail du hub vers une zone d'exploration
-- [ ] Monstres simples (IA côté serveur, peu nombreux), butin
-- [ ] Ressources rares → bâtiments de rang 2 (G1)
-- [ ] Premier boss de groupe avec mécaniques lisibles, réapparition programmée
-- [ ] Puissance de combat liée au niveau d'entraînement
+## Étape 3 — Première aventure
+- ⏳ Zone de forêt, récolte élargie, ennemis
+- ⏳ Ciblage, attaques automatiques, 2 compétences, esquive (clavier, manette, tactile)
+- ⏳ Premier boss (2 phases, attaques annoncées), participation validée, butin
+- ⏳ Missions d'introduction, parcours de progression gratuit, éclats d'Éther (P1)
 
-## Phase 4 — Compagnons
-- [ ] Recrutement à la taverne, bonus passifs (production, XP, butin)
-- [ ] Suiveurs visuels ; combat éventuel plus tard
-
-## Phase 5 — Contenu et finition
-- [ ] Vrais modèles 3D (remplacement des blocs provisoires : un Model par Id dans `ReplicatedStorage.Assets`)
-- [ ] Entraînement actif optionnel (G2), entraînement hors ligne (D2)
-- [ ] Interface adaptée au mobile et à la manette
-- [ ] Sons, effets, tutoriel guidé
-- [ ] Prestige / renaissance pour le long terme
-
-## Phase 6 — Lancement
-- [ ] Création des passes et produits, identifiants dans `Config/Products.luau`
-- [ ] Analytics (AnalyticsService : entonnoir, économie)
-- [ ] Tests de charge à 6 joueurs, vérification mémoire et réseau
-- [ ] Questionnaire de maturité, icône, miniatures, publication
+## Étape 4 — Première version complète
+- ⏳ Défense de base (vagues déclenchées volontairement)
+- ⏳ Compagnons (loup runique, petit golem, esprit de lumière) : collection, niveaux, bonus plafonnés
+- ⏳ Mines et ruines magiques avec leurs boss
+- ⏳ Inventaire de bonus temporaires, passes, parcours premium, analytics de la boutique
+- ⏳ Équilibrage, ergonomie, performances mobiles, vérifications d'acceptation complètes

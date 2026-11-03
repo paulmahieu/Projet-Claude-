@@ -1,42 +1,38 @@
 --[[
-	Point d'entrée serveur. Ordre :
-	1. init()  : préparation sans dépendance au joueur (monde, callbacks)
-	2. start() : boucles et connexions aux événements joueurs
-	Quand les données d'un joueur sont chargées : parcelle -> mannequin -> économie.
+	Point d'entrée serveur — Bastions d'Éther.
+	1. init()  : préparation (monde, magasins de données, connexions entre services)
+	2. start() : boucles et événements joueurs. ProfileService démarre en DERNIER : il
+	   déclenche les chargements, une fois tous les abonnements en place.
 ]]
 
-local Players = game:GetService("Players")
-
 local Services = script.Parent.Services
-local DataService = require(Services.DataService)
+local ProfileService = require(Services.ProfileService)
+local GroupService = require(Services.GroupService)
 local PlotService = require(Services.PlotService)
-local MonetizationService = require(Services.MonetizationService)
-local EconomyService = require(Services.EconomyService)
+local HarvestService = require(Services.HarvestService)
+local BuildService = require(Services.BuildService)
 local TrainingService = require(Services.TrainingService)
-local Notifier = require(Services.Notifier)
+local UpgradeService = require(Services.UpgradeService)
+local MonetizationService = require(Services.MonetizationService)
+local Net = require(Services.Net)
 
-DataService.init()
+ProfileService.init()
+GroupService.init()
 PlotService.init()
+HarvestService.init()
+BuildService.init()
+TrainingService.init()
 MonetizationService.init()
-EconomyService.init()
+Net.init()
 
-DataService.onLoaded(function(player: Player, data)
-	local plot = PlotService.claim(player, data.Buildings)
-	if not plot then
-		-- Le nombre max de joueurs du serveur doit égaler PLOT_COUNT (Game Settings > Places).
-		Notifier.send(player, "Toutes les bases sont occupées sur ce serveur.", "error")
-		return
-	end
-	TrainingService.setup(player, plot)
-	EconomyService.onPlayerReady(player, data)
-	if DataService.isMemoryMode() then
-		Notifier.send(player, "Mode test : la progression ne sera pas sauvegardée.", "error")
-	end
+-- La récolte est incompatible avec l'entraînement.
+HarvestService.beforeHarvest(function(player)
+	TrainingService.stop(player)
 end)
 
-PlotService.start()
-EconomyService.start()
+GroupService.start()
 TrainingService.start()
-DataService.start() -- en dernier : déclenche le chargement des joueurs
+UpgradeService.start()
+ProfileService.start()
 
-print(string.format("[FantasyTycoon] Serveur prêt (%d joueur(s))", #Players:GetPlayers()))
+print("[Bastions d'Éther] Serveur prêt")

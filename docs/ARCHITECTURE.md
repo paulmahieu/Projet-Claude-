@@ -1,57 +1,93 @@
 # Architecture
 
-## Principes
-
-1. **Le serveur fait autorité.** Le client n'envoie jamais de montant ni de résultat : il ne fait
-   qu'afficher l'état (attributs du joueur) et déclencher des interactions (pads, ProximityPrompt).
-   Le prototype n'expose **aucun RemoteEvent client → serveur** : la surface d'attaque est minimale.
-2. **Données séparées du code.** Tous les chiffres sont dans `src/shared/Config/`. Équilibrer le
-   jeu ne demande pas de toucher à la logique.
-3. **Logique pure testable.** Les calculs (`Formulas`, `DataSchema`) n'utilisent aucune API Roblox
-   et sont testés hors de Studio avec Lune.
-4. **Services simples.** Chaque service serveur est un module avec `init()` (préparation) et
-   `start()` (boucles, événements). Pas de framework externe : plus facile à lire et à déboguer.
-
-## Flux
+## Vue d'ensemble
 
 ```
-Joueur rejoint
-  └─ DataService : chargement + verrou de session (UpdateAsync)
-       └─ onLoaded (Main.server)
-            ├─ PlotService.claim     → parcelle libre, bâtiments possédés reconstruits
-            ├─ TrainingService.setup → mannequin + ProximityPrompt
-            └─ EconomyService.onPlayerReady → leaderstats, gains hors ligne, pads
+ReplicatedStorage
+  Shared/                 Code commun, PUR (aucune API Roblox) -> testé avec Lune
+    Config/               Tous les chiffres et textes : Game, Groups, Materials, Structures,
+                          Training, Upgrades, Harvest, Economy, Products, Texts
+    Formulas              Calculs (XP, rendements, hors ligne, coûts, formatage)
+    SessionLock           Règles du verrou de session
+    Membership            Règles d'appartenance et de rôles
+    ProfileSchema         Profil personnel + migrations
+    GroupSchema           Enregistrement de groupe
+    OpLog                 Journal anti-doublon des opérations uniques
+    Validate              Validation des entrées client
+  Remotes/                Notify (S->C), GroupUpdate (S->C), Request (C->S, RemoteFunction)
 
-Chaque seconde
-  ├─ EconomyService : or += production × dt   → attributs Gold / IncomePerSec
-  └─ TrainingService : XP si à portée          → attributs Level / Xp / XpNext
+ServerScriptService/Server
+  Main                    Ordre d'initialisation
+  Services/
+    Store                 DataStore + verrou + nouvelles tentatives + mode mémoire Studio
+    ProfileService        Profils personnels, gains hors ligne, sauvegardes
+    GroupService          Groupes, appartenance, invitations, autorité du bastion
+    PlotService           Monde généré, parcelles, constructions, socles, Noyau d'Éther
+    BuildService          Achats prédéfinis (matériaux communs)
+    HarvestService        Récolte -> réserve du groupe
+    TrainingService       Tapis, XP, or, instantané du rendement AFK
+    UpgradeService        Améliorations personnelles (or)
+    MonetizationService   Reçus d'achat, simulation Studio
+    Net                   Point d'entrée unique des demandes client (validation, limites)
+    Notifier              Messages vers le client
 
-Pad touché → PlotService (propriétaire ? anti-rebond) → EconomyService.tryBuy (Formulas.canBuy)
-Achat Robux → MonetizationService.ProcessReceipt (reçu déjà vu ? → crédit → sauvegarde → Granted)
-Toutes les 120 s + départ + arrêt serveur → DataService sauvegarde (verrou vérifié)
+StarterPlayerScripts/Client
+  Main                    HUD, menu (Groupe, Améliorations, Boutique), commandes
+  Ui                      Utilitaires d'interface
 ```
 
-## Sauvegarde : pourquoi un verrou de session
+## Données persistantes
 
-Sans verrou, un joueur qui change vite de serveur peut être chargé par le serveur B avant que le
-serveur A ait fini d'écrire : progression perdue, ou dupliquée (exploit classique). Ici :
+| Clé | Contenu | Autorité |
+|---|---|---|
+| `Profiles_v2 / u_<UserId>` | or, niveau, XP, améliorations, `GroupId`, rendement AFK durable, dernier instant comptabilisé, journal d'opérations, droits | Le serveur où se trouve le joueur |
+| `Groups_v1 / g_<GroupId>` | nom, membres et rôles, matériaux communs, constructions, placements (étape 2), journal d'opérations | Un seul serveur à la fois (verrou) |
 
-- au chargement, le serveur écrit son `JobId` dans la clé ; si un autre serveur détient un verrou
-  récent (< 10 min), on réessaie toutes les 5 s, puis on le reprend au 6e essai ;
-- un serveur qui a perdu le verrou **n'écrit plus** ;
-- le verrou est libéré au départ du joueur.
+Chaque enregistrement a la forme `{ Data, Lock = { JobId, Expires } }`.
 
-C'est une version simplifiée de ce que fait la bibliothèque **ProfileStore** (référence de la
-communauté). Voir la proposition T1 dans `CONCEPTION.md`.
+## Le groupe persistant et l'autorité unique
 
-## Ajouter un bâtiment
+1. Un joueur se connecte : son profil est chargé (verrou du profil).
+2. Le profil donne `GroupId`. Le serveur tente de prendre le verrou du groupe :
+   - **libre ou expiré** : le groupe est chargé ici, une parcelle lui est attribuée, la base est reconstruite à partir des données relatives à la parcelle ;
+   - **déjà chargé ici** (un autre membre est présent) : le joueur le rejoint, sans second chargement ;
+   - **détenu par un autre serveur** : état « Remote ». **Aucune copie modifiable** n'est ouverte ici. Le serveur réessaie toutes les 30 s ; la téléportation vers le bon serveur est prévue à l'étape 2.
+3. Tant que le groupe est chargé, chaque sauvegarde (toutes les 90 à 120 s, étalées) **renouvelle** le verrou (validité 5 min) et vérifie qu'il appartient encore à ce serveur.
+4. Si la vérification échoue (autorité perdue) ou si le renouvellement est en échec depuis plus de 4 min, `canMutate` devient faux : plus aucune construction, récolte ni changement d'appartenance n'est accepté (état « ReadOnly »).
+5. Quand le dernier membre présent part : sauvegarde, libération du verrou et de la parcelle.
+6. Si le serveur plante, le verrou expire au bout de 5 min et le groupe peut être rechargé ailleurs.
 
-Ajouter une entrée dans `src/shared/Config/Buildings.luau` (Id unique, `Requires` = Id précédent),
-puis `lune run tests/shared.spec` : le test vérifie les prérequis, la rentabilité et l'absence de
-chevauchement sur la parcelle.
+Les membres peuvent tout faire sans l'administrateur : l'autorité appartient au **serveur**, pas à une personne.
 
-## Ajouter un champ sauvegardé
+## Invariants et opérations multi-enregistrements
 
-1. L'ajouter dans `DataSchema.template` : il sera ajouté automatiquement aux anciens joueurs (`reconcile`).
-2. Pour renommer ou transformer un champ existant : incrémenter `VERSION` et écrire une migration.
-   Ne jamais supprimer un champ publié sans migration.
+DataStore n'offre pas de transaction entre deux clés. Règles :
+
+- **Appartenance** : un joueur est membre de G si et seulement si `profil.GroupId == G` **et** `G.Members[id].Status == "Active"`. Le profil fait foi.
+- **Rejoindre un groupe** : (1) réservation « Pending » dans le groupe cible, sauvegardée ; (2) pointeur du profil, sauvegardé ; (3) confirmation « Active » et retrait de l'ancien groupe. Reprise : un « Pending » confirmé par le profil est promu au chargement, sinon il ne donne aucun droit. Aucun état ne rend un joueur membre de deux groupes.
+- **Dernier membre qui part** : le groupe est marqué abandonné ; constructions et matériaux restent dans l'enregistrement (cahier §3).
+- **Achats prédéfinis** : vérification et débit sans attente entre les deux (un serveur Luau traite les demandes l'une après l'autre) ; débit et construction sont dans le même enregistrement.
+- **Opérations uniques** (reçus, cadeaux, paliers) : identifiant stable (`receipt:<PurchaseId>`, puis `daily:<cycle>:<jour>`...) enregistré dans le même enregistrement que le bénéfice.
+- **Hors ligne** : crédit et nouvel instant comptabilisé sont appliqués dans la transformation de chargement (une seule écriture). L'heure est capturée avant l'appel, donc une transformation rejouée donne le même résultat.
+
+## Fenêtre de perte
+
+Après un arrêt brutal du serveur, on peut perdre au plus la progression depuis la dernière
+sauvegarde automatique (90 à 120 s). Les achats Robux sont sauvegardés **avant** d'être confirmés
+à Roblox. Les changements d'appartenance sont sauvegardés à chaque étape.
+
+## Sécurité
+
+- Le client n'envoie que des intentions via `Request` : liste blanche d'actions, types vérifiés,
+  10 demandes / 2 s max par joueur, et les opérations de groupe d'un même joueur ne s'exécutent jamais en parallèle.
+- Constructions, récolte et tapis passent par des ProximityPrompt, **revérifiés côté serveur**
+  (membre, permission, distance, autorité, délai).
+- Les outils de développement (simulation d'achat) ne fonctionnent que dans Studio.
+
+## Prochaines étapes techniques
+
+- **Étape 2** : `MemoryStoreService` comme annuaire « groupe -> serveur », téléportation vers un
+  serveur réservé, placement libre (grille relative à la parcelle, `Placements`), récompenses
+  quotidiennes et de temps de jeu (OpLog).
+- **Étape 3 et suivantes** : `RewardService` (cadeaux, parcours) séparé de `MonetizationService`
+  (reçus), catalogue inchangé ; `AnalyticsService` pour les événements de boutique.

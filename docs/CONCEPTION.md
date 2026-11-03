@@ -1,58 +1,64 @@
-# Conception : analyse, propositions et décisions en attente
+# Conception — Bastions d'Éther
 
-> ⚠️ Le fichier `01_CAHIER_DES_CHARGES.md` n'était pas présent dans la session de travail. Cette
-> analyse repose sur le résumé du concept fourni dans la demande. Elle sera révisée dès que le
-> cahier des charges sera ajouté au dépôt (emplacement conseillé : `docs/01_CAHIER_DES_CHARGES.md`).
+Référence : [`01_CAHIER_DES_CHARGES.md`](01_CAHIER_DES_CHARGES.md) (version 2, 3 novembre 2026).
+Ce document suit ce qui est **proposé**, **retenu** et **implémenté**.
 
-## 1. Le concept en bref
+> **Correction par rapport au premier prototype.** La première version avait été écrite sans le
+> cahier des charges (fichier absent de la session). Elle utilisait des bases personnelles et
+> recommandait de les garder : c'est contraire au choix validé « la base appartient au groupe ».
+> Ce prototype a été remplacé ; le profil v1 est migré automatiquement (`ProfileSchema`).
 
-Tycoon **coopératif** de fantasy médiévale : un groupe de joueurs développe une **base commune
-persistante** (bâtiments qui produisent des ressources), part en **exploration** et affronte des
-**boss**, **construit**, recrute des **compagnons**, progresse via un **entraînement AFK** et
-récupère des **gains hors ligne**. Monétisation par **microachats**.
+## 1. Le jeu en une phrase
 
-## 2. Incohérences et points de vigilance
+Un groupe de 1 à 4 joueurs développe ensemble un bastion médiéval-fantastique persistant :
+on récolte pour le groupe, on construit, on s'entraîne sur des tapis (XP + or personnel, y compris
+hors ligne), puis on part explorer et vaincre des boss qui débloquent les grandes étapes.
 
-| # | Point | Pourquoi c'est un problème | Piste |
-|---|---|---|---|
-| I1 | **Base de groupe persistante** vs fonctionnement des serveurs Roblox | Les membres d'un groupe ne sont pas forcément sur le même serveur. Qui « possède » la base quand le créateur est hors ligne ? Que se passe-t-il si deux membres modifient la base sur deux serveurs en même temps, ou si un membre quitte le groupe avec « ses » bâtiments ? | Décision **D1** ci-dessous. Techniquement : clé de sauvegarde propre à la base, serveurs réservés pour réunir le groupe. |
-| I2 | **Entraînement AFK** vs expulsion automatique de Roblox | Roblox déconnecte un joueur inactif après **20 minutes**. Un entraînement AFK « illimité en jeu » n'est donc pas fiable (les contournements côté client sont fragiles). | Faire continuer l'entraînement **hors ligne** à taux réduit (décision **D2**) : le problème devient une fonctionnalité. |
-| I3 | Entraînement AFK **+** gains hors ligne | Deux mécaniques qui récompensent l'absence : le jeu actif devient moins rentable que l'inactivité, et l'économie gonfle vite. | Plafonds (8 h, 50 % déjà en place) + bonus réservés au jeu actif (proposition G2). |
-| I4 | Coopération **+** microachats | Un passe « Or x2 » profite-t-il à tout le groupe ? Si oui : pression d'achat sur un seul joueur. Si non : contributions déséquilibrées et frustration. | Décision **D3**. Recommandation : bonus personnels, et cosmétiques/confort partagés. |
-| I5 | Boucle **tycoon** (idle) et boucle **exploration/boss** (action) séparées | Sans lien entre les deux, une partie des joueurs ignorera l'une des boucles. | Proposition G1 : les boss donnent les matériaux nécessaires aux bâtiments avancés. |
-| I6 | **Compagnons** | Des compagnons qui se déplacent et combattent (pathfinding, IA) coûtent cher en développement et en performance. | Version 1 : compagnons = bonus passifs + suiveurs visuels ; combat plus tard. |
-| I7 | Microachats aléatoires (si coffres payants prévus) | Les règles Roblox imposent d'afficher les probabilités des objets aléatoires payants, et certaines régions les restreignent. | Préférer des achats à contenu connu (déjà le cas dans le prototype). |
+## 2. Réglages retenus
 
-## 3. Propositions d'amélioration
+| Réglage (cahier §2) | Retenu | Commentaire |
+|---|---|---|
+| Nom de travail | Bastions d'Éther | `Config/Game.luau` |
+| Groupe | 1 à 4 membres | Bastion solo créé automatiquement au premier lancement |
+| Serveur | 16 joueurs, **8 parcelles** (au lieu de 4) | Voir R1 : 4 parcelles bloquent le serveur dès 4 joueurs solo |
+| PvE uniquement | Oui | Aucune interaction hostile entre groupes |
+| Hors ligne | 8 h max, 25 % du rendement AFK durable | Formule exacte du cahier, fractions reportées |
+| Progression sans remise à zéro | Oui | |
+| Interface française, textes centralisés | Oui | `Config/Texts.luau` (serveur) ; libellés du menu à centraliser ensuite |
+| Boutique + parcours premium | Catalogue de 13 offres prêt, ventes désactivées | Seules les bourses d'or ont une livraison implémentée |
+| Quotidien 7 jours, temps de jeu 5/10/20/30 min | Étape 2 | Le journal d'opérations anti-doublon est déjà en place |
+| Pas de commerce entre joueurs | Oui | |
 
-| # | Type | Proposition | Intérêt | Complexité | Priorité | Statut |
-|---|---|---|---|---|---|---|
-| T1 | Technique | **Sauvegarde sûre** : verrou de session, sauvegarde à la fermeture, reçus d'achat idempotents, migrations versionnées | Empêche pertes et duplications de progression, le bug le plus grave d'un tycoon | Moyenne | **Critique** | ✅ Implémenté (version légère de ProfileStore) |
-| T2 | Technique | **Configuration séparée + formules pures testées** (Lune) | Équilibrage sans toucher au code, régressions détectées automatiquement | Faible | Haute | ✅ Implémenté (19 tests) |
-| T3 | Technique | **Base de groupe** sur une clé dédiée (`Base_<id>`) + serveurs réservés (`TeleportService:ReserveServer`) pour réunir le groupe + `MemoryStoreService` pour savoir sur quel serveur la base est ouverte | Résout I1 proprement : une base n'est ouverte que sur un serveur à la fois | Élevée | Haute | ⏳ Attend D1 |
-| G1 | Gameplay | **Les boss financent la base** : les bâtiments de rang 2 et plus demandent des matériaux rares (minerai enchanté, écailles…) obtenus uniquement en exploration ou sur les boss | Relie les deux boucles (I5), donne un objectif concret aux sorties en groupe | Moyenne | Haute | ⏳ Proposé |
-| G2 | Gameplay | **Entraînement actif optionnel** : en AFK, XP de base ; en appuyant au bon moment (mini-jeu de rythme sur le mannequin), XP x3 pendant quelques secondes | Récompense la présence sans obliger à jouer (I3), plus vivant à regarder | Faible | Moyenne | ⏳ Proposé |
-| G3 | Gameplay | **Le niveau d'entraînement augmente la production** (+1 %/niveau) | Lie l'entraînement au tycoon au lieu d'en faire une barre isolée | Faible | Moyenne | ✅ Implémenté (réglable : `IncomeBonusPerLevel`) |
-| M1 | Monétisation | **Récompenses indexées sur la production** (« 10 min de production » plutôt que « 1000 or ») | Le produit garde sa valeur à tous les stades du jeu ; pas d'obsolescence ni de prix à recalculer | Faible | Moyenne | ✅ Implémenté |
+## 3. Points du cahier à revoir
 
-## 4. Décisions en attente (à trancher par toi)
+| # | Point | Problème | Proposition | Statut |
+|---|---|---|---|---|
+| R1 | 16 joueurs / 4 bases + groupes d'un seul joueur | Avec 4 parcelles, 4 joueurs solo remplissent le serveur : les 12 suivants n'ont pas de base. | **8 parcelles** de 90 × 90. Le matchmaking par groupe (étape 2) permettra d'affiner. | **Appliqué** (réglage, réversible dans `Config/Game.luau`) |
+| R2 | Routage vers le serveur du bastion vs monde partagé | Forcer la téléportation sépare un joueur des amis d'autres groupes avec qui il explore. Les téléportations ne se testent pas dans Studio. | Au lieu de forcer : « Rejoindre mon bastion » **ou** « Rester ici » (sans base modifiable). | **À valider** |
+| R3 | 13 offres dès la 1re version complète, contenu encore mince | Une offre sans bénéfice livrable est interdite par le cahier. Aujourd'hui, seule la bourse d'or a une livraison. | Ouvrir le catalogue **par vagues** : chaque offre devient vendable quand son système existe (champ `Ready`). | **Appliqué** |
+| R4 | Gains hors ligne > présence inactive en ligne | Rester connecté sans s'entraîner ne rapporte rien, se déconnecter rapporte 25 % : légère incitation à quitter. | Accepter, et rendre le tapis attractif (proposition P3). Ou créditer aussi la présence inactive en ligne au même taux. | **À discuter** |
+| R5 | Farm AFK en jeu et déconnexion d'inactivité de Roblox (≈ 20 min) | Une session AFK en jeu est coupée par la plateforme ; le cahier interdit, à raison, de simuler des entrées. | Assumer : les gains hors ligne prennent le relais. À dire clairement aux joueurs (tutoriel). | **Appliqué** (aucune simulation d'entrée) |
+| R6 | Input Action System | Documentation officielle inaccessible depuis l'environnement de travail. | ContextActionService + ProximityPrompt (stables, compatibles clavier/manette/tactile) ; migration possible ensuite. | **Appliqué**, à revoir |
 
-| # | Question | Options | Ma recommandation |
-|---|---|---|---|
-| D1 | Modèle de la base de groupe | (a) Base de l'hôte, les amis viennent aider ; (b) base de guilde partagée avec rôles ; (c) base personnelle **+** « hameau de guilde » commun où chacun contribue à de grands chantiers | **(c)** : chacun garde sa progression (rien ne se perd si le groupe se sépare), la coopération se fait sur des projets communs. Le prototype actuel est compatible (bases personnelles). |
-| D2 | Entraînement hors ligne | Oui (taux réduit, plafonné) / Non | **Oui, 25 % du taux, plafond 8 h**, pour résoudre I2. |
-| D3 | Portée des passes en coopération | Personnels / partagés avec le groupe | **Personnels** ; éventuellement un petit bonus « aura » pour le groupe (+5 %) pour rendre l'achat sympathique sans pression. |
-| D4 | Style de combat des boss | Clic/auto-attaque (simple, mobile) / combat d'action (esquives, compétences) | **Auto-attaque + compétences à recharge** : jouable sur mobile (majorité des joueurs Roblox), moins coûteux. |
+## 4. Propositions (cahier §2.1)
 
-## 5. Ce que fait le prototype (phase 1)
+| # | Idée | Intérêt pour ce jeu | Limites / compromis | Complexité | Recommandation |
+|---|---|---|---|---|---|
+| P1 | **Le Noyau d'Éther** (identité) : le cœur indestructible du bastion grandit avec le niveau du bastion. Les éclats rapportés des boss l'alimentent et ouvrent les zones suivantes. Il est la cible des vagues de défense. | Relie bastion et aventure en un seul objet visible ; donne au groupe un objectif commun lisible ; réutilise des exigences du cahier (noyau non supprimable, défense). | Demande des effets visuels soignés ; à ne pas confondre avec le niveau du bastion (le Noyau en est l'affichage). | Moyenne | **Maintenant** pour le socle (fait : Noyau + niveau affiché), éclats à l'étape 3 |
+| P2 | **Entraînement en cercle** : +5 % par autre membre du groupe qui s'entraîne en même temps dans le bastion (plafond +15 %). | Récompense la présence simultanée, sans pénaliser le joueur seul. | Bonus en ligne uniquement (pas hors ligne) ; plafonné pour éviter les comptes secondaires. | Faible | **Plus tard** (étape 2) |
+| P3 | **Rune de concentration** : sur un tapis, une rune apparaît toutes les 45 s environ ; l'activer dans les 3 s (une touche, un bouton ou un toucher) donne XP et or x3 pendant 10 s. | Donne l'« avantage significatif au jeu actif » demandé (§9) sans rendre l'AFK inutile. | Doit rester accessible au tactile et à la manette ; pas de pénalité si on la rate. | Faible | **Plus tard** (étape 2) |
+| P4 | **Socle technique commun** : un stockage à verrou unique pour profils et groupes, un journal d'opérations anti-doublon (achats, cadeaux, paliers), un protocole d'appartenance où le profil fait foi. Tout est testé hors Studio. | Les garanties du §10 deviennent réutilisables par les récompenses et la boutique sans recoder la concurrence. | Plus de code au départ ; la téléportation (étape 2) reste à brancher dessus. | Moyenne | **Fait** (32 tests Lune, dont une simulation de deux serveurs) |
+| P5 | **Récolte minimale dès l'étape 1** (arbres et rochers entre les parcelles). | Sans elle, l'achat prédéfini de l'étape 1 n'a pas de matériaux ; elle donne la première action utile dès la première minute. | Avance une petite partie de l'étape 3. | Faible | **Fait** |
 
-- Monde généré par code : hub central + 6 parcelles (1 par joueur, serveur de 6 joueurs).
-- 9 bâtiments en chaîne (Feu de camp → Donjon), pads d'achat verts/rouges, production passive.
-- Mannequin d'entraînement (touche E), XP, niveaux, bonus de production.
-- Gains hors ligne (50 %, plafond 8 h, minimum 1 min d'absence).
-- Sauvegarde avec verrou de session ; mode mémoire automatique en Studio sans accès API.
-- Boutique : 2 passes, 2 produits (désactivés tant que les identifiants valent 0).
-- HUD, notifications, classement (or, niveau).
+Exemples côté joueur :
+- **P1** : après le premier boss, Léa rapporte 3 éclats d'Éther. Le groupe les insère dans le Noyau, sa lumière s'étend sur la parcelle et le portail des mines s'ouvre au hub.
+- **P2** : Tom et Inès s'entraînent côte à côte, l'affichage passe à « +12 XP/s (+5 % cercle) ».
+- **P3** : une rune dorée clignote au-dessus du tapis ; Sam appuie sur X à la manette et voit « x3 pendant 10 s ».
 
-Les bâtiments sont des **blocs colorés provisoires** : les vrais modèles 3D viendront ensuite
-(voir `ROADMAP.md`).
+## 5. Décisions qui te reviennent
+
+1. **R2** : téléportation proposée (avec choix de rester) ou téléportation automatique vers le serveur du bastion ?
+2. **R4** : créditer aussi la présence inactive en ligne à 25 %, ou garder la règle actuelle ?
+3. **P2 / P3** : les retiens-tu pour l'étape 2 ?
+
+Tant que tu n'as pas répondu, je continue les parties indépendantes.

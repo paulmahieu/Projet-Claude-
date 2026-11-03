@@ -1,46 +1,158 @@
 --[[
-	Microachats.
+	Catalogue de monétisation (cahier §9.2). Module pur.
 
-	Les identifiants à 0 sont désactivés : ils s'affichent « Bientôt » dans la boutique.
-	Pour les activer : créer le produit sur le Creator Hub (expérience publiée requise),
-	puis coller son identifiant ici.
-
-	Module pur : testable avec Lune.
+	Kind          : "Product" (Developer Product, rachetable) | "Pass" (achat unique)
+	Id            : identifiant Roblox. 0 = non configuré -> vente désactivée.
+	                Ne JAMAIS inventer d'identifiant : le créer dans le Creator Hub (docs/BOUTIQUE.md).
+	SuggestedPrice: prix de conception en Robux, pour configurer le Creator Hub. Le prix AFFICHÉ
+	                au joueur vient toujours de Roblox (tarification régionale).
+	Delivery      : ce que reçoit le joueur.
+	Ready         : true si la livraison est réellement implémentée dans cette version.
+	                Un article non prêt reste invendable même avec un identifiant.
 ]]
 
 return {
-	-- Produits consommables (achetables plusieurs fois).
-	DevProducts = {
-		{
-			Key = "GoldPouch",
-			ProductId = 0,
-			Name = "Bourse d'or",
-			Description = "10 minutes de production instantanée",
-			-- Récompense indexée sur la production : reste utile à tous les stades du jeu.
-			Reward = { Type = "IncomeMinutes", Minutes = 10, MinGold = 500 },
-		},
-		{
-			Key = "GoldChest",
-			ProductId = 0,
-			Name = "Coffre d'or",
-			Description = "1 heure de production instantanée",
-			Reward = { Type = "IncomeMinutes", Minutes = 60, MinGold = 3000 },
-		},
+	{
+		Key = "GoldPouchS",
+		Kind = "Product",
+		Id = 0,
+		SuggestedPrice = 9,
+		Name = "Petite bourse d'or",
+		Description = "300 pièces d'or pour tes améliorations personnelles.",
+		Preview = "+300 or",
+		Delivery = { Type = "Gold", Amount = 300 },
+		Ready = true,
 	},
-
-	-- Passes permanents.
-	GamePasses = {
-		DoubleGold = {
-			GamePassId = 0,
-			Name = "Or x2",
-			Description = "Double toute la production d'or",
-			Multiplier = 2,
-		},
-		FastTraining = {
-			GamePassId = 0,
-			Name = "Entraînement x2",
-			Description = "Double l'XP d'entraînement",
-			Multiplier = 2,
-		},
+	{
+		Key = "GoldPouchM",
+		Kind = "Product",
+		Id = 0,
+		SuggestedPrice = 19,
+		Name = "Bourse d'or du marchand",
+		Description = "800 pièces d'or.",
+		Preview = "+800 or",
+		Delivery = { Type = "Gold", Amount = 800 },
+		Ready = true,
+	},
+	{
+		Key = "GoldPouchL",
+		Kind = "Product",
+		Id = 0,
+		SuggestedPrice = 49,
+		Name = "Coffre du trésorier",
+		Description = "2 500 pièces d'or.",
+		Preview = "+2 500 or",
+		Delivery = { Type = "Gold", Amount = 2500 },
+		Ready = true,
+	},
+	{
+		Key = "XpBoost15",
+		Kind = "Product",
+		Id = 0,
+		SuggestedPrice = 9,
+		Name = "Élixir de vigueur",
+		Description = "XP d'entraînement x2 pendant 15 min de jeu en ligne. Activation quand tu veux.",
+		Preview = "XP x2 · 15 min",
+		Delivery = { Type = "Boost", Boost = "Xp", Multiplier = 2, Seconds = 15 * 60 },
+		Ready = false, -- inventaire de bonus : étape 4
+	},
+	{
+		Key = "XpBoost45",
+		Kind = "Product",
+		Id = 0,
+		SuggestedPrice = 19,
+		Name = "Grand élixir de vigueur",
+		Description = "XP d'entraînement x2 pendant 45 min de jeu en ligne.",
+		Preview = "XP x2 · 45 min",
+		Delivery = { Type = "Boost", Boost = "Xp", Multiplier = 2, Seconds = 45 * 60 },
+		Ready = false,
+	},
+	{
+		Key = "GoldBoost15",
+		Kind = "Product",
+		Id = 0,
+		SuggestedPrice = 9,
+		Name = "Sceau de prospérité",
+		Description = "Or des tapis x2 pendant 15 min de jeu en ligne.",
+		Preview = "Or x2 · 15 min",
+		Delivery = { Type = "Boost", Boost = "Gold", Multiplier = 2, Seconds = 15 * 60 },
+		Ready = false,
+	},
+	{
+		Key = "GoldBoost45",
+		Kind = "Product",
+		Id = 0,
+		SuggestedPrice = 19,
+		Name = "Grand sceau de prospérité",
+		Description = "Or des tapis x2 pendant 45 min de jeu en ligne.",
+		Preview = "Or x2 · 45 min",
+		Delivery = { Type = "Boost", Boost = "Gold", Multiplier = 2, Seconds = 45 * 60 },
+		Ready = false,
+	},
+	{
+		Key = "SkinRuneBlade",
+		Kind = "Pass",
+		Id = 0,
+		SuggestedPrice = 19,
+		Name = "Lame runique",
+		Description = "Apparence d'arme lumineuse. Purement visuelle.",
+		Preview = "Apparence d'arme",
+		Delivery = { Type = "Cosmetic", Item = "RuneBlade" },
+		Ready = false, -- armes : étape 3
+	},
+	{
+		Key = "SkinFrostWolf",
+		Kind = "Pass",
+		Id = 0,
+		SuggestedPrice = 29,
+		Name = "Loup de givre",
+		Description = "Apparence pour le loup runique. Nécessite de posséder le loup runique.",
+		Preview = "Apparence de compagnon",
+		Delivery = { Type = "Cosmetic", Item = "FrostWolf", RequiresCompanion = "RuneWolf" },
+		Ready = false, -- compagnons : étape 4
+	},
+	{
+		Key = "AuraRunic",
+		Kind = "Pass",
+		Id = 0,
+		SuggestedPrice = 19,
+		Name = "Aura runique",
+		Description = "Des runes flottent autour de ton personnage. Purement visuel.",
+		Preview = "Aura visuelle",
+		Delivery = { Type = "Cosmetic", Item = "RunicAura" },
+		Ready = false,
+	},
+	{
+		Key = "StarterPack",
+		Kind = "Pass",
+		Id = 0,
+		SuggestedPrice = 29,
+		Name = "Pack du pionnier",
+		Description = "Bannière du pionnier + 1 000 or (or accordé une seule fois).",
+		Preview = "Bannière + 1 000 or",
+		Delivery = { Type = "Pack", Gold = 1000, Item = "PioneerBanner" },
+		Ready = false,
+	},
+	{
+		Key = "PremiumTrack",
+		Kind = "Pass",
+		Id = 0,
+		SuggestedPrice = 79,
+		Name = "Parcours du champion",
+		Description = "Récompenses premium du parcours de progression, y compris les étapes déjà atteintes.",
+		Preview = "Parcours premium",
+		Delivery = { Type = "PremiumTrack" },
+		Ready = false, -- parcours de progression : étapes 3-4
+	},
+	{
+		Key = "TitleWarden",
+		Kind = "Pass",
+		Id = 0,
+		SuggestedPrice = 9,
+		Name = "Titre : Gardien d'Éther",
+		Description = "Affiche le titre « Gardien d'Éther » au-dessus de ton personnage.",
+		Preview = "Titre",
+		Delivery = { Type = "Title", Title = "Gardien d'Éther" },
+		Ready = false,
 	},
 }

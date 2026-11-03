@@ -1,115 +1,109 @@
-# Fantasy Tycoon (nom provisoire)
+# Bastions d'Éther (nom de travail)
 
-Tycoon coopératif de fantasy médiévale pour Roblox. Ce dépôt contient le **premier prototype jouable** :
-base personnelle, bâtiments qui produisent de l'or, entraînement AFK sur mannequin, gains hors ligne,
-sauvegarde sécurisée et boutique (microachats prêts, désactivés tant que les identifiants ne sont pas renseignés).
+Tycoon Roblox **coopératif** de fantasy médiévale : un groupe de 1 à 4 joueurs développe un
+bastion commun et persistant, récolte, construit, s'entraîne sur des tapis (y compris hors ligne),
+puis part à l'aventure. Cahier des charges : [`docs/01_CAHIER_DES_CHARGES.md`](docs/01_CAHIER_DES_CHARGES.md).
 
-- Conception, incohérences et décisions en attente : [`docs/CONCEPTION.md`](docs/CONCEPTION.md)
-- Architecture du code : [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
-- Feuille de route : [`docs/ROADMAP.md`](docs/ROADMAP.md)
+| Document | Contenu |
+|---|---|
+| [`docs/CONCEPTION.md`](docs/CONCEPTION.md) | Réglages retenus, points à revoir, propositions, **décisions en attente** |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Groupe persistant, autorité unique, invariants, sécurité |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Étapes 1 à 4 et statut de chaque élément |
+| [`docs/BOUTIQUE.md`](docs/BOUTIQUE.md) | Les 13 offres, produits à créer dans le Creator Hub |
+
+**État : étape 1 (fondations jouables).** Rien n'a encore été exécuté dans Roblox Studio (voir § 4).
 
 ---
 
-## 1. Lancer le jeu le plus simplement possible (sans aucun outil)
+## 1. Lancer le jeu (sans aucun outil)
 
-1. Installer **Roblox Studio** (https://create.roblox.com → « Start Creating »).
-2. Télécharger le fichier [`build/FantasyTycoon.rbxl`](build/FantasyTycoon.rbxl) de ce dépôt
-   (sur GitHub : cliquer sur le fichier puis sur l'icône « Download raw file »).
-3. Double-cliquer dessus : il s'ouvre dans Roblox Studio.
-4. Cliquer sur **Play** (ou touche F5). Le monde est généré automatiquement au lancement.
+1. Installer **Roblox Studio** : https://create.roblox.com → *Start Creating*.
+2. Télécharger [`build/BastionsDEther.rbxl`](build/BastionsDEther.rbxl) (sur GitHub : ouvrir le fichier → *Download raw file*).
+3. Double-cliquer sur le fichier : il s'ouvre dans Studio.
+4. Cliquer sur **Play** (F5). Le monde est généré au lancement : avant Play, la scène est vide, c'est normal.
 
-> Le monde (sol, hub, 6 parcelles) est créé par le script serveur : dans l'éditeur, avant d'appuyer
-> sur Play, la scène est vide. C'est normal.
+### Sauvegardes dans Studio
 
-### Activer la sauvegarde en Studio (facultatif)
+Sans réglage, Studio refuse les DataStores : le jeu passe en **mode test** (message rouge
+« rien n'est sauvegardé ») et tout fonctionne en mémoire. Pour tester les sauvegardes :
 
-Sans réglage, Studio refuse l'accès aux DataStores : le jeu passe en **mode test** (message rouge
-« la progression ne sera pas sauvegardée »). Pour tester la sauvegarde :
-
-1. Publier la place : *File → Publish to Roblox* (une expérience privée suffit).
+1. *File → Publish to Roblox* vers une **expérience de test privée** (jamais l'expérience publique :
+   tes tests écriraient dans les vraies données).
 2. *Home → Game Settings → Security* → activer **Enable Studio Access to API Services**.
-3. Relancer Play.
-
-> Conseil : utilisez une expérience de **test** distincte de l'expérience publique, sinon vos tests
-> Studio écrivent dans les vraies données des joueurs.
+3. *Game Settings → Places* (ou réglages de la place) : nombre max de joueurs = **16**.
 
 ---
 
-## 2. Flux de travail recommandé (code synchronisé avec Rojo)
+## 2. Travailler sur le code (Rojo)
 
-Le code vit dans `src/` sous forme de fichiers texte versionnés. **Rojo** les synchronise en direct
-avec Studio : on modifie un fichier dans un éditeur, Studio se met à jour instantanément.
+Le code vit dans `src/` (fichiers texte versionnés). **Rojo** le synchronise en direct avec Studio.
 
-### Installation (une seule fois)
-
-1. Installer **Rokit** (gestionnaire d'outils Roblox) : https://github.com/rojo-rbx/rokit
-   puis, dans le dossier du projet : `rokit install` (installe Rojo, StyLua et Lune aux versions de `rokit.toml`).
-2. Installer **Visual Studio Code** puis les extensions **Rojo** et **Luau Language Server**.
-3. Dans Studio, installer le plugin Rojo : depuis VS Code, palette de commandes → « Rojo: Install Roblox Studio plugin ».
-
-### Utilisation quotidienne
-
-```bash
-rojo serve                     # dans le dossier du projet
-```
-
-Dans Studio : onglet **Plugins → Rojo → Connect**. Ouvrez une place vide (*Baseplate*) ou
-`build/FantasyTycoon.rbxl` ; le code de `src/` y est injecté et reste synchronisé.
-
-### Commandes utiles
+1. Installer **Rokit** : https://github.com/rojo-rbx/rokit, puis dans le dossier du projet : `rokit install`
+   (Rojo, StyLua, Lune et Selene aux versions de `rokit.toml`).
+2. VS Code + extensions **Rojo** et **Luau Language Server** ; plugin Rojo dans Studio
+   (palette VS Code → « Rojo: Install Roblox Studio plugin »).
+3. `rojo serve`, puis dans Studio : *Plugins → Rojo → Connect*.
 
 | Commande | Rôle |
 |---|---|
-| `rojo build -o build/FantasyTycoon.rbxl` | Régénère le fichier de place |
-| `lune run tests/shared.spec` | Lance les tests automatiques (formules, sauvegarde, configuration) |
-| `stylua src tests` | Formate le code |
+| `rojo build -o build/BastionsDEther.rbxl` | Régénère la place |
+| `lune run tests/shared.spec` | 32 tests automatiques (formules, verrous, groupes, hors ligne, configuration) |
+| `selene src tests` | Analyse statique (variables non définies, erreurs courantes) |
+| `stylua src tests` | Formatage |
 
 ---
 
-## 3. Tester le prototype : scénario pas à pas
+## 3. Tester l'étape 1
 
-| # | Action | Résultat attendu |
+### Seul (Play)
+
+| # | Action | Attendu |
 |---|---|---|
-| 1 | Play | Vous apparaissez à l'entrée d'une parcelle portant « Base de *VotreNom* ». Message de bienvenue. HUD en haut à gauche : 50 or. |
-| 2 | Marcher sur le cercle vert « Feu de camp – 25 or » | Le feu de camp apparaît, le pad suivant (« Cabane du bûcheron », rouge) apparaît. L'or augmente de 1/s. |
-| 3 | Marcher sur le pad rouge | Message « Il vous manque X or ». Rien n'est acheté. |
-| 4 | Approcher du mannequin, touche **E** | Bandeau « Entraînement en cours », le mannequin tremble, la barre bleue d'XP se remplit. |
-| 5 | S'éloigner du mannequin | Message « entraînement arrêté ». |
-| 6 | Atteindre le niveau 2 | Message de niveau, la production indiquée augmente de 1 %. |
-| 7 | Bouton **Boutique** | Liste des passes et produits, boutons « Bientôt » (identifiants non configurés). |
-| 8 | Test multijoueur : *Test → Clients and Servers → 2 joueurs → Start* | Chaque joueur a sa propre parcelle ; un joueur ne peut ni acheter sur la parcelle de l'autre, ni utiliser son mannequin. |
-| 9 | (Sauvegarde activée) Quitter, attendre > 1 min, relancer | Bâtiments et or conservés, message « Pendant votre absence (...), votre base a produit X or ». |
+| 1 | Play | Tu apparais à l'entrée d'une parcelle « Bastion de *Toi* » avec le Noyau d'Éther. Panneau gauche : or, niveau, Puissance, **objectif**. Panneau droit : matériaux du groupe. |
+| 2 | Aller au bosquet (arbres entre les parcelles), maintenir **E** (manette : X, tactile : toucher) | « +3 Bois pour le bastion ». L'arbre devient transparent puis repousse (25 s). |
+| 3 | Récolter 10 bois, revenir, socle **vert** « Terrain d'entraînement », maintenir E | Construction immédiate, 2 tapis apparaissent, « Bastion niv. 2 ». Les autres socles affichent coût, effet et « Requiert ». |
+| 4 | Sur un tapis : E | Placement sur le tapis, bandeau « Entraînement · +4 XP/s · +1 or/s », XP et or montent. |
+| 5 | Faire quelques pas | « Entraînement arrêté ». |
+| 6 | **M** (manette : Y, tactile : bouton Menu) → Améliorations → Concentration | L'or baisse, le rendement des tapis augmente de 10 %. |
+| 7 | Menu → Boutique | 13 offres « Bientôt » ; « Simuler (Studio) » sur les bourses d'or → or crédité. |
+| 8 | (Sauvegardes actives) Quitter après s'être entraîné, attendre 5 min, relancer | Message « Pendant ton absence (5 min) : +300 XP et +75 or (25 %...) ». |
 
-Astuce pour accélérer les tests : augmenter temporairement `StartingGold` dans
-`src/shared/Config/Economy.luau`.
+### À plusieurs : *Test → Clients and Servers → 2 ou 3 joueurs → Start*
+
+| # | Action | Attendu |
+|---|---|---|
+| 9 | Joueur 1 : Menu → Groupe → Inviter Joueur 2 | Joueur 2 : « ... t'invite ». |
+| 10 | Joueur 2 : Accepter, puis **Confirmer** | Joueur 2 est téléporté dans le bastion de Joueur 1 ; son ancien bastion solo est libéré. Les deux voient les **mêmes** matériaux et constructions. |
+| 11 | Joueur 2 récolte et construit | Les matériaux du groupe sont débités ; les deux voient la construction. |
+| 12 | Joueur 3 (autre groupe) tente un socle ou un tapis du bastion 1 | Refusé (« Ce n'est pas ton bastion »). |
+| 13 | Joueur 1 : Nommer admin Joueur 2, puis fermer la fenêtre de Joueur 1 | Joueur 2 continue de construire **sans le créateur** ; le bastion reste chargé. |
+| 14 | Joueur 2 : Retirer un membre (2 clics) / Quitter (2 clics) | Le membre retiré reçoit un nouveau bastion solo ; un admin seul avec d'autres membres doit d'abord transférer son rôle. |
+
+> Le test multi-serveurs (bastion ouvert sur un autre serveur, état « Remote ») n'est pas
+> reproductible dans Studio : il demande l'expérience publiée et deux serveurs. Le comportement
+> du verrou est couvert par une simulation dans les tests Lune.
 
 ---
 
-## 4. État de vérification
+## 4. Ce qui est réellement vérifié
 
 | Élément | Statut |
 |---|---|
-| Formules (production, XP, gains hors ligne, formatage), schéma de sauvegarde, cohérence de la configuration | **Testé automatiquement** (19 tests Lune) |
-| Syntaxe de tous les scripts, structure de la place | **Vérifié** (StyLua + `rojo build`) |
-| Comportement en jeu dans Roblox Studio (génération du monde, pads, mannequin, HUD, sauvegarde) | **À vérifier** : écrit sans accès à Studio, suivre le scénario ci-dessus |
-| Achats Robux | **À vérifier** après création des produits (nécessite une expérience publiée) |
+| Formules, hors ligne (5 min / 8 h / 48 h, reconnexion immédiate), verrou à deux serveurs, appartenance, achats concurrents, validation des entrées, cohérence de la configuration | **Testé** (Lune, 32 tests) — simulation hors Roblox |
+| Syntaxe, variables non définies, structure de la place | **Vérifié** (StyLua, Selene, `rojo build`) |
+| Comportement en jeu : monde, groupes, récolte, constructions, tapis, interface, manette, tactile | **À vérifier dans Studio** (scénario ci-dessus) |
+| DataStores réels, achats Robux, prix régionaux, téléportations | **À vérifier** dans une expérience de test publiée |
 
-Si une erreur apparaît dans la fenêtre **Output** de Studio, copiez-la telle quelle : elle indique
-le script et la ligne en cause.
+En cas d'erreur, copie le message de la fenêtre **Output** de Studio (il indique le script et la ligne).
 
 ## Arborescence
 
 ```
-default.project.json        Correspondance fichiers → services Roblox (Rojo)
-build/FantasyTycoon.rbxl    Place prête à ouvrir dans Studio (générée)
-src/shared/                 → ReplicatedStorage.Shared (code commun client/serveur)
-  Config/                   Tous les chiffres réglables (bâtiments, économie, entraînement, produits)
-  Formulas.luau             Calculs purs, testés
-  DataSchema.luau           Format de sauvegarde + migrations, testé
-src/server/                 → ServerScriptService.Server
-  Main.server.luau          Point d'entrée
-  Services/                 Data, Plot, Economy, Training, Monetization, Notifier
-src/client/                 → StarterPlayerScripts.Client (HUD, notifications, boutique)
-tests/                      Tests Lune
-docs/                       Conception, architecture, feuille de route
+default.project.json     Rojo : fichiers -> services Roblox
+build/BastionsDEther.rbxl Place prête à ouvrir (générée)
+src/shared/              Code commun pur + Config/ (tous les chiffres et textes)
+src/server/              Main + Services/ (Store, Profile, Group, Plot, Build, Harvest, Training, Upgrade, Monetization, Net)
+src/client/              HUD, menus, commandes
+tests/                   Tests Lune
+docs/                    Cahier des charges, conception, architecture, feuille de route, boutique
 ```

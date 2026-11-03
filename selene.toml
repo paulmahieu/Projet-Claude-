@@ -1,0 +1,5 @@
+std = "roblox-lite"
+
+[lints]
+# Les modules de configuration et le HUD utilisent volontairement des tables mixtes.
+mixed_table = "allow"

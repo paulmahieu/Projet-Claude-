@@ -1,8 +1,7 @@
 {
-  "name": "FantasyTycoon",
+  "name": "BastionsDEther",
   "tree": {
     "$className": "DataModel",
-
     "ReplicatedStorage": {
       "Shared": {
         "$path": "src/shared"
@@ -11,16 +10,20 @@
         "$className": "Folder",
         "Notify": {
           "$className": "RemoteEvent"
+        },
+        "GroupUpdate": {
+          "$className": "RemoteEvent"
+        },
+        "Request": {
+          "$className": "RemoteFunction"
         }
       }
     },
-
     "ServerScriptService": {
       "Server": {
         "$path": "src/server"
       }
     },
-
     "StarterPlayer": {
       "StarterPlayerScripts": {
         "Client": {
