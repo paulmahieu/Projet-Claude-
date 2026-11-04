@@ -194,17 +194,20 @@ local function setupLighting()
 		return inst
 	end
 	local atmosphere = ensure("Atmosphere", "BastionAtmosphere") :: Atmosphere
-	atmosphere.Density = 0.28
-	atmosphere.Haze = 1.2
+	-- Brume légère : profondeur sans flou (une densité/brume élevée rendait les lointains flous).
+	atmosphere.Density = 0.1
+	atmosphere.Haze = 0
+	atmosphere.Glare = 0
 	atmosphere.Color = Color3.fromRGB(205, 215, 230)
 	atmosphere.Decay = Color3.fromRGB(110, 120, 140)
 	local grading = ensure("ColorCorrectionEffect", "BastionGrading") :: ColorCorrectionEffect
-	grading.Saturation = 0.12
-	grading.Contrast = 0.05
+	grading.Saturation = 0.1
+	grading.Contrast = 0.1 -- un peu plus de contraste : formes plus nettes
 	local bloom = ensure("BloomEffect", "BastionBloom") :: BloomEffect
-	bloom.Intensity = 0.35
-	bloom.Threshold = 1.6
-	bloom.Size = 20
+	-- Halo discret autour des éléments lumineux (un halo large donnait un effet baveux).
+	bloom.Intensity = 0.12
+	bloom.Threshold = 2.2
+	bloom.Size = 10
 end
 
 local function buildPlot(index: number, parent: Instance): Plot

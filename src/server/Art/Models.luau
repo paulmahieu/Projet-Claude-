@@ -156,35 +156,82 @@ function Models.tree(base: CFrame, variant: number, seed: number): Model
 		}
 	)
 
+	-- Anneaux de croissance sur la souche
+	part(
+		m,
+		"StumpRing",
+		Vector3.new(0.22, 1.1 * scale, 1.1 * scale),
+		turn * CFrame.new(0, 1.27, 0) * VERTICAL,
+		C.Bark:Lerp(C.WoodLight, 0.45),
+		Enum.Material.Wood,
+		{
+			Shape = Enum.PartType.Cylinder,
+			NoShadow = true,
+		}
+	)
+	-- Racines évasées (toujours visibles, ancrent la souche au sol)
+	for r = 1, 4 do
+		local a = r * math.pi / 2 + seed
+		part(
+			m,
+			"Root" .. r,
+			Vector3.new(1.6, 0.6, 0.7) * scale,
+			turn * CFrame.Angles(0, a, 0) * CFrame.new(1.2 * scale, 0.25, 0) * CFrame.Angles(0, 0, math.rad(-18)),
+			C.Bark:Lerp(C.WoodDark, 0.3),
+			Enum.Material.Wood
+		)
+	end
+
+	local leafA, leafB, leafC
 	if variant == 2 then
+		-- Sapin : tronc et 6 étages d'aiguilles en étoile (deux carrés tournés de 45° par étage)
 		column(
 			m,
 			"Trunk",
-			4 * scale,
-			1.4 * scale,
+			6 * scale,
+			1.2 * scale,
 			turn * CFrame.new(0, 1.2, 0),
 			C.Bark,
 			Enum.Material.Wood,
 			{ Depletable = true }
 		)
-		local tiers = { { 8, 3.2 }, { 6.2, 6 }, { 4.2, 8.6 }, { 2.2, 10.8 } }
-		for i, t in tiers do
-			part(
-				m,
-				"Needles" .. i,
-				Vector3.new(t[1], 2.6, t[1]) * scale,
-				turn * CFrame.new(0, t[2] * scale, 0) * CFrame.Angles(0, math.rad(45 * i), 0),
-				if i % 2 == 0 then C.Pine else C.Pine:Lerp(C.Leaf2, 0.4),
-				Enum.Material.Grass,
-				{ Depletable = true }
-			)
+		local tiers = 6
+		for k = 1, tiers do
+			local w = (8.5 - k * 1.15) * scale
+			local y = (2.6 + k * 1.55) * scale
+			local shade = if k % 2 == 0 then C.Pine else C.Pine:Lerp(C.Leaf2, 0.35)
+			for _, rot in { 0, 45 } do
+				part(
+					m,
+					"Needles" .. k .. "_" .. rot,
+					Vector3.new(w, 1.5, w),
+					turn * CFrame.new(0, y, 0) * CFrame.Angles(0, math.rad(rot + k * 9), 0),
+					shade,
+					Enum.Material.Grass,
+					{
+						Depletable = true,
+					}
+				)
+			end
 		end
+		part(
+			m,
+			"Tip",
+			Vector3.new(0.9, 1.6, 0.9) * scale,
+			turn * CFrame.new(0, (2.6 + (tiers + 1) * 1.55) * scale, 0) * CFrame.Angles(0, math.rad(45), 0),
+			C.Pine:Lerp(C.Leaf3, 0.3),
+			Enum.Material.Grass,
+			{
+				Depletable = true,
+			}
+		)
 	elseif variant == 3 then
+		-- Bouleau : tronc fin blanc, marques sombres, feuillage clair en grappes verticales
 		local trunk = column(
 			m,
 			"Trunk",
-			7 * scale,
-			1.1 * scale,
+			8.5 * scale,
+			1 * scale,
 			turn * CFrame.new(0, 1.2, 0),
 			C.Birch,
 			Enum.Material.SmoothPlastic,
@@ -192,12 +239,16 @@ function Models.tree(base: CFrame, variant: number, seed: number): Model
 				Depletable = true,
 			}
 		)
-		for i = 1, 3 do -- marques sombres du bouleau
+		for k = 1, 7 do
+			local y = 2 + k * 1.05
+			local a = k * 2.4
 			part(
 				m,
-				"Mark" .. i,
-				Vector3.new(0.3, 0.25, 1.15 * scale),
-				trunk.CFrame * CFrame.new(-2 + i * 1.3, 0, 0) * CFrame.Angles(i, 0, 0),
+				"Mark" .. k,
+				Vector3.new(0.45, 0.18, 0.1) * scale,
+				turn
+					* CFrame.new(math.cos(a) * 0.5 * scale, y * scale, math.sin(a) * 0.5 * scale)
+					* CFrame.Angles(0, -a + math.pi / 2, 0),
 				C.WoodDark,
 				Enum.Material.SmoothPlastic,
 				{
@@ -206,69 +257,97 @@ function Models.tree(base: CFrame, variant: number, seed: number): Model
 				}
 			)
 		end
-		ball(
-			m,
-			"Leaves1",
-			5.5 * scale,
-			turn * CFrame.new(0, 8.6 * scale, 0),
-			C.Leaf3,
-			Enum.Material.Grass,
-			{ Depletable = true }
-		)
-		ball(
-			m,
-			"Leaves2",
-			3.8 * scale,
-			turn * CFrame.new(1.6, 7.4 * scale, 0.8),
-			C.Leaf3:Lerp(C.Leaf1, 0.5),
-			Enum.Material.Grass,
-			{
-				Depletable = true,
-			}
-		)
+		local _ = trunk
+		leafA, leafB, leafC = C.Leaf3, C.Leaf3:Lerp(C.Leaf1, 0.5), C.Leaf3:Lerp(Color3.fromRGB(230, 220, 110), 0.25)
+		local clusters = {
+			{ 0, 10, 0, 4.2 },
+			{ 1.4, 8.6, 0.6, 3.2 },
+			{ -1.3, 8.9, -0.5, 3.4 },
+			{ 0.3, 11.8, -0.4, 3 },
+			{ -0.4, 7.4, 1.2, 2.6 },
+		}
+		for k, c in clusters do
+			ball(
+				m,
+				"Leaves" .. k,
+				c[4] * scale,
+				turn * CFrame.new(c[1] * scale, c[2] * scale, c[3] * scale),
+				if k % 3 == 0 then leafC elseif k % 2 == 0 then leafB else leafA,
+				Enum.Material.Grass,
+				{
+					Depletable = true,
+				}
+			)
+		end
 	else
+		-- Chêne : tronc en deux sections, branches, couronne de 9 boules en trois teintes
 		column(
 			m,
 			"Trunk",
-			5 * scale,
-			1.8 * scale,
+			4 * scale,
+			1.9 * scale,
 			turn * CFrame.new(0, 1.2, 0),
 			C.Bark,
 			Enum.Material.Wood,
 			{ Depletable = true }
 		)
-		part(
+		column(
 			m,
-			"Branch",
-			Vector3.new(2.6, 0.7, 0.7),
-			turn * CFrame.new(1.4, 5, 0) * CFrame.Angles(0, 0, math.rad(35)),
+			"TrunkUpper",
+			2.6 * scale,
+			1.4 * scale,
+			turn * CFrame.new(0.15, 5, 0) * CFrame.Angles(0, 0, math.rad(-6)),
 			C.Bark,
 			Enum.Material.Wood,
 			{
 				Depletable = true,
 			}
 		)
-		ball(
-			m,
-			"Leaves1",
-			6.5 * scale,
-			turn * CFrame.new(0, 8 * scale, 0),
-			C.Leaf1,
-			Enum.Material.Grass,
-			{ Depletable = true }
-		)
-		ball(
-			m,
-			"Leaves2",
-			4.6 * scale,
-			turn * CFrame.new(2.4, 7 * scale, 1),
-			C.Leaf2,
-			Enum.Material.Grass,
-			{ Depletable = true }
-		)
-		ball(m, "Leaves3", 4.2 * scale, turn * CFrame.new(-2.2, 7.2 * scale, -1), C.Leaf3, Enum.Material.Grass, {
-			Depletable = true,
-		})
+		for k, b in { { 1.6, 5.4, 0, 35 }, { -1.5, 5.8, 0.4, -40 }, { 0.2, 6.2, -1.5, 0 } } do
+			part(
+				m,
+				"Branch" .. k,
+				Vector3.new(0.6, 2.8, 0.6) * scale,
+				turn
+					* CFrame.new(b[1] * scale, b[2] * scale, b[3] * scale)
+					* CFrame.Angles(math.rad(if b[4] == 0 then 30 else 0), 0, math.rad(-b[4])),
+				C.Bark,
+				Enum.Material.Wood,
+				{
+					Depletable = true,
+				}
+			)
+		end
+		leafA, leafB, leafC = C.Leaf1, C.Leaf2, C.Leaf3
+		local clusters = {
+			{ 0, 9.2, 0, 6 },
+			{ 2.6, 8.4, 0.8, 4.4 },
+			{ -2.6, 8.6, -0.6, 4.6 },
+			{ 0.6, 8.2, 2.6, 4.2 },
+			{ -0.8, 8.4, -2.6, 4.2 },
+			{ 1.8, 10.4, -1.2, 3.6 },
+			{ -1.6, 10.6, 1.4, 3.4 },
+			{ 0, 11.4, 0, 3.2 },
+			{ 0, 7.2, 0, 4.8 }, -- dessous plus sombre
+		}
+		for k, c in clusters do
+			local color = if k == #clusters
+				then leafB:Lerp(Color3.new(0, 0, 0), 0.2)
+				elseif k % 3 == 0 then leafC
+				elseif k % 2 == 0 then leafB
+				else leafA
+			ball(
+				m,
+				"Leaves" .. k,
+				c[4] * scale,
+				turn * CFrame.new(c[1] * scale, c[2] * scale, c[3] * scale),
+				color,
+				Enum.Material.Grass,
+				{
+					Depletable = true,
+				}
+			)
+		end
 	end
 	m.PrimaryPart = stump
 	return m
@@ -295,20 +374,34 @@ function Models.rock(base: CFrame, seed: number): Model
 	end
 	local m = newModel("Rock")
 	local turn = base * CFrame.Angles(0, seed * 2.3, 0)
+	-- Bloc principal facetté (3 volumes imbriqués) + éclats + mousse + gravats
 	local main = part(
 		m,
 		"Main",
-		Vector3.new(4.6, 3.4, 4),
+		Vector3.new(4.4, 3.2, 3.8),
 		turn * CFrame.new(0, 1.5, 0) * CFrame.Angles(math.rad(8), math.rad(20), math.rad(6)),
 		C.Stone,
 		Enum.Material.Rock,
-		{ Depletable = true }
+		{
+			Depletable = true,
+		}
 	)
 	part(
 		m,
-		"Side",
-		Vector3.new(2.8, 2.4, 2.6),
-		turn * CFrame.new(2.4, 1.1, 0.8) * CFrame.Angles(math.rad(-10), math.rad(50), math.rad(12)),
+		"Facet1",
+		Vector3.new(3.6, 2.6, 3.2),
+		turn * CFrame.new(0.4, 2.1, 0.2) * CFrame.Angles(math.rad(-14), math.rad(55), math.rad(10)),
+		C.Stone:Lerp(C.StoneLight, 0.3),
+		Enum.Material.Rock,
+		{
+			Depletable = true,
+		}
+	)
+	part(
+		m,
+		"Facet2",
+		Vector3.new(2.8, 2.2, 2.6),
+		turn * CFrame.new(2.2, 1, 0.9) * CFrame.Angles(math.rad(-10), math.rad(48), math.rad(14)),
 		C.StoneDark,
 		Enum.Material.Rock,
 		{
@@ -317,16 +410,51 @@ function Models.rock(base: CFrame, seed: number): Model
 	)
 	part(
 		m,
+		"Facet3",
+		Vector3.new(2.2, 1.8, 2),
+		turn * CFrame.new(-1.9, 0.9, -1) * CFrame.Angles(math.rad(12), math.rad(-30), math.rad(-8)),
+		C.Stone:Lerp(C.StoneDark, 0.5),
+		Enum.Material.Rock,
+		{
+			Depletable = true,
+		}
+	)
+	part(
+		m,
 		"Top",
-		Vector3.new(2.2, 1.6, 2),
-		turn * CFrame.new(-0.6, 3.4, -0.3) * CFrame.Angles(math.rad(15), math.rad(-25), 0),
+		Vector3.new(2, 1.4, 1.8),
+		turn * CFrame.new(-0.5, 3.4, -0.2) * CFrame.Angles(math.rad(15), math.rad(-25), 0),
 		C.StoneLight,
 		Enum.Material.Rock,
 		{
 			Depletable = true,
 		}
 	)
-	-- Gravats : toujours visibles.
+	part(
+		m,
+		"Moss",
+		Vector3.new(2.4, 0.25, 2),
+		turn * CFrame.new(0.2, 3.25, 0.3) * CFrame.Angles(math.rad(8), math.rad(20), math.rad(6)),
+		C.Leaf2,
+		Enum.Material.Grass,
+		{
+			Depletable = true,
+			NoShadow = true,
+		}
+	)
+	part(
+		m,
+		"Vein",
+		Vector3.new(0.25, 0.25, 2.6),
+		turn * CFrame.new(1.2, 1.7, -1.85) * CFrame.Angles(math.rad(8), math.rad(20), math.rad(30)),
+		C.StoneLight:Lerp(Color3.new(1, 1, 1), 0.4),
+		Enum.Material.Slate,
+		{
+			Depletable = true,
+			NoShadow = true,
+		}
+	)
+	-- Gravats : toujours visibles (emplacement de repousse)
 	local rubble = part(
 		m,
 		"Rubble",
@@ -343,7 +471,16 @@ function Models.rock(base: CFrame, seed: number): Model
 		C.Stone,
 		Enum.Material.Rock
 	)
-	m.PrimaryPart = main
+	part(
+		m,
+		"Rubble3",
+		Vector3.new(0.7, 0.4, 0.8),
+		turn * CFrame.new(2.6, 0.2, 1.8) * CFrame.Angles(0.3, 0.4, 0),
+		C.StoneLight,
+		Enum.Material.Rock
+	)
+	local _ = main
+	m.PrimaryPart = rubble
 	return m, rubble
 end
 
@@ -540,67 +677,248 @@ builders.TrainingGround = function(m: Model, base: CFrame, size: Vector3)
 	)
 end
 
--- Palissade : rondins verticaux de hauteurs alternées + deux traverses.
+-- Palissade : rondins aux pointes taillées, hauteurs alternées, traverses cloutées à
+-- l'extérieur et chemin de ronde à l'intérieur (-Z = vers le centre de la parcelle).
 builders.Palisade = function(m: Model, base: CFrame, size: Vector3)
 	local sx, h = size.X, size.Y
 	local d = 2.4
 	local count = math.floor(sx / d)
 	for i = 0, count - 1 do
 		local x = -sx / 2 + d / 2 + i * d
-		local logH = h + (if i % 2 == 0 then 0.8 else -0.4)
-		column(
+		local logH = h + (if i % 2 == 0 then 0.8 else -0.2)
+		local color = if i % 3 == 0 then C.WoodDark elseif i % 3 == 1 then C.Wood else C.Bark
+		column(m, "Log" .. i, logH, d, base * CFrame.new(x, 0, 0), color, Enum.Material.Wood)
+		part(
 			m,
-			"Log" .. i,
-			logH,
-			d,
-			base * CFrame.new(x, 0, 0),
-			if i % 3 == 0 then C.WoodDark else C.Wood,
+			"Tip" .. i,
+			Vector3.new(d * 0.72, d * 0.72, d * 0.72),
+			base * CFrame.new(x, logH + 0.2, 0) * CFrame.Angles(math.rad(45), 0, math.rad(45)),
+			color:Lerp(C.WoodLight, 0.25),
 			Enum.Material.Wood
 		)
 	end
-	for i, y in { h * 0.3, h * 0.75 } do
+	for i, y in { h * 0.28, h * 0.72 } do
 		part(
 			m,
 			"Beam" .. i,
-			Vector3.new(sx, 0.5, 0.4),
-			base * CFrame.new(0, y, -d / 2 - 0.1),
+			Vector3.new(sx, 0.5, 0.45),
+			base * CFrame.new(0, y, d / 2 + 0.1),
+			C.WoodDark,
+			Enum.Material.Wood
+		)
+		for k = 0, math.floor(sx / 8) do
+			part(
+				m,
+				"Rivet",
+				Vector3.new(0.25, 0.25, 0.1),
+				base * CFrame.new(-sx / 2 + 2 + k * 8, y, d / 2 + 0.38),
+				C.Metal,
+				Enum.Material.Metal,
+				{
+					NoShadow = true,
+				}
+			)
+		end
+	end
+	part(
+		m,
+		"Walkway",
+		Vector3.new(sx, 0.4, 2.2),
+		base * CFrame.new(0, h * 0.62, -(d / 2 + 1.4)),
+		C.WoodLight,
+		Enum.Material.WoodPlanks
+	)
+	for k = 0, math.floor(sx / 12) do
+		column(
+			m,
+			"WalkPost",
+			h * 0.62,
+			0.5,
+			base * CFrame.new(-sx / 2 + 3 + k * 12, 0, -(d / 2 + 2.2)),
 			C.WoodDark,
 			Enum.Material.Wood
 		)
 	end
 end
 
--- Scierie : maison en bois, toit à deux pans, lame de scie, pile de rondins.
+-- Scierie : colombages, fenêtres à volets, porte encadrée, toit débordant, cheminée,
+-- grande lame dentée, établi et pile de rondins.
 builders.Sawmill = function(m: Model, base: CFrame, size: Vector3)
 	local sx, sy, sz = size.X, size.Y, size.Z
-	local wallH = sy * 0.65
+	local wallH = sy * 0.62
+	local frame = C.WoodDark
+	-- Fondation en pierre et murs en planches
+	part(
+		m,
+		"Foundation",
+		Vector3.new(sx + 0.8, 0.9, sz + 0.8),
+		base * CFrame.new(0, 0.45, 0),
+		C.StoneDark,
+		Enum.Material.Cobblestone
+	)
 	part(
 		m,
 		"Walls",
 		Vector3.new(sx, wallH, sz),
-		base * CFrame.new(0, wallH / 2, 0),
+		base * CFrame.new(0, 0.9 + wallH / 2, 0),
 		C.WoodLight,
 		Enum.Material.WoodPlanks
 	)
+	local top = 0.9 + wallH
+	-- Colombages : poteaux d'angle, sablière, traverse médiane, croix de Saint-André en façade
+	for _, cx in { -1, 1 } do
+		for _, cz in { -1, 1 } do
+			part(
+				m,
+				"CornerPost",
+				Vector3.new(0.7, wallH, 0.7),
+				base * CFrame.new(cx * (sx / 2), 0.9 + wallH / 2, cz * (sz / 2)),
+				frame,
+				Enum.Material.Wood
+			)
+		end
+	end
+	for _, cz in { -1, 1 } do
+		part(
+			m,
+			"Plate",
+			Vector3.new(sx + 0.7, 0.5, 0.5),
+			base * CFrame.new(0, top - 0.25, cz * (sz / 2 + 0.05)),
+			frame,
+			Enum.Material.Wood
+		)
+		part(
+			m,
+			"MidRail",
+			Vector3.new(sx, 0.35, 0.35),
+			base * CFrame.new(0, 0.9 + wallH * 0.48, cz * (sz / 2 + 0.12)),
+			frame,
+			Enum.Material.Wood
+		)
+	end
+	for _, cx in { -1, 1 } do
+		part(
+			m,
+			"SidePlate",
+			Vector3.new(0.5, 0.5, sz + 0.7),
+			base * CFrame.new(cx * (sx / 2 + 0.05), top - 0.25, 0),
+			frame,
+			Enum.Material.Wood
+		)
+	end
+	for _, side in { -1, 1 } do
+		local cx = side * sx * 0.3
+		local len = math.sqrt((sx * 0.3) ^ 2 + (wallH * 0.48) ^ 2)
+		part(
+			m,
+			"Brace",
+			Vector3.new(0.3, len, 0.3),
+			base * CFrame.new(cx, 0.9 + wallH * 0.74, -sz / 2 - 0.15) * CFrame.Angles(0, 0, math.rad(side * 50)),
+			frame,
+			Enum.Material.Wood
+		)
+	end
+	-- Porte encadrée avec planches et ferrures
+	local door = base * CFrame.new(0, 0.9, -sz / 2 - 0.12)
+	part(m, "DoorFrame", Vector3.new(3.2, 4.2, 0.3), door * CFrame.new(0, 2.1, 0), frame, Enum.Material.Wood)
+	part(m, "Door", Vector3.new(2.5, 3.7, 0.3), door * CFrame.new(0, 1.85, -0.08), C.Wood, Enum.Material.WoodPlanks)
+	for _, y in { 0.9, 2.8 } do
+		part(
+			m,
+			"Hinge",
+			Vector3.new(1.6, 0.18, 0.1),
+			door * CFrame.new(-0.4, y, -0.26),
+			C.Metal,
+			Enum.Material.Metal,
+			{ NoShadow = true }
+		)
+	end
+	-- Fenêtres latérales : cadre, vitre, volets ouverts
+	for _, side in { -1, 1 } do
+		for _, wz in { -sz * 0.22, sz * 0.22 } do
+			local win = base
+				* CFrame.new(side * (sx / 2 + 0.1), 0.9 + wallH * 0.62, wz)
+				* CFrame.Angles(0, math.rad(90 * side), 0)
+			part(m, "WindowFrame", Vector3.new(2, 1.8, 0.25), win, frame, Enum.Material.Wood)
+			part(
+				m,
+				"Glass",
+				Vector3.new(1.5, 1.3, 0.28),
+				win,
+				Color3.fromRGB(70, 90, 110),
+				Enum.Material.Glass,
+				{ NoShadow = true }
+			)
+			part(m, "Mullion", Vector3.new(0.15, 1.3, 0.32), win, frame, Enum.Material.Wood, { NoShadow = true })
+			for _, sh in { -1, 1 } do
+				part(
+					m,
+					"Shutter",
+					Vector3.new(0.9, 1.7, 0.15),
+					win * CFrame.new(sh * 1.5, 0, -0.1),
+					C.RoofDark:Lerp(C.Wood, 0.4),
+					Enum.Material.WoodPlanks
+				)
+			end
+		end
+	end
+	-- Toit à deux pans débordant, faîtage et bordures
+	local roofH = sy - wallH + 1
+	gableRoof(m, sx + 2.4, sz + 2.4, roofH, base * CFrame.new(0, top, 0), C.Roof)
 	part(
 		m,
-		"Base",
-		Vector3.new(sx + 0.6, 0.8, sz + 0.6),
-		base * CFrame.new(0, 0.4, 0),
-		C.StoneDark,
-		Enum.Material.Cobblestone
-	)
-	gableRoof(m, sx + 1.2, sz + 1.2, sy - wallH + 1, base * CFrame.new(0, wallH, 0), C.Roof)
-	part(
-		m,
-		"Door",
-		Vector3.new(2.4, 3.6, 0.2),
-		base * CFrame.new(0, 2.2, -sz / 2 - 0.05),
-		C.WoodDark,
+		"Ridge",
+		Vector3.new(sx + 2.6, 0.5, 0.6),
+		base * CFrame.new(0, top + roofH, 0),
+		C.RoofDark,
 		Enum.Material.Wood
 	)
-	-- Lame de scie sur le côté
-	local saw = base * CFrame.new(sx / 2 + 0.4, 3, 0)
+	-- Pignons : triangles en planches qui ferment les deux bouts du toit
+	for _, side in { -1, 1 } do
+		local gable = base * CFrame.new(side * sx / 2, top + roofH / 2, 0)
+		part(
+			m,
+			"GableA",
+			Vector3.new(0.5, roofH, sz / 2),
+			gable * CFrame.new(0, 0, -sz / 4),
+			C.WoodLight,
+			Enum.Material.WoodPlanks,
+			{
+				Class = "WedgePart",
+			}
+		)
+		part(
+			m,
+			"GableB",
+			Vector3.new(0.5, roofH, sz / 2),
+			gable * CFrame.new(0, 0, sz / 4) * CFrame.Angles(0, math.pi, 0),
+			C.WoodLight,
+			Enum.Material.WoodPlanks,
+			{
+				Class = "WedgePart",
+			}
+		)
+	end
+	-- Cheminée en pierre
+	local chim = base * CFrame.new(sx * 0.28, top, sz * 0.18)
+	part(
+		m,
+		"Chimney",
+		Vector3.new(1.6, roofH + 1.6, 1.6),
+		chim * CFrame.new(0, (roofH + 1.6) / 2, 0),
+		C.Stone,
+		Enum.Material.Cobblestone
+	)
+	part(
+		m,
+		"ChimneyCap",
+		Vector3.new(2, 0.4, 2),
+		chim * CFrame.new(0, roofH + 1.8, 0),
+		C.StoneDark,
+		Enum.Material.Slate
+	)
+	-- Grande lame dentée sur le côté
+	local saw = base * CFrame.new(sx / 2 + 0.5, 3, 0)
 	part(
 		m,
 		"SawBlade",
@@ -611,19 +929,49 @@ builders.Sawmill = function(m: Model, base: CFrame, size: Vector3)
 		{ Shape = Enum.PartType.Cylinder }
 	)
 	part(m, "SawHub", Vector3.new(0.5, 1, 1), saw, C.WoodDark, Enum.Material.Wood, { Shape = Enum.PartType.Cylinder })
-	-- Pile de rondins devant
-	for i = 0, 2 do
+	for t = 1, 12 do
+		local a = t * math.pi / 6
+		part(
+			m,
+			"Tooth",
+			Vector3.new(0.18, 0.5, 0.5),
+			saw
+				* CFrame.new(0, math.cos(a) * 2.25, math.sin(a) * 2.25)
+				* CFrame.Angles(a, 0, 0)
+				* CFrame.Angles(math.rad(45), 0, 0),
+			C.Metal:Lerp(Color3.new(1, 1, 1), 0.3),
+			Enum.Material.Metal,
+			{
+				NoShadow = true,
+			}
+		)
+	end
+	-- Établi avec rondin en cours de coupe, et pile de rondins
+	local bench = base * CFrame.new(sx / 2 + 2.6, 0, -sz * 0.25)
+	for _, bz in { -1.2, 1.2 } do
+		part(m, "BenchLeg", Vector3.new(0.4, 1.4, 0.4), bench * CFrame.new(0, 0.7, bz), frame, Enum.Material.Wood)
+	end
+	part(m, "BenchTop", Vector3.new(1.4, 0.3, 3.2), bench * CFrame.new(0, 1.45, 0), C.Wood, Enum.Material.WoodPlanks)
+	part(
+		m,
+		"BenchLog",
+		Vector3.new(3, 0.9, 0.9),
+		bench * CFrame.new(0, 2.05, 0) * CFrame.Angles(0, math.rad(90), 0),
+		C.Bark,
+		Enum.Material.Wood,
+		{
+			Shape = Enum.PartType.Cylinder,
+		}
+	)
+	for i = 0, 4 do
+		local layer = if i >= 3 then 1 else 0
+		local offset = if i >= 3 then (i - 3.5) * 1 else (i - 1) * 1
 		part(
 			m,
 			"Pile" .. i,
 			Vector3.new(4, 1, 1),
-			base
-				* CFrame.new(
-					-sx / 2 + 2.5,
-					0.5 + (if i == 2 then 0.85 else 0),
-					-sz / 2 - 1.6 + (if i == 2 then 0.5 else i)
-				),
-			C.Bark,
+			base * CFrame.new(-sx / 2 + 2.5, 0.5 + layer * 0.86, -sz / 2 - 1.8 + offset),
+			if i % 2 == 0 then C.Bark else C.Wood,
 			Enum.Material.Wood,
 			{
 				Shape = Enum.PartType.Cylinder,
@@ -632,7 +980,6 @@ builders.Sawmill = function(m: Model, base: CFrame, size: Vector3)
 	end
 end
 
--- Carrière : muret de pierre, blocs taillés, grue en bois.
 builders.Quarry = function(m: Model, base: CFrame, size: Vector3)
 	local sx, sz = size.X, size.Z
 	part(m, "Pit", Vector3.new(sx - 1, 0.3, sz - 1), base * CFrame.new(0, 0.15, 0), C.StoneDark, Enum.Material.Slate)
@@ -703,62 +1050,150 @@ builders.RuneMats = function(m: Model, base: CFrame, size: Vector3)
 	end
 end
 
--- Tour de guet : fût de pierre, plateforme en bois, créneaux, toit pointu, drapeau.
+-- Tour de guet : fût de pierre à chaînages d'angle, bandeaux, meurtrières, porte cintrée,
+-- hourd en bois avec garde-corps, toit pyramidal à épi et drapeau.
 builders.Watchtower = function(m: Model, base: CFrame, size: Vector3)
 	local w, h = size.X, size.Y
 	local shaftH = h * 0.7
 	part(
 		m,
 		"Plinth",
-		Vector3.new(w + 1, 1, w + 1),
-		base * CFrame.new(0, 0.5, 0),
+		Vector3.new(w + 1.4, 1.2, w + 1.4),
+		base * CFrame.new(0, 0.6, 0),
 		C.StoneDark,
 		Enum.Material.Cobblestone
 	)
 	part(m, "Shaft", Vector3.new(w, shaftH, w), base * CFrame.new(0, shaftH / 2, 0), C.Stone, Enum.Material.Cobblestone)
+	-- Chaînages d'angle : blocs alternés plus clairs
+	local blocks = math.floor(shaftH / 1.6)
+	for _, cx in { -1, 1 } do
+		for _, cz in { -1, 1 } do
+			for k = 0, blocks - 1 do
+				local long = k % 2 == 0
+				part(
+					m,
+					"Quoin",
+					Vector3.new(if long then 1.6 else 1, 1.4, if long then 1 else 1.6),
+					base * CFrame.new(cx * (w / 2 - 0.35), 0.8 + k * 1.6, cz * (w / 2 - 0.35)),
+					C.StoneLight,
+					Enum.Material.Slate
+				)
+			end
+		end
+	end
+	-- Bandeaux de pierre
+	for _, y in { shaftH * 0.35, shaftH * 0.7 } do
+		part(
+			m,
+			"Band",
+			Vector3.new(w + 0.4, 0.5, w + 0.4),
+			base * CFrame.new(0, y, 0),
+			C.StoneLight,
+			Enum.Material.Slate
+		)
+	end
+	-- Meurtrières sur chaque face
+	for f = 0, 3 do
+		local face = base * CFrame.Angles(0, f * math.pi / 2, 0)
+		for _, y in { shaftH * 0.52, shaftH * 0.85 } do
+			part(
+				m,
+				"Slit",
+				Vector3.new(0.4, 1.6, 0.2),
+				face * CFrame.new(0, y, -w / 2 - 0.02),
+				Color3.fromRGB(25, 22, 20),
+				Enum.Material.SmoothPlastic,
+				{
+					NoShadow = true,
+				}
+			)
+		end
+	end
+	-- Porte cintrée
 	part(
 		m,
-		"Window",
-		Vector3.new(1, 2, 0.2),
-		base * CFrame.new(0, shaftH * 0.6, -w / 2 - 0.05),
-		C.WoodDark,
-		Enum.Material.Wood
+		"DoorArch",
+		Vector3.new(2.6, 2.6, 0.3),
+		base * CFrame.new(0, 3.6, -w / 2 - 0.05) * CFrame.Angles(0, 0, math.rad(45)),
+		C.StoneLight,
+		Enum.Material.Slate
 	)
+	part(
+		m,
+		"DoorFrame",
+		Vector3.new(2.8, 3.6, 0.3),
+		base * CFrame.new(0, 1.8, -w / 2 - 0.05),
+		C.StoneLight,
+		Enum.Material.Slate
+	)
+	part(
+		m,
+		"Door",
+		Vector3.new(2.1, 3.3, 0.3),
+		base * CFrame.new(0, 1.65, -w / 2 - 0.15),
+		C.Wood,
+		Enum.Material.WoodPlanks
+	)
+	-- Hourd : plancher débordant, consoles, garde-corps
 	local deckY = shaftH
 	part(
 		m,
 		"Deck",
-		Vector3.new(w + 3, 0.8, w + 3),
-		base * CFrame.new(0, deckY + 0.4, 0),
+		Vector3.new(w + 3.4, 0.7, w + 3.4),
+		base * CFrame.new(0, deckY + 0.35, 0),
 		C.Wood,
 		Enum.Material.WoodPlanks
 	)
-	local half = (w + 3) / 2 - 0.4
-	for _, c in { { -half, -half }, { half, -half }, { -half, half }, { half, half } } do
+	for f = 0, 3 do
+		local face = base * CFrame.Angles(0, f * math.pi / 2, 0)
+		for _, x in { -w / 4, w / 4 } do
+			part(
+				m,
+				"Corbel",
+				Vector3.new(0.6, 1.2, 1.6),
+				face * CFrame.new(x, deckY - 0.5, -w / 2 - 0.6),
+				C.WoodDark,
+				Enum.Material.Wood
+			)
+		end
 		part(
 			m,
-			"Merlon",
-			Vector3.new(0.8, 1.6, 0.8),
-			base * CFrame.new(c[1], deckY + 1.6, c[2]),
-			C.StoneLight,
-			Enum.Material.Cobblestone
+			"Rail",
+			Vector3.new(w + 3.4, 0.3, 0.3),
+			face * CFrame.new(0, deckY + 1.8, -(w + 3.4) / 2 + 0.15),
+			C.WoodDark,
+			Enum.Material.Wood
 		)
-		column(m, "Pillar", 3.2, 0.4, base * CFrame.new(c[1], deckY + 0.8, c[2]), C.WoodDark, Enum.Material.Wood)
+		for k = -2, 2 do
+			part(
+				m,
+				"Baluster",
+				Vector3.new(0.25, 1.1, 0.25),
+				face * CFrame.new(k * (w + 3) / 5, deckY + 1.25, -(w + 3.4) / 2 + 0.15),
+				C.WoodDark,
+				Enum.Material.Wood
+			)
+		end
 	end
-	-- Toit pointu en étages (pyramide à gradins)
+	local half = (w + 3.4) / 2 - 0.4
+	for _, c in { { -half, -half }, { half, -half }, { -half, half }, { half, half } } do
+		column(m, "Pillar", 3.4, 0.5, base * CFrame.new(c[1], deckY + 0.7, c[2]), C.WoodDark, Enum.Material.Wood)
+	end
+	-- Toit pyramidal à gradins et épi
 	local roofY = deckY + 4
-	for i, sz in { w + 4, w + 2, w, w - 2.5, 1.5 } do
+	for i, sz in { w + 5, w + 3, w + 1, w - 1, w - 3, 1.4 } do
 		part(
 			m,
 			"Roof" .. i,
-			Vector3.new(sz, 1, sz),
-			base * CFrame.new(0, roofY + (i - 1) * 0.9, 0),
+			Vector3.new(sz, 0.9, sz),
+			base * CFrame.new(0, roofY + (i - 1) * 0.8, 0),
 			if i % 2 == 0 then C.RoofDark else C.Roof,
 			Enum.Material.Slate
 		)
 	end
-	local flag = base * CFrame.new(0, roofY + 4, 0)
-	column(m, "FlagPole", 3, 0.25, flag, C.WoodDark, Enum.Material.Wood)
+	local flag = base * CFrame.new(0, roofY + 4.6, 0)
+	ball(m, "Finial", 0.7, flag, C.Rune, Enum.Material.Metal)
+	column(m, "FlagPole", 3, 0.2, flag, C.WoodDark, Enum.Material.Wood)
 	part(
 		m,
 		"Flag",
@@ -767,6 +1202,18 @@ builders.Watchtower = function(m: Model, base: CFrame, size: Vector3)
 		C.ClothBlue,
 		Enum.Material.Fabric,
 		{ CanCollide = false }
+	)
+	part(
+		m,
+		"FlagEmblem",
+		Vector3.new(0.12, 0.6, 0.6),
+		flag * CFrame.new(0, 2.3, 1) * CFrame.Angles(math.rad(45), 0, 0),
+		C.Rune,
+		Enum.Material.SmoothPlastic,
+		{
+			CanCollide = false,
+			NoShadow = true,
+		}
 	)
 end
 

@@ -36,6 +36,12 @@
           "$path": "src/client"
         }
       }
+    },
+    "Lighting": {
+      "$properties": {
+        "Technology": "Future",
+        "ShadowSoftness": 0.15
+      }
     }
   }
 }
