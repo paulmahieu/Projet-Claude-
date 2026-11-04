@@ -1379,8 +1379,9 @@ function Models.hubDecor(parent: Instance, radius: number)
 		local pos = CFrame.new(math.cos(angle) * (radius - 3), 1, math.sin(angle) * (radius - 3))
 		Models.lantern(CFrame.lookAt(pos.Position, Vector3.new(0, 1, 0)), parent, i % 2 == 0)
 	end
-	for i = 1, 4 do
-		local angle = (i / 4) * math.pi * 2 + math.pi / 4
+	-- Bannières : les deux du sud sont écartées pour ne pas masquer les œufs royaux.
+	for i, deg in { 135, 200, 340, 45 } do
+		local angle = math.rad(deg)
 		local pos = Vector3.new(math.cos(angle) * 10, 1, math.sin(angle) * 10)
 		local cf = CFrame.lookAt(pos, Vector3.new(0, 1, 0))
 		column(parent, "BannerPole", 8, 0.4, cf, C.WoodDark, Enum.Material.Wood)
@@ -1509,9 +1510,88 @@ end
 -- Œufs, portails, arènes, boss ----------------------------------------------------------------
 
 -- Présentoir d'œuf : socle, œuf (ellipsoïde), anneau lumineux. Retourne model, socle.
-function Models.eggStand(base: CFrame, color: Color3): (Model, BasePart)
+function Models.eggStand(base: CFrame, color: Color3, royal: boolean?): (Model, BasePart)
 	local m = newModel("EggStand")
-	local plinth = column(m, "Plinth", 1.2, 5, base, C.StoneDark, Enum.Material.Cobblestone)
+	local plinth
+	if royal then
+		-- Présentoir royal : socle de marbre à degrés, colonnettes dorées, couronne flottante.
+		plinth = column(m, "Plinth", 0.6, 6.4, base, MARBLE_SHADE, Enum.Material.Marble)
+		column(m, "Plinth2", 0.6, 5.2, base * CFrame.new(0, 0.6, 0), MARBLE, Enum.Material.Marble)
+		column(
+			m,
+			"PlinthTrim",
+			0.12,
+			5.3,
+			base * CFrame.new(0, 1.15, 0),
+			GOLD,
+			Enum.Material.Metal,
+			{ NoShadow = true }
+		)
+		for k = 0, 3 do
+			local a = math.rad(k * 90 + 45)
+			local post = base * CFrame.new(math.cos(a) * 2.7, 0.6, math.sin(a) * 2.7)
+			column(m, "RoyalPost", 3.2, 0.35, post, GOLD, Enum.Material.Metal)
+			ball(m, "RoyalOrb", 0.6, post * CFrame.new(0, 3.4, 0), color, Enum.Material.Neon, { NoShadow = true })
+		end
+		local crownAt = base * CFrame.new(0, 4.75, 0) -- posée sur la pointe de l'œuf
+		column(m, "CrownBand", 0.45, 1.5, crownAt, GOLD, Enum.Material.Metal, { CanCollide = false })
+		for k = 0, 5 do
+			local a = math.rad(k * 60)
+			part(
+				m,
+				"CrownSpike",
+				Vector3.new(0.3, 0.7, 0.3),
+				crownAt
+					* CFrame.new(math.cos(a) * 0.62, 0.55, math.sin(a) * 0.62)
+					* CFrame.Angles(0, -a + math.rad(45), 0),
+				GOLD,
+				Enum.Material.Metal,
+				{ CanCollide = false, NoShadow = true }
+			)
+			ball(
+				m,
+				"CrownTip",
+				0.28,
+				crownAt * CFrame.new(math.cos(a) * 0.62, 0.95, math.sin(a) * 0.62),
+				GOLD,
+				Enum.Material.Metal,
+				{ NoShadow = true, CanCollide = false }
+			)
+			ball(
+				m,
+				"CrownGem",
+				0.25,
+				crownAt * CFrame.new(math.cos(a) * 0.78, 0, math.sin(a) * 0.78),
+				if k % 2 == 0 then C.Cloth else C.RuneBlue,
+				Enum.Material.Neon,
+				{ NoShadow = true, CanCollide = false }
+			)
+		end
+	else
+		plinth = column(m, "Plinth", 1.2, 5, base, C.StoneDark, Enum.Material.Cobblestone)
+		column(
+			m,
+			"PlinthTrim",
+			0.15,
+			5.2,
+			base * CFrame.new(0, 0.9, 0),
+			Color3.fromRGB(184, 178, 166),
+			Enum.Material.Slate,
+			{ NoShadow = true }
+		)
+		for k = 0, 7 do
+			local a = math.rad(k * 45)
+			part(
+				m,
+				"PlinthStone",
+				Vector3.new(1.1, 0.6, 0.25),
+				base * CFrame.Angles(0, -a, 0) * CFrame.new(0, 0.45, 2.5),
+				C.StoneDark:Lerp(C.Stone, (k % 3) * 0.25),
+				Enum.Material.Cobblestone,
+				{ CanCollide = false, NoShadow = true }
+			)
+		end
+	end
 	column(m, "Cushion", 0.4, 3.6, base * CFrame.new(0, 1.2, 0), GOLD, Enum.Material.Metal)
 	-- Une boule Roblox reste toujours sphérique : l'ellipsoïde passe par un SpecialMesh.
 	local egg =
@@ -2621,6 +2701,467 @@ local WALL_STONE = Color3.fromRGB(150, 146, 136)
 local WALL_DARK = Color3.fromRGB(118, 114, 106)
 local WALL_LIGHT = Color3.fromRGB(184, 178, 166)
 local PAVING = Color3.fromRGB(158, 150, 138)
+
+-- Kit de détails ------------------------------------------------------------------------
+-- Ajoute du relief aux grandes surfaces (pierres saillantes, corbeaux, lierre, mousse) et
+-- des accessoires (tonneaux, caisses, étals). Tout est déterministe (même rendu à chaque
+-- génération) grâce à un générateur pseudo-aléatoire initialisé par une graine.
+
+local function rng(seed: number)
+	local state = math.floor(math.abs(seed) * 7919 + 12345) % 2147483646 + 1
+	return function(): number
+		state = (state * 16807) % 2147483647
+		return (state - 1) / 2147483646
+	end
+end
+Models.rng = rng
+
+local LEAF_IVY = { Color3.fromRGB(58, 112, 52), Color3.fromRGB(74, 132, 60), Color3.fromRGB(46, 96, 48) }
+local MOSS = Color3.fromRGB(92, 120, 64)
+
+-- Pierres saillantes sur une face de mur. `frame` : repère du mur (X le long du mur, Y vers le
+-- haut, Z épaisseur) ; `faceZ` : position de la face ; `dir` : -1 ou 1 (côté de la face).
+local function stoneFace(
+	parent,
+	frame: CFrame,
+	length: number,
+	y0: number,
+	y1: number,
+	faceZ: number,
+	dir: number,
+	seed: number,
+	density: number?
+)
+	local rand = rng(seed)
+	local count = math.floor(length * (y1 - y0) / 10 * (density or 1))
+	for _ = 1, count do
+		local w = 1.2 + rand() * 1.6
+		local h = 0.7 + rand() * 0.5
+		local x = -length / 2 + w / 2 + 0.3 + rand() * math.max(0, length - w - 0.6)
+		local y = y0 + h / 2 + 0.2 + rand() * math.max(0, y1 - y0 - h - 0.4)
+		local tint = rand()
+		local color = if tint < 0.3
+			then WALL_STONE:Lerp(WALL_DARK, 0.15 + rand() * 0.25)
+			elseif tint < 0.85 then WALL_STONE:Lerp(WALL_LIGHT, 0.3 + rand() * 0.6)
+			else WALL_STONE:Lerp(Color3.fromRGB(176, 160, 132), 0.5)
+		part(
+			parent,
+			"Stone",
+			Vector3.new(w, h, 0.3),
+			frame * CFrame.new(x, y, faceZ + dir * 0.1),
+			color,
+			if rand() < 0.5 then Enum.Material.Cobblestone else Enum.Material.Slate,
+			{ CanCollide = false, NoShadow = true }
+		)
+	end
+end
+Models.stoneFace = stoneFace
+
+-- Rangée de corbeaux (consoles) sous un chemin de ronde ou un parapet.
+local function corbels(parent, frame: CFrame, length: number, y: number, faceZ: number, dir: number)
+	local count = math.floor(length / 2.4)
+	for k = 0, count - 1 do
+		local x = -length / 2 + (k + 0.5) * (length / count)
+		part(
+			parent,
+			"Corbel",
+			Vector3.new(0.8, 1.1, 0.9),
+			frame * CFrame.new(x, y - 0.55, faceZ + dir * 0.4),
+			WALL_DARK,
+			Enum.Material.Slate,
+			{ NoShadow = true }
+		)
+		part(
+			parent,
+			"CorbelTip",
+			Vector3.new(0.8, 0.5, 0.5),
+			frame * CFrame.new(x, y - 1.3, faceZ + dir * 0.2),
+			WALL_DARK,
+			Enum.Material.Slate,
+			{ NoShadow = true }
+		)
+	end
+end
+
+-- Lierre grimpant : tige qui monte en zigzag, touffes de feuilles de trois teintes.
+local function ivy(parent, frame: CFrame, x: number, faceZ: number, dir: number, height: number, seed: number)
+	local rand = rng(seed)
+	local px, py = x, 0.5
+	while py < height do
+		local nx = px + (rand() - 0.5) * 2.4
+		local ny = py + 1 + rand() * 0.8
+		for k = 1, 2 do
+			local spread = 0.6 + rand() * 1.2
+			ball(
+				parent,
+				"Ivy",
+				0.7 + rand() * 0.7,
+				frame
+					* CFrame.new(
+						px + (rand() - 0.5) * spread * 2,
+						py + rand() * 0.8,
+						faceZ + dir * (0.25 + rand() * 0.2)
+					),
+				LEAF_IVY[(k + math.floor(rand() * 3)) % 3 + 1],
+				Enum.Material.Grass,
+				{ CanCollide = false, NoShadow = true }
+			)
+		end
+		px, py = nx, ny
+	end
+end
+Models.ivy = ivy
+
+-- Bande de mousse et touffes d'herbe au pied d'un mur.
+local function wallFoot(parent, frame: CFrame, length: number, faceZ: number, dir: number, seed: number)
+	local rand = rng(seed)
+	local count = math.floor(length / 5)
+	for _ = 1, count do
+		local w = 1.5 + rand() * 3
+		local x = -length / 2 + w / 2 + rand() * math.max(0, length - w)
+		part(
+			parent,
+			"Moss",
+			Vector3.new(w, 0.5 + rand() * 0.6, 0.25),
+			frame * CFrame.new(x, 0.4, faceZ + dir * 0.12),
+			MOSS:Lerp(LEAF_IVY[1], rand() * 0.5),
+			Enum.Material.Grass,
+			{ CanCollide = false, NoShadow = true }
+		)
+		if rand() < 0.6 then
+			for j = 0, 2 do
+				part(
+					parent,
+					"Tuft",
+					Vector3.new(0.18, 0.7 + rand() * 0.5, 0.18),
+					frame
+						* CFrame.new(x + (rand() - 0.5) * 1.5, 0.35, faceZ + dir * (0.6 + rand() * 0.5))
+						* CFrame.Angles(math.rad((rand() - 0.5) * 30), j * 2, math.rad((rand() - 0.5) * 30)),
+					LEAF_IVY[j % 3 + 1]:Lerp(C.Leaf3, 0.3),
+					Enum.Material.Grass,
+					{ CanCollide = false, NoShadow = true }
+				)
+			end
+		end
+	end
+end
+
+-- Accessoires ------------------------------------------------------------------------------
+
+function Models.barrel(parent, base: CFrame, color: Color3?)
+	local wood = color or C.Wood
+	column(parent, "Barrel", 2.4, 1.9, base, wood, Enum.Material.WoodPlanks)
+	column(
+		parent,
+		"BarrelBelly",
+		1.2,
+		2.1,
+		base * CFrame.new(0, 0.6, 0),
+		wood:Lerp(C.WoodDark, 0.15),
+		Enum.Material.WoodPlanks
+	)
+	for _, y in { 0.35, 1.95 } do
+		column(
+			parent,
+			"Hoop",
+			0.18,
+			2.02,
+			base * CFrame.new(0, y, 0),
+			C.Metal:Lerp(C.StoneDark, 0.4),
+			Enum.Material.Metal,
+			{ NoShadow = true }
+		)
+	end
+	column(
+		parent,
+		"Lid",
+		0.08,
+		1.7,
+		base * CFrame.new(0, 2.4, 0),
+		wood:Lerp(C.WoodLight, 0.3),
+		Enum.Material.Wood,
+		{ NoShadow = true }
+	)
+end
+
+function Models.crate(parent, base: CFrame, size: number)
+	part(
+		parent,
+		"Crate",
+		Vector3.new(size, size, size),
+		base * CFrame.new(0, size / 2, 0),
+		C.WoodLight,
+		Enum.Material.WoodPlanks
+	)
+	for _, sx in { -1, 1 } do
+		for _, sz in { -1, 1 } do
+			part(
+				parent,
+				"CrateEdge",
+				Vector3.new(0.25, size + 0.02, 0.25),
+				base * CFrame.new(sx * (size / 2 - 0.1), size / 2, sz * (size / 2 - 0.1)),
+				C.WoodDark,
+				Enum.Material.Wood,
+				{ NoShadow = true }
+			)
+		end
+	end
+	for _, y in { 0.12, size - 0.12 } do
+		part(
+			parent,
+			"CrateBand",
+			Vector3.new(size + 0.04, 0.24, size + 0.04),
+			base * CFrame.new(0, y, 0),
+			C.WoodDark,
+			Enum.Material.Wood,
+			{ NoShadow = true }
+		)
+	end
+	part(
+		parent,
+		"CrateBrace",
+		Vector3.new(0.22, size * 1.3, 0.1),
+		base * CFrame.new(0, size / 2, -size / 2 - 0.03) * CFrame.Angles(0, 0, math.rad(45)),
+		C.WoodDark,
+		Enum.Material.Wood,
+		{ NoShadow = true }
+	)
+end
+
+function Models.sack(parent, base: CFrame, rand)
+	local tint = Color3.fromRGB(196, 172, 128):Lerp(Color3.fromRGB(170, 145, 105), rand())
+	ball(parent, "Sack", 1.5, base * CFrame.new(0, 0.6, 0), tint, Enum.Material.Fabric)
+	part(
+		parent,
+		"SackTop",
+		Vector3.new(0.6, 0.6, 0.6),
+		base * CFrame.new(0, 1.4, 0),
+		tint:Lerp(C.WoodDark, 0.2),
+		Enum.Material.Fabric
+	)
+end
+
+-- Étal de marché : comptoir, poteaux, auvent rayé, marchandises.
+function Models.marketStall(parent, base: CFrame, stripe: Color3, seed: number)
+	local rand = rng(seed)
+	part(parent, "Counter", Vector3.new(6, 1.6, 2.2), base * CFrame.new(0, 0.8, 0), C.Wood, Enum.Material.WoodPlanks)
+	part(
+		parent,
+		"CounterTop",
+		Vector3.new(6.4, 0.25, 2.6),
+		base * CFrame.new(0, 1.7, 0),
+		C.WoodLight,
+		Enum.Material.WoodPlanks
+	)
+	for _, sx in { -1, 1 } do
+		for _, sz in { -1, 1 } do
+			column(
+				parent,
+				"StallPost",
+				4.6,
+				0.35,
+				base * CFrame.new(sx * 3, 0, sz * 1.3 + 0.6),
+				C.WoodDark,
+				Enum.Material.Wood
+			)
+		end
+	end
+	for k = 0, 5 do
+		part(
+			parent,
+			"Awning",
+			Vector3.new(1.08, 0.15, 3.6),
+			base * CFrame.new(-2.7 + k * 1.08, 4.75, 0.6) * CFrame.Angles(math.rad(-14), 0, 0),
+			if k % 2 == 0 then stripe else Color3.fromRGB(238, 230, 210),
+			Enum.Material.Fabric,
+			{ NoShadow = false }
+		)
+	end
+	-- Marchandises : pommes, pains, fioles
+	for k = 0, 6 do
+		local good = rand()
+		local at = base * CFrame.new(-2.6 + k * 0.85, 2.05, -0.4 + rand() * 0.6)
+		if good < 0.4 then
+			ball(
+				parent,
+				"Apple",
+				0.5,
+				at,
+				Color3.fromRGB(200, 50, 40),
+				Enum.Material.SmoothPlastic,
+				{ NoShadow = true }
+			)
+		elseif good < 0.7 then
+			part(
+				parent,
+				"Bread",
+				Vector3.new(0.7, 0.35, 0.4),
+				at,
+				Color3.fromRGB(200, 150, 80),
+				Enum.Material.SmoothPlastic,
+				{ NoShadow = true }
+			)
+		else
+			column(
+				parent,
+				"Vial",
+				0.6,
+				0.3,
+				at * CFrame.new(0, -0.15, 0),
+				C.RuneBlue:Lerp(C.Ether, rand()),
+				Enum.Material.Neon,
+				{ NoShadow = true, CanCollide = false }
+			)
+		end
+	end
+	Models.crate(parent, base * CFrame.new(3.8, 0, -0.6), 1.4)
+	Models.barrel(parent, base * CFrame.new(-4, 0, 0.2))
+end
+
+-- Râtelier d'armes : lances, boucliers ronds.
+function Models.weaponRack(parent, base: CFrame)
+	for _, sx in { -1, 1 } do
+		part(
+			parent,
+			"RackPost",
+			Vector3.new(0.35, 2.8, 0.35),
+			base * CFrame.new(sx * 1.8, 1.4, 0),
+			C.WoodDark,
+			Enum.Material.Wood
+		)
+	end
+	part(parent, "RackBar", Vector3.new(4, 0.3, 0.3), base * CFrame.new(0, 2.4, 0), C.WoodDark, Enum.Material.Wood)
+	for k = 0, 3 do
+		local x = -1.3 + k * 0.85
+		part(
+			parent,
+			"Spear",
+			Vector3.new(0.15, 4, 0.15),
+			base * CFrame.new(x, 2, 0.2) * CFrame.Angles(math.rad(-8), 0, 0),
+			C.Wood,
+			Enum.Material.Wood,
+			{ NoShadow = true }
+		)
+		part(
+			parent,
+			"SpearTip",
+			Vector3.new(0.3, 0.6, 0.12),
+			base * CFrame.new(x, 4.1, -0.1),
+			C.Metal,
+			Enum.Material.Metal,
+			{ NoShadow = true }
+		)
+	end
+	for _, sx in { -1, 1 } do
+		part(
+			parent,
+			"Shield",
+			Vector3.new(0.2, 1.6, 1.6),
+			base * CFrame.new(sx * 2.4, 1, 0.3) * CFrame.Angles(0, math.rad(90), 0),
+			if sx < 0 then Color3.fromRGB(40, 70, 150) else C.Cloth,
+			Enum.Material.Wood,
+			{ Shape = Enum.PartType.Cylinder }
+		)
+		part(
+			parent,
+			"ShieldBoss",
+			Vector3.new(0.3, 0.5, 0.5),
+			base * CFrame.new(sx * 2.4, 1, 0.2) * CFrame.Angles(0, math.rad(90), 0),
+			GOLD,
+			Enum.Material.Metal,
+			{ Shape = Enum.PartType.Cylinder, NoShadow = true }
+		)
+	end
+end
+
+-- Botte de foin.
+function Models.hayBale(parent, base: CFrame)
+	part(parent, "Hay", Vector3.new(2.6, 1.4, 1.6), base * CFrame.new(0, 0.7, 0), C.Straw, Enum.Material.Grass)
+	for _, x in { -0.7, 0.7 } do
+		part(
+			parent,
+			"HayTie",
+			Vector3.new(0.15, 1.45, 1.65),
+			base * CFrame.new(x, 0.7, 0),
+			C.Straw:Lerp(C.WoodDark, 0.4),
+			Enum.Material.Fabric,
+			{ NoShadow = true }
+		)
+	end
+end
+
+-- Jardinière fleurie.
+function Models.planter(parent, base: CFrame, seed: number)
+	local rand = rng(seed)
+	part(parent, "Planter", Vector3.new(3, 1, 1.4), base * CFrame.new(0, 0.5, 0), WALL_DARK, Enum.Material.Cobblestone)
+	part(
+		parent,
+		"Soil",
+		Vector3.new(2.7, 0.1, 1.1),
+		base * CFrame.new(0, 1.02, 0),
+		Color3.fromRGB(90, 66, 44),
+		Enum.Material.Ground,
+		{ NoShadow = true }
+	)
+	local flowers = {
+		Color3.fromRGB(230, 80, 90),
+		Color3.fromRGB(250, 210, 80),
+		Color3.fromRGB(150, 110, 230),
+		Color3.fromRGB(245, 245, 245),
+	}
+	for k = 0, 5 do
+		local at = base * CFrame.new(-1.1 + k * 0.45, 1.2, (rand() - 0.5) * 0.6)
+		ball(
+			parent,
+			"Leaves",
+			0.6,
+			at,
+			LEAF_IVY[k % 3 + 1],
+			Enum.Material.Grass,
+			{ NoShadow = true, CanCollide = false }
+		)
+		ball(
+			parent,
+			"Flower",
+			0.32,
+			at * CFrame.new(0, 0.35, 0),
+			flowers[k % 4 + 1],
+			Enum.Material.SmoothPlastic,
+			{ NoShadow = true, CanCollide = false }
+		)
+	end
+end
+
+-- Dalles de couleurs variées posées sur un sol (casse l'aspect uniforme).
+local function pavingPatches(parent, center: CFrame, radius: number, count: number, avoid, seed: number)
+	local rand = rng(seed)
+	for _ = 1, count do
+		local r = math.sqrt(rand()) * radius
+		local a = rand() * math.pi * 2
+		local x, z = math.cos(a) * r, math.sin(a) * r
+		local blocked = false
+		for _, zone in avoid do
+			if (x - zone[1]) ^ 2 + (z - zone[2]) ^ 2 < zone[3] ^ 2 then
+				blocked = true
+				break
+			end
+		end
+		if not blocked then
+			local w = 1.4 + rand() * 1.6
+			part(
+				parent,
+				"Slab",
+				Vector3.new(w, 0.06, 1.2 + rand() * 1.2),
+				center
+					* CFrame.new(x, 0.03, z)
+					* CFrame.Angles(0, math.floor(rand() * 4) * math.pi / 2 + (rand() - 0.5) * 0.2, 0),
+				PAVING:Lerp(if rand() < 0.3 then WALL_DARK else WALL_LIGHT, 0.15 + rand() * 0.35),
+				Enum.Material.Slate,
+				{ CanCollide = false, NoShadow = true }
+			)
+		end
+	end
+end
 local ROYAL_BLUE = Color3.fromRGB(40, 70, 150)
 
 -- Tour ronde crénelée à toit conique (étages) et drapeau facultatif. `base` au sol.
@@ -2629,6 +3170,46 @@ local function roundTower(parent, base: CFrame, d: number, h: number, flag: bool
 	column(parent, "Tower", h, d, base, WALL_STONE, Enum.Material.Cobblestone)
 	column(parent, "TowerBand", 0.8, d + 0.6, base * CFrame.new(0, h * 0.55, 0), WALL_LIGHT, Enum.Material.Slate)
 	column(parent, "TowerTop", 1.2, d + 1.6, base * CFrame.new(0, h, 0), WALL_LIGHT, Enum.Material.Slate)
+	-- Relief : pierres saillantes réparties sur le fût, couronne de corbeaux sous le chemin
+	-- de ronde, mousse au pied.
+	local rand = rng(math.floor(base.Position.X * 5.7 + base.Position.Z * 3.3))
+	for _ = 1, math.floor(d * h / 9) do
+		local a = rand() * math.pi * 2
+		local y = 1.8 + rand() * (h - 2.8)
+		part(
+			parent,
+			"TowerStone",
+			Vector3.new(1.2 + rand() * 1.2, 0.7 + rand() * 0.45, 0.3),
+			base * CFrame.Angles(0, -a, 0) * CFrame.new(0, y, d / 2 + 0.05),
+			WALL_STONE:Lerp(if rand() < 0.3 then WALL_DARK else WALL_LIGHT, 0.2 + rand() * 0.4),
+			Enum.Material.Cobblestone,
+			{ CanCollide = false, NoShadow = true }
+		)
+	end
+	for k = 1, 14 do
+		local a = (k / 14) * math.pi * 2
+		part(
+			parent,
+			"TowerCorbel",
+			Vector3.new(0.9, 1.2, 0.9),
+			base * CFrame.Angles(0, -a, 0) * CFrame.new(0, h - 0.6, d / 2 + 0.35),
+			WALL_DARK,
+			Enum.Material.Slate,
+			{ NoShadow = true }
+		)
+	end
+	for _ = 1, 6 do
+		local a = rand() * math.pi * 2
+		part(
+			parent,
+			"TowerMoss",
+			Vector3.new(1.5 + rand() * 2, 0.6 + rand() * 0.6, 0.3),
+			base * CFrame.Angles(0, -a, 0) * CFrame.new(0, 1.7, d / 2 + 0.1),
+			MOSS,
+			Enum.Material.Grass,
+			{ CanCollide = false, NoShadow = true }
+		)
+	end
 	local merlons = 10
 	for k = 1, merlons do
 		local a = (k / merlons) * math.pi * 2
@@ -2734,6 +3315,18 @@ local function wallSegment(parent, frame: CFrame, length: number, cfg, decorate:
 		WALL_LIGHT,
 		Enum.Material.Slate
 	)
+	-- Relief : pierres saillantes sur les deux faces, corbeaux sous le parapet extérieur,
+	-- mousse et herbes au pied, lierre sur certains pans côté cour.
+	local seed = math.floor(frame.Position.X * 3.1 + frame.Position.Z * 7.3 + length)
+	stoneFace(parent, frame, length, 1.2, h - 0.2, -t / 2, -1, seed, 1)
+	stoneFace(parent, frame, length, 1.2, h - 0.2, t / 2, 1, seed + 17, 0.8)
+	corbels(parent, frame, length, h + 0.05, t / 2, 1)
+	wallFoot(parent, frame, length, -t / 2, -1, seed + 3)
+	wallFoot(parent, frame, length, t / 2, 1, seed + 5)
+	if seed % 3 == 0 then
+		ivy(parent, frame, length * 0.35, -t / 2, -1, h * 0.8, seed + 9)
+	end
+	ivy(parent, frame, -length * 0.3, t / 2, 1, h * 0.6, seed + 11)
 	local count = math.max(1, math.floor(length / 3.2))
 	for k = 0, count - 1 do
 		local x = -length / 2 + (k + 0.5) * (length / count)
@@ -3173,6 +3766,51 @@ function Models.castle(parent: Instance, cfg)
 	-- Donjon royal au nord, adossé au rempart
 	royalKeep(parent, CFrame.lookAt(Vector3.new(0, 0, A - 7), Vector3.new(0, 0, -100)))
 
+	-- Vie de la cour : dalles variées, étals de marché, tonneaux, caisses, râteliers, foin et
+	-- jardinières, le long des remparts entre les allées (hors portails, œufs et portes).
+	local dressing = Instance.new("Folder")
+	dressing.Name = "CourtyardDressing"
+	dressing.Parent = parent
+	local floorTop = CFrame.new(0, 1, 0)
+	pavingPatches(dressing, floorTop, A - 4, 170, {
+		{ 0, 0, 8 }, -- estrade du point d'apparition
+		{ -18.5, 28.5, 7 },
+		{ -6.5, 33.4, 7 },
+		{ 6.5, 33.4, 7 },
+		{ 18.5, 28.5, 7 },
+	}, 42)
+	local function at(deg: number, r: number): CFrame
+		local a = math.rad(deg)
+		return CFrame.lookAt(Vector3.new(math.cos(a) * r, 1, math.sin(a) * r), Vector3.new(0, 1, 0))
+	end
+	local rand = rng(77)
+	-- Étals de marché (côtés est et ouest, entre les portes)
+	Models.marketStall(dressing, at(140, 42), C.Cloth, 1)
+	Models.marketStall(dressing, at(40, 42), ROYAL_BLUE, 2)
+	Models.marketStall(dressing, at(218, 43), Color3.fromRGB(60, 140, 80), 3)
+	-- Coin de la garde : râteliers, foin, tonneaux
+	Models.weaponRack(dressing, at(322, 45))
+	Models.weaponRack(dressing, at(308, 45))
+	for k, deg in { 333, 336, 296 } do
+		Models.barrel(dressing, at(deg, 46 + k % 2))
+	end
+	Models.hayBale(dressing, at(160, 46))
+	Models.hayBale(dressing, at(163, 44) * CFrame.Angles(0, 0.4, 0))
+	-- Caisses et sacs empilés
+	for _, deg in { 120, 60, 200, 345 } do
+		local base = at(deg, 46)
+		Models.crate(dressing, base, 1.8)
+		Models.crate(dressing, base * CFrame.new(2, 0, 0.3) * CFrame.Angles(0, 0.3, 0), 1.5)
+		Models.crate(dressing, base * CFrame.new(0.9, 1.8, 0.1) * CFrame.Angles(0, -0.2, 0), 1.2)
+		for j = 0, 1 do
+			Models.sack(dressing, base * CFrame.new(-1.8 - j * 1.1, 0, 0.4), rand)
+		end
+	end
+	-- Jardinières au pied du donjon et près des portes
+	for k, deg in { 75, 105, 20, 160, 250, 290 } do
+		Models.planter(dressing, at(deg, 49), k)
+	end
+
 	-- Route pavée extérieure (anneau) et routes des portes
 	local R, W = cfg.RingRoadRadius, cfg.RingRoadWidth
 	local segments = 40
@@ -3226,6 +3864,11 @@ function Models.plotDecor(base: CFrame, plotSize: number, parent: Instance)
 			WALL_LIGHT,
 			Enum.Material.Slate
 		)
+		local seed = math.floor(cf.Position.X * 2.3 + cf.Position.Z * 4.1 + length)
+		stoneFace(parent, cf, length, 0.2, h - 0.2, -t / 2, -1, seed, 0.9)
+		stoneFace(parent, cf, length, 0.2, h - 0.2, t / 2, 1, seed + 7, 0.9)
+		wallFoot(parent, cf, length, -t / 2, -1, seed + 1)
+		wallFoot(parent, cf, length, t / 2, 1, seed + 2)
 		local count = math.max(1, math.floor(length / 4))
 		for k = 0, count - 1 do
 			if k % 2 == 0 then

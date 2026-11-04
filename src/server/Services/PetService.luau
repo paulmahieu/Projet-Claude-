@@ -241,7 +241,7 @@ function PetService.init()
 	for _, egg in Pets.Eggs do
 		local pos = Vector3.new(egg.Position[1], 1, egg.Position[2])
 		local base = CFrame.lookAt(pos, Vector3.new(0, 1, 0)) -- face au centre du hub
-		local model, plinth = Models.eggStand(base, toColor(egg.Color))
+		local model, plinth = Models.eggStand(base, toColor(egg.Color), egg.Product ~= nil)
 		model.Name = egg.Id
 		model.Parent = folder
 		PlotService.makeBillboard(

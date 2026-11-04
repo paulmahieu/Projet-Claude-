@@ -41,6 +41,7 @@ local function dump(model)
 					c = { p.Color.R, p.Color.G, p.Color.B },
 					shape = shape,
 					neon = p.Material.Name == "Neon",
+					mat = p.Material.Name,
 					t = p.Transparency,
 				})
 			end
@@ -163,7 +164,7 @@ elseif scene == "castle" then
 	dump((Models.portal(lookCenter(FarmCfg.Portal), roblox.Color3.fromRGB(110, 210, 255))))
 	for _, egg in PetsCfg.Eggs do
 		local c = egg.Color
-		dump((Models.eggStand(lookCenter(egg.Position), roblox.Color3.fromRGB(c[1], c[2], c[3]))))
+		dump((Models.eggStand(lookCenter(egg.Position), roblox.Color3.fromRGB(c[1], c[2], c[3]), egg.Product ~= nil)))
 	end
 elseif scene == "hub" then
 	local holder = roblox.Instance.new("Model")
