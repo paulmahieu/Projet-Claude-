@@ -1349,6 +1349,7 @@ test("Compagnons : 5 par rareté (Commun à Mythique), fiche de modèle pour cha
 	local env = setmetatable({
 		Color3 = roblox.Color3,
 		Vector3 = roblox.Vector3,
+		Vector2 = roblox.Vector2,
 		CFrame = roblox.CFrame,
 		Instance = roblox.Instance,
 		Enum = roblox.Enum,
@@ -1468,6 +1469,7 @@ test("Rue des boss : régions, patrons et 15 ennemis des planches", function()
 		Instance = roblox.Instance,
 		CFrame = roblox.CFrame,
 		Vector3 = roblox.Vector3,
+		Vector2 = roblox.Vector2,
 		Color3 = roblox.Color3,
 		Enum = roblox.Enum,
 		game = fakeGame,
