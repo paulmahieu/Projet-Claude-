@@ -1,0 +1,43 @@
+<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;background:#9fc3e6}</style></head><body>
+<script type="module">
+import * as THREE from './node_modules/three/build/three.module.js';
+const parts = await (await fetch('parts.json')).json();
+const params = new URLSearchParams(location.search);
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(1400, 800); renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0xa9cbe8);
+scene.fog = new THREE.Fog(0xa9cbe8, 120, 260);
+const cam = new THREE.PerspectiveCamera(40, 1400/800, 0.1, 1000);
+const [cx,cy,cz,tx,ty,tz] = (params.get('cam')||'0,55,-110,0,4,0').split(',').map(Number);
+cam.position.set(cx,cy,cz); cam.lookAt(tx,ty,tz);
+scene.add(new THREE.HemisphereLight(0xdde8ff, 0x6b5a3a, 1.1));
+const sun = new THREE.DirectionalLight(0xfff1dd, 1.6); sun.position.set(-60,100,-40); sun.castShadow = true;
+Object.assign(sun.shadow.camera,{left:-90,right:90,top:90,bottom:-90}); sun.shadow.mapSize.set(2048,2048); scene.add(sun);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(400,400), new THREE.MeshLambertMaterial({color:0x607f4a}));
+ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; scene.add(ground);
+function wedge(){ // Roblox : face verticale à l'arrière (+Z), pente vers l'avant (-Z)
+  const g = new THREE.BufferGeometry();
+  const v = [[-.5,-.5,-.5],[.5,-.5,-.5],[.5,-.5,.5],[-.5,-.5,.5],[-.5,.5,.5],[.5,.5,.5]];
+  const f = [[0,2,1],[0,3,2],[3,5,2],[3,4,5],[0,1,5],[0,5,4],[0,4,3],[1,2,5]];
+  const pos=[]; f.forEach(t=>t.forEach(i=>pos.push(...v[i])));
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos,3)); g.computeVertexNormals(); return g;
+}
+for (const p of parts) {
+  if (p.t >= 1) continue;
+  let geo, scale = p.s;
+  if (p.shape === 'Ball') { geo = new THREE.SphereGeometry(0.5, 20, 14); }
+  else if (p.shape === 'Cylinder') { geo = new THREE.CylinderGeometry(0.5,0.5,1,20); geo.rotateZ(Math.PI/2); }
+  else if (p.shape === 'Wedge') { geo = wedge(); }
+  else geo = new THREE.BoxGeometry(1,1,1);
+  const color = new THREE.Color(p.c[0],p.c[1],p.c[2]);
+  const mat = p.neon ? new THREE.MeshBasicMaterial({color, transparent:p.t>0, opacity:1-p.t})
+                     : new THREE.MeshLambertMaterial({color, transparent:p.t>0, opacity:1-p.t});
+  const m = new THREE.Mesh(geo, mat);
+  m.scale.set(scale[0],scale[1],scale[2]);
+  m.position.set(p.p[0],p.p[1],p.p[2]);
+  m.rotation.set(p.r[0],p.r[1],p.r[2],'XYZ');
+  m.castShadow = !p.neon; m.receiveShadow = true; scene.add(m);
+}
+renderer.render(scene, cam); document.title = 'done';
+</script></body></html>

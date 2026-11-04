@@ -27,6 +27,7 @@ local ProfileService = require(script.Parent.ProfileService)
 local GroupService = require(script.Parent.GroupService)
 local PlotService = require(script.Parent.PlotService)
 local Notifier = require(script.Parent.Notifier)
+local Models = require(script.Parent.Parent.Art.Models)
 
 local TrainingService = {}
 
@@ -34,7 +35,8 @@ type Station = {
 	Id: string,
 	GroupId: string,
 	Tier: number,
-	Part: BasePart,
+	Part: BasePart, -- plateforme (porte le ProximityPrompt)
+	Rune: BasePart, -- cercle lumineux qui pulse à chaque gain
 	Prompt: ProximityPrompt,
 	Occupant: Player?,
 }
@@ -48,8 +50,6 @@ for _, def in Upgrades do
 		focusDef = def
 	end
 end
-
-local TIER_COLORS = { [1] = Color3.fromRGB(150, 110, 70), [2] = Color3.fromRGB(110, 90, 200) }
 
 -- Rendement durable (sans bonus temporaire) d'un joueur sur un palier de tapis.
 local function durableRates(player: Player, tier: number)
@@ -125,25 +125,17 @@ local function start(player: Player, station: Station)
 end
 
 local function createStation(group, plot, id: string, pos, tier: number)
-	local part = PlotService.makePart({
-		Name = id,
-		Size = Vector3.new(5, 0.6, 5),
-		CFrame = PlotService.localCFrame(plot, pos[1], 0.5, pos[2]),
-		Material = Enum.Material.Fabric,
-		Color = TIER_COLORS[tier] or TIER_COLORS[1],
-		Parent = plot.StationsFolder,
-	})
-	local rune = PlotService.makePart({
-		Name = "Rune",
-		Size = Vector3.new(3, 0.1, 3),
-		CFrame = part.CFrame * CFrame.new(0, 0.35, 0),
-		Material = Enum.Material.Neon,
-		Color = if tier >= 2 then Color3.fromRGB(170, 140, 255) else Color3.fromRGB(240, 200, 120),
-		CanCollide = false,
-		Parent = part,
-	})
-	rune.Transparency = 0.4
-	PlotService.makeBillboard(part, string.format("Tapis · palier %d", tier), 3, Vector2.new(7, 1.4))
+	-- Posé sur le sol de la construction (0,3 stud d'épaisseur).
+	local model, part, rune = Models.trainingMat(PlotService.localCFrame(plot, pos[1], 0.3, pos[2]), tier)
+	model.Name = id
+	model.Parent = plot.StationsFolder
+	rune:SetAttribute("RestTransparency", rune.Transparency)
+	PlotService.makeBillboard(
+		part,
+		if tier >= 2 then "Tapis runique" else "Tapis d'entraînement",
+		6,
+		Vector2.new(8, 1.4)
+	)
 
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "S'entraîner"
@@ -153,7 +145,8 @@ local function createStation(group, plot, id: string, pos, tier: number)
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = part
 
-	local station: Station = { Id = id, GroupId = group.Id, Tier = tier, Part = part, Prompt = prompt, Occupant = nil }
+	local station: Station =
+		{ Id = id, GroupId = group.Id, Tier = tier, Part = part, Rune = rune, Prompt = prompt, Occupant = nil }
 	prompt.Triggered:Connect(function(player)
 		start(player, station)
 	end)
@@ -184,11 +177,11 @@ local function ensureStations(group)
 	end
 end
 
-local function pulse(part: BasePart)
-	local rune = part:FindFirstChild("Rune") :: BasePart?
-	if rune then
+local function pulse(rune: BasePart)
+	if rune.Parent then
 		rune.Transparency = 0
-		TweenService:Create(rune, TweenInfo.new(0.8), { Transparency = 0.4 }):Play()
+		TweenService:Create(rune, TweenInfo.new(0.8), { Transparency = rune:GetAttribute("RestTransparency") or 0.4 })
+			:Play()
 	end
 end
 
@@ -223,7 +216,7 @@ local function tick(player: Player, station: Station, dt: number)
 	local level, xp, gained = Formulas.addXp(profile.Level, profile.TrainXp, rates.Xp * dt, Training)
 	profile.Level, profile.TrainXp = level, xp
 	profile.Gold = Formulas.clamp(profile.Gold + rates.Gold * dt, Economy.GoldCap)
-	pulse(station.Part)
+	pulse(station.Rune)
 	if gained > 0 then
 		Notifier.send(player, string.format(Texts.LevelUp, level, Formulas.power(level, Training)), "success")
 	end

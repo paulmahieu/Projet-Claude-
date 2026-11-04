@@ -16,6 +16,10 @@ local Structures = require(Shared.Config.Structures)
 local Materials = require(Shared.Config.Materials)
 local Formulas = require(Shared.Formulas)
 
+local Models = require(script.Parent.Parent.Art.Models)
+
+local Lighting = game:GetService("Lighting")
+
 local PlotService = {}
 
 local FLOOR_TOP = 1
@@ -37,7 +41,8 @@ export type Plot = {
 	StructuresFolder: Folder,
 	PedestalsFolder: Folder,
 	StationsFolder: Folder,
-	Pedestals: { [string]: { Part: BasePart, Prompt: ProximityPrompt, Label: TextLabel } },
+	Core: Model,
+	Pedestals: { [string]: { Part: BasePart, Gem: BasePart, Prompt: ProximityPrompt, Label: TextLabel } },
 }
 
 local plots: { Plot } = {}
@@ -137,6 +142,48 @@ local function buildWorld()
 	spawn.Material = Enum.Material.Marble
 	spawn.Duration = 0
 	spawn.Parent = world
+
+	local decor = Instance.new("Folder")
+	decor.Name = "Decor"
+	decor.Parent = world
+	Models.hubDecor(decor, 28)
+	-- Quelques buissons entre le hub et les parcelles (positions fixes, rendu reproductible).
+	for i = 1, Game.PlotCount * 2 do
+		local angle = (i / (Game.PlotCount * 2)) * math.pi * 2 + 0.2
+		local radius = 60 + (i % 3) * 14
+		Models.bush(CFrame.new(math.cos(angle) * radius, 0, math.sin(angle) * radius), decor, i)
+	end
+end
+
+-- Éclairage doux de fin d'après-midi (réutilise les objets existants : pas de doublon).
+local function setupLighting()
+	Lighting.ClockTime = 15.5
+	Lighting.Brightness = 2.2
+	Lighting.GlobalShadows = true
+	Lighting.OutdoorAmbient = Color3.fromRGB(135, 128, 120)
+	Lighting.EnvironmentDiffuseScale = 0.5
+	Lighting.EnvironmentSpecularScale = 0.3
+	local function ensure(className: string, name: string)
+		local inst = Lighting:FindFirstChild(name)
+		if not inst then
+			inst = Instance.new(className)
+			inst.Name = name
+			inst.Parent = Lighting
+		end
+		return inst
+	end
+	local atmosphere = ensure("Atmosphere", "BastionAtmosphere") :: Atmosphere
+	atmosphere.Density = 0.28
+	atmosphere.Haze = 1.2
+	atmosphere.Color = Color3.fromRGB(205, 215, 230)
+	atmosphere.Decay = Color3.fromRGB(110, 120, 140)
+	local grading = ensure("ColorCorrectionEffect", "BastionGrading") :: ColorCorrectionEffect
+	grading.Saturation = 0.12
+	grading.Contrast = 0.05
+	local bloom = ensure("BloomEffect", "BastionBloom") :: BloomEffect
+	bloom.Intensity = 0.35
+	bloom.Threshold = 1.6
+	bloom.Size = 20
 end
 
 local function buildPlot(index: number, parent: Instance): Plot
@@ -172,26 +219,30 @@ local function buildPlot(index: number, parent: Instance): Plot
 
 	local signPost = makePart({
 		Name = "SignPost",
-		Size = Vector3.new(1, 8, 1),
-		CFrame = cf * CFrame.new(9, FLOOR_TOP + 4, -HALF + 2),
+		Size = Vector3.new(0.8, 7, 0.8),
+		CFrame = cf * CFrame.new(10, FLOOR_TOP + 3.5, -HALF + 2),
 		Material = Enum.Material.Wood,
-		Color = Color3.fromRGB(100, 70, 40),
+		Color = Models.Colors.WoodDark,
+		Parent = model,
+	})
+	makePart({
+		Name = "SignBoard",
+		Size = Vector3.new(5, 2, 0.4),
+		CFrame = cf * CFrame.new(10, FLOOR_TOP + 6, -HALF + 1.5),
+		Material = Enum.Material.WoodPlanks,
+		Color = Models.Colors.WoodLight,
 		Parent = model,
 	})
 	local sign = makeBillboard(signPost, "Parcelle libre", 6, Vector2.new(16, 3))
 
-	-- Noyau d'Éther : cœur protégé du bastion (visible seulement quand la parcelle est occupée).
-	local core = makePart({
-		Name = "EtherCore",
-		Size = Vector3.new(4, 9, 4),
-		CFrame = cf * CFrame.new(0, FLOOR_TOP + 5, 8) * CFrame.Angles(0, math.rad(45), 0),
-		Material = Enum.Material.Neon,
-		Color = Color3.fromRGB(120, 200, 255),
-		Transparency = 1,
-		CanCollide = false,
-		Parent = model,
-	})
-	local coreLabel = makeBillboard(core, "", 7, Vector2.new(12, 2.5))
+	local decor = Instance.new("Folder")
+	decor.Name = "Decor"
+	decor.Parent = model
+	Models.plotDecor(cf * CFrame.new(0, FLOOR_TOP, 0), Game.PlotSize, decor)
+
+	-- Noyau d'Éther : cœur protégé du bastion, affiché seulement quand la parcelle est occupée.
+	local core, crystal = Models.etherCore(cf * CFrame.new(0, FLOOR_TOP, 8))
+	local coreLabel = makeBillboard(crystal, "", 4, Vector2.new(12, 2.5))
 
 	local function folder(name)
 		local f = Instance.new("Folder")
@@ -207,6 +258,7 @@ local function buildPlot(index: number, parent: Instance): Plot
 		GroupId = nil,
 		Sign = sign,
 		CoreLabel = coreLabel,
+		Core = core,
 		StructuresFolder = folder("Structures"),
 		PedestalsFolder = folder("Pedestals"),
 		StationsFolder = folder("Stations"),
@@ -220,47 +272,34 @@ local function renderStructure(plot: Plot, def)
 	if plot.StructuresFolder:FindFirstChild(def.Id) then
 		return
 	end
-	local sx, sy, sz = def.Size[1], def.Size[2], def.Size[3]
-	local model = Instance.new("Model")
-	model.Name = def.Id
-	local body = makePart({
-		Name = "Body",
-		Size = Vector3.new(sx, sy, sz),
-		CFrame = PlotService.localCFrame(plot, def.Offset[1], sy / 2, def.Offset[2]),
-		Material = Enum.Material[def.Material],
-		Color = toColor(def.Color),
+	local size = Vector3.new(def.Size[1], def.Size[2], def.Size[3])
+	local base = PlotService.localCFrame(plot, def.Offset[1], 0, def.Offset[2])
+	local model = Models.structure(def.Id, base, size, toColor(def.Color), Enum.Material[def.Material])
+	-- Étiquette au-dessus du centre de la construction.
+	local anchor = makePart({
+		Name = "LabelAnchor",
+		Size = Vector3.new(0.2, 0.2, 0.2),
+		CFrame = base * CFrame.new(0, math.max(size.Y, 3) + 2, 0),
+		Transparency = 1,
+		CanCollide = false,
+		CanQuery = false,
 		Parent = model,
 	})
-	model.PrimaryPart = body
-	if sy >= 8 and sx <= 30 then
-		makePart({
-			Name = "Roof",
-			Size = Vector3.new(sx + 2, 1.5, sz + 2),
-			CFrame = PlotService.localCFrame(plot, def.Offset[1], sy + 0.75, def.Offset[2]),
-			Material = Enum.Material.Slate,
-			Color = Color3.fromRGB(125, 45, 40),
-			Parent = model,
-		})
-	end
-	makeBillboard(body, def.Name, math.max(sy, 2) / 2 + 3, Vector2.new(10, 1.6))
+	makeBillboard(anchor, def.Name, 1, Vector2.new(10, 1.6))
 	model.Parent = plot.StructuresFolder
 end
 
 local function pedestalCFrame(plot: Plot, def): CFrame
 	-- Devant l'emprise de la construction, côté entrée.
-	return PlotService.localCFrame(plot, def.Offset[1], 1.5, def.Offset[2] - def.Size[3] / 2 - 4)
+	return PlotService.localCFrame(plot, def.Offset[1], 0, def.Offset[2] - def.Size[3] / 2 - 4)
 end
 
 local function createPedestal(plot: Plot, def)
-	local part = makePart({
-		Name = "Pedestal_" .. def.Id,
-		Size = Vector3.new(3, 3, 3),
-		CFrame = pedestalCFrame(plot, def),
-		Material = Enum.Material.Neon,
-		Color = COLORS.Locked,
-		Parent = plot.PedestalsFolder,
-	})
-	local label = makeBillboard(part, "", 5, Vector2.new(12, 4))
+	local model, part, gem = Models.pedestal(pedestalCFrame(plot, def))
+	model.Name = "Pedestal_" .. def.Id
+	model.Parent = plot.PedestalsFolder
+	gem.Color = COLORS.Locked
+	local label = makeBillboard(gem, "", 4, Vector2.new(12, 4))
 
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Construire"
@@ -275,7 +314,7 @@ local function createPedestal(plot: Plot, def)
 		end
 	end)
 
-	plot.Pedestals[def.Id] = { Part = part, Prompt = prompt, Label = label }
+	plot.Pedestals[def.Id] = { Part = part, Gem = gem, Prompt = prompt, Label = label }
 end
 
 -- Met à jour socles et noyau selon l'état du groupe.
@@ -291,7 +330,7 @@ function PlotService.refresh(groupId: string, groupData)
 		if owned[def.Id] then
 			renderStructure(plot, def)
 			if pedestal then
-				pedestal.Part:Destroy()
+				(pedestal.Part.Parent :: Instance):Destroy()
 				plot.Pedestals[def.Id] = nil
 			end
 		else
@@ -306,7 +345,7 @@ function PlotService.refresh(groupId: string, groupData)
 				table.insert(lines, "Requiert : " .. structureById[def.Requires].Name)
 			end
 			pedestal.Label.Text = table.concat(lines, "\n")
-			pedestal.Part.Color = if locked then COLORS.Locked elseif affordable then COLORS.Ready else COLORS.Missing
+			pedestal.Gem.Color = if locked then COLORS.Locked elseif affordable then COLORS.Ready else COLORS.Missing
 			pedestal.Prompt.Enabled = not locked
 		end
 	end
@@ -343,9 +382,7 @@ function PlotService.claim(groupId: string, groupData): Plot?
 			plot.GroupId = groupId
 			plot.Model:SetAttribute("GroupId", groupId)
 			plot.Sign.Text = groupData.Name
-			local core = plot.Model:FindFirstChild("EtherCore") :: BasePart
-			core.Transparency = 0.15
-			core.CanCollide = true
+			plot.Core.Parent = plot.Model
 			plotByGroup[groupId] = plot
 			PlotService.refresh(groupId, groupData)
 			return plot
@@ -364,9 +401,7 @@ function PlotService.release(groupId: string)
 	plot.Model:SetAttribute("GroupId", "")
 	plot.Sign.Text = "Parcelle libre"
 	plot.CoreLabel.Text = ""
-	local core = plot.Model:FindFirstChild("EtherCore") :: BasePart
-	core.Transparency = 1
-	core.CanCollide = false
+	plot.Core.Parent = nil -- conservé pour la prochaine attribution
 	plot.StructuresFolder:ClearAllChildren()
 	plot.PedestalsFolder:ClearAllChildren()
 	plot.StationsFolder:ClearAllChildren()
@@ -385,6 +420,7 @@ function PlotService.world(): Folder
 end
 
 function PlotService.init()
+	setupLighting()
 	buildWorld()
 	local plotsFolder = Instance.new("Folder")
 	plotsFolder.Name = "Plots"

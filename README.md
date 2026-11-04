@@ -11,7 +11,7 @@ puis part à l'aventure. Cahier des charges : [`docs/01_CAHIER_DES_CHARGES.md`](
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Étapes 1 à 4 et statut de chaque élément |
 | [`docs/BOUTIQUE.md`](docs/BOUTIQUE.md) | Les 13 offres, produits à créer dans le Creator Hub |
 
-**État : étape 1 (fondations jouables).** Rien n'a encore été exécuté dans Roblox Studio (voir § 4).
+**État : étape 1 (fondations jouables).** Aperçu des modèles 3D : [`docs/apercu/`](docs/apercu/). Rien n'a encore été exécuté dans Roblox Studio (voir § 4).
 
 ---
 

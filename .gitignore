@@ -4,3 +4,7 @@
 !build/BastionsDEther.rbxl
 sourcemap.json
 .DS_Store
+tools/apercu/node_modules/
+tools/apercu/parts.json
+tools/apercu/*.png
+tools/apercu/package*.json

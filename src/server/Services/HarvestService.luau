@@ -20,6 +20,7 @@ local GroupService = require(script.Parent.GroupService)
 local ProfileService = require(script.Parent.ProfileService)
 local PlotService = require(script.Parent.PlotService)
 local Notifier = require(script.Parent.Notifier)
+local Models = require(script.Parent.Parent.Art.Models)
 
 local HarvestService = {}
 
@@ -36,13 +37,15 @@ function HarvestService.beforeHarvest(fn)
 	table.insert(beforeHarvestCallbacks, fn)
 end
 
+-- Une ressource récoltée ne garde que sa souche / ses gravats ; elle repousse ensuite.
 local function setAvailable(node: Model, available: boolean)
 	node:SetAttribute("Available", available)
-	for _, part in node:GetDescendants() do
-		if part:IsA("BasePart") then
-			part.Transparency = if available then 0 else 0.75
-		elseif part:IsA("ProximityPrompt") then
-			part.Enabled = available
+	for _, inst in node:GetDescendants() do
+		if inst:IsA("BasePart") and inst:GetAttribute("Depletable") then
+			inst.Transparency = if available then 0 else 1
+			inst.CanCollide = available
+		elseif inst:IsA("ProximityPrompt") then
+			inst.Enabled = available
 		end
 	end
 end
@@ -84,40 +87,15 @@ local function onHarvest(player: Player, node: Model, kind)
 	Notifier.send(player, string.format(Texts.Harvested, amount, materialName[kind.Material]), "success")
 end
 
+local nodeCount = 0
+
 local function buildNode(kindName: string, cf: CFrame, parent: Instance)
 	local kind = Harvest.Nodes[kindName]
-	local node = Instance.new("Model")
+	nodeCount += 1
+	local node = if kindName == "Tree"
+		then Models.tree(cf, (nodeCount % 3) + 1, nodeCount) -- chêne, sapin, bouleau en alternance
+		else Models.rock(cf, nodeCount)
 	node.Name = kindName
-
-	if kindName == "Tree" then
-		PlotService.makePart({
-			Name = "Trunk",
-			Size = Vector3.new(1.6, 8, 1.6),
-			CFrame = cf * CFrame.new(0, 4, 0),
-			Material = Enum.Material.Wood,
-			Color = Color3.fromRGB(105, 70, 40),
-			Parent = node,
-		})
-		PlotService.makePart({
-			Name = "Leaves",
-			Shape = Enum.PartType.Ball,
-			Size = Vector3.new(7, 7, 7),
-			CFrame = cf * CFrame.new(0, 9.5, 0),
-			Material = Enum.Material.Grass,
-			Color = Color3.fromRGB(60, 130, 60),
-			Parent = node,
-		})
-	else
-		PlotService.makePart({
-			Name = "Stone",
-			Size = Vector3.new(5, 3.5, 4.5),
-			CFrame = cf * CFrame.new(0, 1.75, 0) * CFrame.Angles(0, math.rad(25), math.rad(8)),
-			Material = Enum.Material.Rock,
-			Color = Color3.fromRGB(130, 130, 135),
-			Parent = node,
-		})
-	end
-	node.PrimaryPart = node:FindFirstChildWhichIsA("BasePart")
 
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Récolter"
@@ -126,6 +104,7 @@ local function buildNode(kindName: string, cf: CFrame, parent: Instance)
 	prompt.MaxActivationDistance = 9
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = node.PrimaryPart
+
 	prompt.Triggered:Connect(function(player)
 		onHarvest(player, node, kind)
 	end)

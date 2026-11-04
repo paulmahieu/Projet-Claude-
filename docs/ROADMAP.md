@@ -11,6 +11,9 @@ Légende : ✅ implémenté · 🧪 testé automatiquement (Lune) · 🔍 à vé
 - ✅🧪🔍 Verrou d'autorité du groupe et des profils, sauvegardes étalées, état « Remote » / « ReadOnly »
 - ✅🧪🔍 Achats prédéfinis (6 constructions) avec coût, prérequis et effet affichés
 - ✅🔍 Récolte minimale (bois, pierre) vers la réserve du groupe
+- ✅🔍 Modèles 3D par code (`src/server/Art/Models.luau`) : 3 essences d'arbres, rochers, tapis bois
+  et runiques avec mannequin, 6 constructions, Noyau d'Éther, socles, décor du hub et des
+  parcelles, éclairage. Aperçu hors Studio : `docs/apercu/`
 - ✅🔍 Tapis d'entraînement : XP -> niveau -> Puissance, or personnel
 - ✅🔍 Améliorations personnelles (Concentration, Robustesse)
 - ✅🧪🔍 Gains hors ligne (25 %, 8 h, rendement durable sauvegardé)
