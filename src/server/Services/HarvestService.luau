@@ -78,13 +78,18 @@ local function onHarvest(player: Player, node: Model, kind)
 	local amount = kind.Amount + Formulas.harvestBonus(Structures, group.Data.Structures, kind.Material)
 	local materials = group.Data.Materials
 	materials[kind.Material] = Formulas.clamp((materials[kind.Material] or 0) + amount, Economy.MaterialCap)
+	local extra = ""
+	for matId, bonus in kind.Bonus or {} do
+		materials[matId] = Formulas.clamp((materials[matId] or 0) + bonus, Economy.MaterialCap)
+		extra ..= string.format(", +%d %s", bonus, materialName[matId] or matId)
+	end
 	profile.Stats.Harvests += 1
 
 	setAvailable(node, false)
 	task.delay(kind.RespawnSeconds, setAvailable, node, true)
 
 	GroupService.markChanged(group)
-	Notifier.send(player, string.format(Texts.Harvested, amount, materialName[kind.Material]), "success")
+	Notifier.send(player, string.format(Texts.Harvested, amount, materialName[kind.Material]) .. extra, "success")
 end
 
 local nodeCount = 0
@@ -92,8 +97,11 @@ local nodeCount = 0
 local function buildNode(kindName: string, cf: CFrame, parent: Instance)
 	local kind = Harvest.Nodes[kindName]
 	nodeCount += 1
-	local node = if kindName == "Tree"
-		then Models.tree(cf, (nodeCount % 3) + 1, nodeCount) -- chêne, sapin, bouleau en alternance
+	local node = if kind.Model
+		then Models.tree(cf, kind.Model, nodeCount) -- arbre rare (ancestral, saule arcanique)
+		elseif
+			kindName == "Tree"
+		then Models.tree(cf, (nodeCount % 4) + 1, nodeCount) -- chêne, sapin, bouleau, érable
 		else Models.rock(cf, nodeCount)
 	node.Name = kindName
 
@@ -125,6 +133,11 @@ function HarvestService.init()
 		local base = CFrame.lookAt(center, Vector3.zero)
 		for _, entry in Harvest.Grove do
 			buildNode(entry[1], base * CFrame.new(entry[2], 0, -entry[3]), folder)
+		end
+		for _, special in Harvest.Specials or {} do
+			if table.find(special[2], i) then
+				buildNode(special[1], base * CFrame.new(special[3], 0, -special[4]), folder)
+			end
 		end
 	end
 

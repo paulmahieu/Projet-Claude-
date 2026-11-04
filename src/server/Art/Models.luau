@@ -137,80 +137,463 @@ Models.rng = rng
 
 -- Ressources ---------------------------------------------------------------------------
 
--- Feuillage « en touffes » (style des captures) : surfaces lisses, sans texture bruitée ;
--- le relief vient des boules qui se chevauchent et de trois teintes (dessous sombre,
--- cœur, dessus éclairé).
-local LEAF_MAT = Enum.Material.SmoothPlastic
-local LEAF_LIGHT = Color3.fromRGB(196, 232, 120)
-local OAK_LEAVES = {
-	Dark = Color3.fromRGB(48, 122, 58),
-	Mid = Color3.fromRGB(72, 158, 66),
-	Light = Color3.fromRGB(118, 196, 84),
-}
-local BIRCH_LEAVES = {
-	Dark = Color3.fromRGB(104, 160, 66),
-	Mid = Color3.fromRGB(140, 192, 78),
-	Light = Color3.fromRGB(190, 218, 104),
-}
-local PINE_SHADES = {
-	Color3.fromRGB(46, 112, 78),
-	Color3.fromRGB(56, 128, 84),
-	Color3.fromRGB(42, 104, 74),
-	Color3.fromRGB(60, 136, 88),
-}
+-- Arbres (planches du créateur) ----------------------------------------------------------
+-- Feuillage en « bouquets de feuilles » à facettes : un cœur arrondi recouvert de cartes de
+-- feuilles en losange, inclinées vers l'extérieur, en deux ou trois teintes (style low-poly des
+-- planches). Troncs torsadés en segments, racines évasées, branches vers chaque bouquet.
 
--- Une touffe : boule centrale, couronne de boules autour (dessous sombre), petites
--- touffes au-dessus (éclairées). `center` = centre de la touffe, `r` = rayon.
-local function crown(m: Model, center: CFrame, r: number, palette, seed: number)
-	ball(m, "Leaves", r * 2, center, palette.Mid, LEAF_MAT, { Depletable = true })
-	-- Dessous : anneau aplati, plus sombre (ombre de la couronne).
-	local n = 6
-	for j = 1, n do
-		local a = (j / n) * math.pi * 2 + seed * 0.7
-		local size = r * (1.05 + 0.15 * math.sin(seed + j * 1.9))
-		ball(
-			m,
-			"LeavesLow" .. j,
-			size,
-			center * CFrame.new(math.cos(a) * r * 0.8, -r * 0.35, math.sin(a) * r * 0.8),
-			palette.Dark,
-			LEAF_MAT,
-			{ Depletable = true, NoShadow = true }
-		)
-	end
-	-- Milieu : touffes qui débordent, teinte du cœur.
-	for j = 1, 5 do
-		local a = (j / 5) * math.pi * 2 + seed * 1.3 + 0.6
-		ball(
-			m,
-			"LeavesMid" .. j,
-			r * 1.15,
-			center * CFrame.new(math.cos(a) * r * 0.75, r * 0.2, math.sin(a) * r * 0.75),
-			palette.Mid,
-			LEAF_MAT,
-			{ Depletable = true, NoShadow = true }
-		)
-	end
-	-- Dessus : petites touffes éclairées.
-	for j = 1, 3 do
-		local a = (j / 3) * math.pi * 2 + seed * 2.1
-		ball(
-			m,
-			"LeavesTop" .. j,
-			r * 0.85,
-			center * CFrame.new(math.cos(a) * r * 0.38, r * 0.72, math.sin(a) * r * 0.38),
-			palette.Light,
-			LEAF_MAT,
-			{ Depletable = true, NoShadow = true }
-		)
+local LEAF_MAT = Enum.Material.SmoothPlastic
+
+-- Bouquet de feuilles centré en `center`, rayon r. colors = { sombre, moyen, clair }.
+local function leafClump(m, center: CFrame, r: number, colors, seed: number, accent: Color3?)
+	local rand = rng(seed)
+	local core =
+		part(m, "LeafCore", Vector3.new(r * 2, r * 1.5, r * 2), center, colors[1], LEAF_MAT, { Depletable = true })
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Sphere
+	mesh.Parent = core
+	-- Facettes de feuilles posées sur le dôme (tangentes, légèrement soulevées), plus claires
+	-- vers le haut : aspect « low-poly » des planches.
+	for _, ring in { { -0.15, 9, 1 }, { 0.35, 8, 2 }, { 0.75, 5, 3 }, { 1.2, 1, 3 } } do
+		local elev = ring[1]
+		for k = 0, ring[2] - 1 do
+			local a = (k + rand() * 0.5) / ring[2] * math.pi * 2
+			local dir = Vector3.new(math.cos(elev) * math.cos(a), math.sin(elev) * 0.75, math.cos(elev) * math.sin(a))
+			local pos = dir * r * 0.95
+			local s = r * (0.62 + rand() * 0.2)
+			local at = center * CFrame.lookAt(pos, pos + dir) * CFrame.Angles(math.rad(12), 0, rand() * 0.6)
+			part(
+				m,
+				"Leaf",
+				Vector3.new(s, s, 0.16),
+				at * CFrame.Angles(0, 0, math.rad(45)),
+				colors[ring[3]]:Lerp(colors[math.min(3, ring[3] + 1)], rand() * 0.6),
+				LEAF_MAT,
+				{ Depletable = true, NoShadow = ring[3] < 3 }
+			)
+			if accent and rand() < 0.2 then
+				part(
+					m,
+					"LeafAccent",
+					Vector3.new(s * 0.35, s * 0.35, 0.18),
+					at * CFrame.new(0, 0, -0.04) * CFrame.Angles(0, 0, math.rad(45)),
+					accent,
+					LEAF_MAT,
+					{ Depletable = true, NoShadow = true }
+				)
+			end
+		end
 	end
 end
 
--- variant : 1 = chêne, 2 = sapin, 3 = bouleau
-local TREE_ASSETS = { "Tree_Oak", "Tree_Pine", "Tree_Birch" }
+-- Tronc torsadé : segments coniques légèrement tournés. Retourne le repère du sommet.
+local function twistedTrunk(
+	m,
+	base: CFrame,
+	height: number,
+	d0: number,
+	d1: number,
+	color: Color3,
+	seed: number,
+	segments: number?,
+	lean: number?
+)
+	local n = segments or 5
+	local cf = base
+	for k = 0, n - 1 do
+		local t = k / n
+		local d = d0 + (d1 - d0) * t
+		local h = height / n
+		part(
+			m,
+			"Trunk",
+			Vector3.new(d, h * 1.15, d * 0.92),
+			cf * CFrame.new(0, h / 2, 0),
+			color:Lerp(Color3.new(0, 0, 0), (k % 2) * 0.06),
+			Enum.Material.Wood,
+			{ Depletable = true }
+		)
+		cf = cf
+			* CFrame.new(0, h, 0)
+			* CFrame.Angles(math.sin(seed + k) * 0.06, 0.35, (lean or 0) + math.cos(seed + k * 1.3) * 0.06)
+	end
+	return cf
+end
 
-function Models.tree(base: CFrame, variant: number, seed: number): Model
-	local imported = Models.override(TREE_ASSETS[variant] or "Tree_Oak", base * CFrame.Angles(0, seed * 1.7, 0))
+-- Branche de `from` (repère) vers un point local au modèle ; retourne la longueur.
+local function branchTo(m, from: Vector3, to: Vector3, d: number, color: Color3)
+	local len = (to - from).Magnitude
+	part(
+		m,
+		"Branch",
+		Vector3.new(d, d, len),
+		CFrame.lookAt((from + to) / 2, to),
+		color,
+		Enum.Material.Wood,
+		{ Depletable = true }
+	)
+end
+
+-- Souche et racines évasées (restent visibles après la récolte).
+local function stumpAndRoots(m, turn: CFrame, d: number, color: Color3, count: number, reach: number): BasePart
+	local stump = column(m, "Stump", 1.2, d, turn, color, Enum.Material.Wood)
+	part(
+		m,
+		"StumpTop",
+		Vector3.new(0.2, d * 0.82, d * 0.82),
+		turn * CFrame.new(0, 1.25, 0) * VERTICAL,
+		C.WoodLight,
+		Enum.Material.Wood,
+		{ Shape = Enum.PartType.Cylinder }
+	)
+	part(
+		m,
+		"StumpRing",
+		Vector3.new(0.22, d * 0.5, d * 0.5),
+		turn * CFrame.new(0, 1.27, 0) * VERTICAL,
+		C.Bark:Lerp(C.WoodLight, 0.45),
+		Enum.Material.Wood,
+		{ Shape = Enum.PartType.Cylinder, NoShadow = true }
+	)
+	for r = 1, count do
+		local a = r / count * math.pi * 2 + 0.4
+		local root = turn * CFrame.Angles(0, a, 0)
+		part(
+			m,
+			"Root" .. r,
+			Vector3.new(reach, 0.7, 0.8),
+			root * CFrame.new(d * 0.3 + reach / 2, 0.3, 0) * CFrame.Angles(0, 0, math.rad(-16)),
+			color:Lerp(C.WoodDark, 0.25),
+			Enum.Material.Wood
+		)
+		part(
+			m,
+			"RootTip" .. r,
+			Vector3.new(reach * 0.5, 0.4, 0.5),
+			root * CFrame.new(d * 0.3 + reach * 1.15, 0.12, 0.2) * CFrame.Angles(0, 0.4, math.rad(-8)),
+			color:Lerp(C.WoodDark, 0.35),
+			Enum.Material.Wood
+		)
+	end
+	return stump
+end
+
+local OAK = { Color3.fromRGB(46, 110, 52), Color3.fromRGB(70, 140, 60), Color3.fromRGB(150, 200, 70) }
+local BIRCH = { Color3.fromRGB(110, 160, 50), Color3.fromRGB(150, 196, 60), Color3.fromRGB(196, 226, 90) }
+local MAPLE = { Color3.fromRGB(205, 85, 35), Color3.fromRGB(235, 140, 40), Color3.fromRGB(250, 200, 60) }
+local MAPLE_RED = { Color3.fromRGB(150, 35, 35), Color3.fromRGB(190, 55, 45), Color3.fromRGB(220, 90, 60) }
+local FIR = { Color3.fromRGB(26, 80, 60), Color3.fromRGB(36, 104, 72), Color3.fromRGB(56, 130, 86) }
+local ANCIENT = { Color3.fromRGB(24, 110, 80), Color3.fromRGB(36, 150, 100), Color3.fromRGB(70, 190, 120) }
+local WILLOW = { Color3.fromRGB(130, 80, 190), Color3.fromRGB(170, 110, 225), Color3.fromRGB(205, 160, 245) }
+local SNOW = Color3.fromRGB(245, 248, 252)
+
+local treeBuilders = {}
+
+-- Chêne des clairières : tronc large torsadé, nœud en spirale, cinq bouquets vert sombre/clair.
+treeBuilders.Oak = function(m, turn, s, seed)
+	local bark = Color3.fromRGB(130, 82, 48)
+	local top = twistedTrunk(m, turn * CFrame.new(0, 1.2, 0), 6.5 * s, 2.3 * s, 1.3 * s, bark, seed)
+	for k = 0, 5 do
+		local a = k / 6 * math.pi * 2
+		part(
+			m,
+			"Knot",
+			Vector3.new(0.25, 0.25, 0.15),
+			turn * CFrame.new(math.cos(a) * 0.35, 3 + math.sin(a) * 0.35, -1.12 * s),
+			bark:Lerp(C.WoodDark, 0.4),
+			Enum.Material.Wood,
+			{ Depletable = true, NoShadow = true }
+		)
+	end
+	local p0 = top.Position
+	local clumps = {
+		{ 0, 2.5, 0, 3.4 },
+		{ 3.2, 0.6, 0.6, 2.6 },
+		{ -3.0, 0.9, -0.8, 2.7 },
+		{ 0.8, 0.4, 2.8, 2.4 },
+		{ -0.5, 0.5, -2.9, 2.4 },
+	}
+	for k, c in clumps do
+		local at = top * CFrame.new(c[1] * s, c[2] * s, c[3] * s)
+		if k > 1 then
+			branchTo(m, p0, at.Position, 0.55 * s, bark)
+		end
+		leafClump(m, at, c[4] * s, OAK, seed + k * 7)
+	end
+end
+
+-- Bouleau des lisières : deux troncs blancs fourchus à marques noires, bouquets vert tendre.
+treeBuilders.Birch = function(m, turn, s, seed)
+	local white = Color3.fromRGB(232, 226, 210)
+	for side, lean in { [-1] = -0.22, [1] = 0.22 } do
+		local cf = turn * CFrame.new(side * 0.25, 1.2, 0)
+		local top = twistedTrunk(m, cf, 9 * s, 0.9 * s, 0.55 * s, white, seed + side, 5, lean)
+		local rand = rng(seed + side * 13)
+		for k = 1, 9 do
+			local y = 1.5 + k * 0.85
+			local a = rand() * math.pi * 2
+			part(
+				m,
+				"Mark",
+				Vector3.new(0.4, 0.15, 0.12),
+				cf
+					* CFrame.Angles(0, 0, lean * y / 9)
+					* CFrame.new(math.cos(a) * 0.4, y * s, math.sin(a) * 0.4)
+					* CFrame.Angles(0, -a + math.pi / 2, 0),
+				C.WoodDark:Lerp(Color3.new(0, 0, 0), 0.3),
+				Enum.Material.SmoothPlastic,
+				{ Depletable = true, NoShadow = true }
+			)
+		end
+		leafClump(m, top * CFrame.new(0, 1.2 * s, 0), 2.1 * s, BIRCH, seed + side * 3)
+		local mid = cf * CFrame.new(side * 0.6, 5 * s, 0)
+		branchTo(m, mid.Position, (mid * CFrame.new(side * 2.4 * s, 1.2 * s, 0.4)).Position, 0.25 * s, white)
+		leafClump(m, mid * CFrame.new(side * 2.8 * s, 1.5 * s, 0.4), 1.6 * s, BIRCH, seed + side * 5)
+	end
+end
+
+-- Érable d'automne : tronc fourchu, gros bouquets orange et jaunes, un bouquet rouge.
+treeBuilders.Maple = function(m, turn, s, seed)
+	local bark = Color3.fromRGB(135, 75, 45)
+	local top = twistedTrunk(m, turn * CFrame.new(0, 1.2, 0), 5.5 * s, 1.9 * s, 1.0 * s, bark, seed)
+	local p0 = top.Position
+	local clumps = {
+		{ 0, 3.2, 0, 3.0, MAPLE },
+		{ -2.8, 1.4, 0.4, 2.6, MAPLE },
+		{ 2.9, 0.8, -0.3, 2.2, MAPLE_RED },
+		{ 0.6, 1.0, 2.6, 2.3, MAPLE },
+		{ -0.6, 1.2, -2.6, 2.2, MAPLE },
+	}
+	for k, c in clumps do
+		local at = top * CFrame.new(c[1] * s, c[2] * s, c[3] * s)
+		branchTo(m, p0, at.Position, 0.5 * s, bark)
+		leafClump(m, at, c[4] * s, c[5], seed + k * 11)
+	end
+end
+
+-- Sapin des montagnes : étages d'aiguilles en étoile, neige sur le dessus de chaque étage.
+treeBuilders.Fir = function(m, turn, s, seed)
+	local bark = Color3.fromRGB(125, 80, 48)
+	twistedTrunk(m, turn * CFrame.new(0, 1.2, 0), 4 * s, 1.3 * s, 0.9 * s, bark, seed, 3)
+	local tiers = 6
+	for k = 0, tiers - 1 do
+		local t = k / (tiers - 1)
+		local r = (3.6 - t * 2.7) * s
+		local y = (4.4 + k * 1.7) * s
+		local count = 10 - math.floor(t * 4)
+		for j = 0, count - 1 do
+			local a = (j + (k % 2) * 0.5) / count * math.pi * 2
+			local at = turn
+				* CFrame.new(0, y, 0)
+				* CFrame.Angles(0, -a, 0)
+				* CFrame.new(0, 0.2, -r * 0.5)
+				* CFrame.Angles(math.rad(-38), 0, 0) -- branches qui retombent : silhouette en cône
+			part(
+				m,
+				"Needles",
+				Vector3.new(r * 0.7, 0.35, r * 1.2),
+				at,
+				FIR[(j + k) % 3 + 1],
+				LEAF_MAT,
+				{ Depletable = true }
+			)
+			if j % 2 == 0 then
+				part(
+					m,
+					"Snow",
+					Vector3.new(r * 0.42, 0.24, r * 0.5),
+					at * CFrame.new(0, 0.26, r * 0.15),
+					SNOW,
+					LEAF_MAT,
+					{ Depletable = true, NoShadow = true }
+				)
+			end
+		end
+		part(
+			m,
+			"TierCore",
+			Vector3.new(r * 0.9, 1.4 * s, r * 0.9),
+			turn * CFrame.new(0, y, 0) * CFrame.Angles(0, math.rad(45), 0),
+			FIR[1],
+			LEAF_MAT,
+			{ Depletable = true }
+		)
+	end
+	part(
+		m,
+		"Tip",
+		Vector3.new(0.9 * s, 1.6 * s, 0.9 * s),
+		turn * CFrame.new(0, (4.4 + (tiers - 0.35) * 1.7) * s, 0) * CFrame.Angles(0, math.rad(45), 0),
+		FIR[2],
+		LEAF_MAT,
+		{ Depletable = true }
+	)
+	part(
+		m,
+		"TipSnow",
+		Vector3.new(0.6 * s, 0.6 * s, 0.6 * s),
+		turn * CFrame.new(0, (5.0 + (tiers - 0.35) * 1.7) * s, 0) * CFrame.Angles(math.rad(45), math.rad(45), 0),
+		SNOW,
+		LEAF_MAT,
+		{ Depletable = true }
+	)
+end
+
+-- Arbre ancestral : tronc colossal en arche, runes dorées lumineuses, grosses branches
+-- tortueuses, bouquets vert émeraude parsemés de feuilles d'or.
+treeBuilders.Ancient = function(m, turn, s, seed)
+	local bark = Color3.fromRGB(115, 78, 55)
+	-- Deux « jambes » formant une arche, puis le fût
+	for _, side in { -1, 1 } do
+		twistedTrunk(
+			m,
+			turn * CFrame.new(side * 1.2 * s, 1.0, 0) * CFrame.Angles(0, 0, -side * 0.18),
+			3.2 * s,
+			1.8 * s,
+			1.6 * s,
+			bark,
+			seed + side,
+			3
+		)
+	end
+	local top = twistedTrunk(m, turn * CFrame.new(0, 3.8 * s, 0), 4.5 * s, 3.2 * s, 2.0 * s, bark, seed, 4)
+	-- Runes dorées
+	for k, off in { -0.35, 0.35 } do
+		local at = turn * CFrame.new(off * s, 5.6 * s, -1.6 * s)
+		part(
+			m,
+			"Rune",
+			Vector3.new(0.14, 0.9, 0.1),
+			at * CFrame.Angles(0, 0, if k == 1 then 0.4 else -0.4),
+			Color3.fromRGB(255, 200, 70),
+			Enum.Material.Neon,
+			{ Depletable = true, NoShadow = true }
+		)
+		part(
+			m,
+			"Rune",
+			Vector3.new(0.14, 0.6, 0.1),
+			at * CFrame.new(0, -0.5, 0) * CFrame.Angles(0, 0, if k == 1 then -0.5 else 0.5),
+			Color3.fromRGB(255, 200, 70),
+			Enum.Material.Neon,
+			{ Depletable = true, NoShadow = true }
+		)
+	end
+	-- Mousse
+	for k = 0, 5 do
+		local a = k * 1.1
+		part(
+			m,
+			"Moss",
+			Vector3.new(1.2, 0.5, 0.3),
+			turn * CFrame.Angles(0, a, 0) * CFrame.new(0, 3 + (k % 3) * 1.2, -1.55 * s),
+			C.Leaf2,
+			Enum.Material.Grass,
+			{ Depletable = true, NoShadow = true }
+		)
+	end
+	local p0 = top.Position
+	local accent = Color3.fromRGB(240, 200, 60)
+	local clumps = {
+		{ 0, 2.4, 0, 3.8 },
+		{ 4.2, 0.2, 0.8, 2.8 },
+		{ -4.4, 0.4, -0.4, 3.0 },
+		{ 1.0, -0.2, 3.6, 2.6 },
+		{ -1.0, 0.2, -3.6, 2.6 },
+		{ 5.6, -1.6, -1.6, 1.8 },
+	}
+	for k, c in clumps do
+		local at = top * CFrame.new(c[1] * s, c[2] * s, c[3] * s)
+		if k > 1 then
+			branchTo(m, p0, at.Position, 0.8 * s, bark)
+		end
+		leafClump(m, at, c[4] * s, ANCIENT, seed + k * 5, accent)
+	end
+end
+
+-- Saule arcanique : tronc violet torsadé parcouru d'une veine lumineuse, cristal à la base,
+-- bouquets violets d'où pendent des rideaux de feuilles.
+treeBuilders.Willow = function(m, turn, s, seed)
+	local bark = Color3.fromRGB(92, 68, 100)
+	local base = turn * CFrame.new(0, 1.2, 0)
+	local top = twistedTrunk(m, base, 7.5 * s, 2.0 * s, 1.1 * s, bark, seed, 6)
+	-- Veine lumineuse qui s'enroule
+	for k = 0, 11 do
+		local y = 1.6 + k * 0.5
+		local a = k * 0.45
+		part(
+			m,
+			"Vein",
+			Vector3.new(0.16, 0.6, 0.1),
+			turn * CFrame.Angles(0, a, 0) * CFrame.new(0, y * s, -(1.0 - k * 0.03) * s) * CFrame.Angles(0, 0, 0.4),
+			Color3.fromRGB(90, 230, 240),
+			Enum.Material.Neon,
+			{ Depletable = true, NoShadow = true }
+		)
+	end
+	local crystal = part(
+		m,
+		"Crystal",
+		Vector3.new(0.6, 1.3, 0.6),
+		turn * CFrame.new(0, 1.0, -1.25 * s) * CFrame.Angles(0, math.rad(45), 0),
+		Color3.fromRGB(110, 235, 245),
+		Enum.Material.Neon,
+		{ NoShadow = true }
+	)
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(150, 120, 255)
+	light.Range = 16
+	light.Brightness = 1.5
+	light.Parent = crystal
+	local p0 = top.Position
+	local clumps = {
+		{ 0, 1.6, 0, 2.8 },
+		{ 3.2, -0.2, 0.6, 2.3 },
+		{ -3.2, 0.2, -0.6, 2.4 },
+		{ 0.8, -0.4, 3.0, 2.1 },
+		{ -0.8, -0.2, -3.0, 2.1 },
+	}
+	local rand = rng(seed)
+	for k, c in clumps do
+		local at = top * CFrame.new(c[1] * s, c[2] * s, c[3] * s)
+		if k > 1 then
+			branchTo(m, p0, at.Position, 0.5 * s, bark)
+		end
+		leafClump(m, at, c[4] * s, WILLOW, seed + k * 3)
+		-- Rideaux tombants
+		for j = 0, 7 do
+			local a = j / 8 * math.pi * 2 + k
+			local strand = at * CFrame.Angles(0, -a, 0) * CFrame.new(0, -c[4] * s * 0.3, -c[4] * s * 0.85)
+			local len = (2 + rand() * 2.2) * s
+			for q = 0, math.floor(len / 0.7) do
+				part(
+					m,
+					"Drape",
+					Vector3.new(0.55, 0.75, 0.12),
+					strand * CFrame.new(0, -q * 0.65, 0) * CFrame.Angles(0, 0, math.rad(45)),
+					WILLOW[(q + j) % 3 + 1],
+					LEAF_MAT,
+					{ Depletable = true, NoShadow = true }
+				)
+			end
+		end
+	end
+end
+
+-- variant : 1 = chêne, 2 = sapin, 3 = bouleau, 4 = érable, "Ancient", "Willow".
+local TREE_KINDS = { "Oak", "Fir", "Birch", "Maple" }
+local TREE_ASSETS = {
+	Oak = "Tree_Oak",
+	Fir = "Tree_Pine",
+	Birch = "Tree_Birch",
+	Maple = "Tree_Maple",
+	Ancient = "Tree_Ancient",
+	Willow = "Tree_Willow",
+}
+
+function Models.tree(base: CFrame, variant: number | string, seed: number): Model
+	local kind = if type(variant) == "string" then variant else (TREE_KINDS[variant] or "Oak")
+	local imported = Models.override(TREE_ASSETS[kind] or "Tree_Oak", base * CFrame.Angles(0, seed * 1.7, 0))
 	if imported then
 		-- Modèle importé : tout disparaît à la récolte sauf une souche générée.
 		for _, inst in imported:GetDescendants() do
@@ -223,150 +606,23 @@ function Models.tree(base: CFrame, variant: number, seed: number): Model
 		return imported
 	end
 	local m = newModel("Tree")
+	m:SetAttribute("TreeKind", kind)
 	local turn = base * CFrame.Angles(0, seed * 1.7, 0)
-	local scale = 1 + jitter(seed, 0.12)
-
-	-- Souche : toujours visible (indique où la ressource repoussera).
-	local stump = column(m, "Stump", 1.2, 2.2 * scale, turn, C.Bark, Enum.Material.Wood)
-	part(
+	local s = 1 + jitter(seed, 0.1)
+	local big = kind == "Ancient" or kind == "Willow"
+	local stumpColor = if kind == "Birch"
+		then Color3.fromRGB(220, 214, 198)
+		elseif kind == "Willow" then Color3.fromRGB(92, 68, 100)
+		else C.Bark
+	local stump = stumpAndRoots(
 		m,
-		"StumpTop",
-		Vector3.new(0.2, 1.8 * scale, 1.8 * scale),
-		turn * CFrame.new(0, 1.25, 0) * VERTICAL,
-		C.WoodLight,
-		Enum.Material.Wood,
-		{
-			Shape = Enum.PartType.Cylinder,
-		}
+		turn,
+		(if big then 3.2 else 2.3) * s,
+		stumpColor,
+		if big then 7 else 5,
+		(if big then 2.6 else 1.6) * s
 	)
-
-	-- Anneaux de croissance sur la souche
-	part(
-		m,
-		"StumpRing",
-		Vector3.new(0.22, 1.1 * scale, 1.1 * scale),
-		turn * CFrame.new(0, 1.27, 0) * VERTICAL,
-		C.Bark:Lerp(C.WoodLight, 0.45),
-		Enum.Material.Wood,
-		{
-			Shape = Enum.PartType.Cylinder,
-			NoShadow = true,
-		}
-	)
-	-- Racines évasées (toujours visibles, ancrent la souche au sol)
-	for r = 1, 4 do
-		local a = r * math.pi / 2 + seed
-		part(
-			m,
-			"Root" .. r,
-			Vector3.new(1.6, 0.6, 0.7) * scale,
-			turn * CFrame.Angles(0, a, 0) * CFrame.new(1.2 * scale, 0.25, 0) * CFrame.Angles(0, 0, math.rad(-18)),
-			C.Bark:Lerp(C.WoodDark, 0.3),
-			Enum.Material.Wood
-		)
-	end
-
-	if variant == 2 then
-		-- Sapin stylisé : cône de touffes (5 étages de boules qui rétrécissent vers la pointe).
-		column(m, "Trunk", 5 * scale, 1.2 * scale, turn * CFrame.new(0, 1.2, 0), C.Bark, Enum.Material.Wood, {
-			Depletable = true,
-		})
-		local tiers = 5
-		for k = 1, tiers do
-			local t = (k - 1) / (tiers - 1) -- 0 en bas, 1 en haut
-			local d = (6.4 - t * 4.2) * scale
-			local y = (4.6 + t * 8.4) * scale
-			local shade = PINE_SHADES[((k - 1) % #PINE_SHADES) + 1]
-			ball(m, "Needles" .. k, d, turn * CFrame.new(0, y, 0), shade, LEAF_MAT, { Depletable = true })
-			-- Couronne de touffes plus sombres sous chaque étage (silhouette de sapin).
-			local n = 7 - math.floor(t * 3)
-			for j = 1, n do
-				local a = (j / n) * math.pi * 2 + k * 0.6 + seed
-				ball(
-					m,
-					"Tuft" .. k .. "_" .. j,
-					d * 0.55,
-					turn * CFrame.new(math.cos(a) * d * 0.42, y - d * 0.22, math.sin(a) * d * 0.42),
-					shade:Lerp(Color3.new(0, 0, 0), 0.15),
-					LEAF_MAT,
-					{ Depletable = true, NoShadow = true }
-				)
-			end
-			-- Reflet clair sur le dessus.
-			ball(
-				m,
-				"Cap" .. k,
-				d * 0.55,
-				turn * CFrame.new(d * 0.12, y + d * 0.28, -d * 0.1),
-				shade:Lerp(LEAF_LIGHT, 0.22),
-				LEAF_MAT,
-				{ Depletable = true, NoShadow = true }
-			)
-		end
-		ball(
-			m,
-			"Tip",
-			1.4 * scale,
-			turn * CFrame.new(0, 14.6 * scale, 0),
-			PINE_SHADES[1]:Lerp(LEAF_LIGHT, 0.3),
-			LEAF_MAT,
-			{ Depletable = true }
-		)
-	elseif variant == 3 then
-		-- Bouleau : tronc fin blanc à marques sombres, feuillage clair en 3 touffes étagées.
-		column(m, "Trunk", 9 * scale, 1 * scale, turn * CFrame.new(0, 1.2, 0), C.Birch, Enum.Material.SmoothPlastic, {
-			Depletable = true,
-		})
-		for k = 1, 7 do
-			local y = 2 + k * 1.05
-			local a = k * 2.4
-			part(
-				m,
-				"Mark" .. k,
-				Vector3.new(0.45, 0.18, 0.1) * scale,
-				turn
-					* CFrame.new(math.cos(a) * 0.5 * scale, y * scale, math.sin(a) * 0.5 * scale)
-					* CFrame.Angles(0, -a + math.pi / 2, 0),
-				C.WoodDark,
-				Enum.Material.SmoothPlastic,
-				{ Depletable = true, NoShadow = true }
-			)
-		end
-		crown(m, turn * CFrame.new(0, 11 * scale, 0), 3.4 * scale, BIRCH_LEAVES, seed)
-		crown(m, turn * CFrame.new(1.4 * scale, 8.8 * scale, 0.4 * scale), 2.6 * scale, BIRCH_LEAVES, seed + 3)
-		crown(m, turn * CFrame.new(-1.3 * scale, 9.4 * scale, -0.6 * scale), 2.4 * scale, BIRCH_LEAVES, seed + 7)
-	else
-		-- Chêne : tronc en deux sections et branches, couronne en touffes (une grosse, deux lobes).
-		column(m, "Trunk", 4 * scale, 1.9 * scale, turn * CFrame.new(0, 1.2, 0), C.Bark, Enum.Material.Wood, {
-			Depletable = true,
-		})
-		column(
-			m,
-			"TrunkUpper",
-			2.6 * scale,
-			1.4 * scale,
-			turn * CFrame.new(0.15, 5, 0) * CFrame.Angles(0, 0, math.rad(-6)),
-			C.Bark,
-			Enum.Material.Wood,
-			{ Depletable = true }
-		)
-		for k, b in { { 1.6, 5.4, 0, 35 }, { -1.5, 5.8, 0.4, -40 }, { 0.2, 6.2, -1.5, 0 } } do
-			part(
-				m,
-				"Branch" .. k,
-				Vector3.new(0.6, 2.8, 0.6) * scale,
-				turn
-					* CFrame.new(b[1] * scale, b[2] * scale, b[3] * scale)
-					* CFrame.Angles(math.rad(if b[4] == 0 then 30 else 0), 0, math.rad(-b[4])),
-				C.Bark,
-				Enum.Material.Wood,
-				{ Depletable = true }
-			)
-		end
-		crown(m, turn * CFrame.new(0, 9.4 * scale, 0), 4.6 * scale, OAK_LEAVES, seed)
-		crown(m, turn * CFrame.new(3 * scale, 8.2 * scale, 0.8 * scale), 3 * scale, OAK_LEAVES, seed + 5)
-		crown(m, turn * CFrame.new(-2.8 * scale, 8.4 * scale, -1 * scale), 3.2 * scale, OAK_LEAVES, seed + 9)
-	end
+	treeBuilders[kind](m, turn, s, seed)
 	m.PrimaryPart = stump
 	return m
 end

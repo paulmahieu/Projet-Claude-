@@ -1362,6 +1362,28 @@ test("Compagnons : 5 par rareté (Commun à Mythique), fiche de modèle pour cha
 	end
 end)
 
+test("Arbres : rares plus précieux, moins nombreux, matériaux connus", function()
+	local Harvest = require("../src/shared/Config/Harvest")
+	local mats = {}
+	for _, mat in Materials do
+		mats[mat.Id] = true
+	end
+	local common = Harvest.Nodes.Tree
+	for _, special in Harvest.Specials do
+		local node = Harvest.Nodes[special[1]]
+		assert(node and node.Model, special[1] .. " : nœud ou modèle manquant")
+		assert(node.Amount > common.Amount, special[1] .. " : doit rapporter plus qu'un arbre commun")
+		assert(node.RespawnSeconds > common.RespawnSeconds, special[1] .. " : doit repousser plus lentement")
+		assert(#special[2] < Game.PlotCount, special[1] .. " : doit être plus rare qu'un bosquet sur deux")
+		for _, grove in special[2] do
+			assert(grove >= 1 and grove <= Game.PlotCount, "bosquet inexistant")
+		end
+		for matId, amount in node.Bonus or {} do
+			assert(mats[matId] and amount > 0, special[1] .. " : bonus invalide")
+		end
+	end
+end)
+
 print(string.format("\n%d réussi(s), %d échec(s)", passed, failed))
 if failed > 0 then
 	error("Des tests ont échoué")

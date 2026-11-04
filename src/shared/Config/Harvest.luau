@@ -10,6 +10,25 @@ return {
 
 	Nodes = {
 		Tree = { Material = "Wood", Amount = 3, RespawnSeconds = 25, HoldDuration = 0.8, Label = "Arbre" },
+		-- Arbres rares (planches du créateur) : plus précieux mais moins nombreux et plus longs à
+		-- repousser ; placés dans les bosquets ENTRE les bastions (équitable pour tous).
+		AncientTree = {
+			Material = "Wood",
+			Amount = 8,
+			RespawnSeconds = 60,
+			HoldDuration = 1.5,
+			Label = "Arbre ancestral",
+			Model = "Ancient",
+		},
+		ArcaneWillow = {
+			Material = "Wood",
+			Amount = 6,
+			Bonus = { Crystal = 1 },
+			RespawnSeconds = 120,
+			HoldDuration = 2.0,
+			Label = "Saule arcanique",
+			Model = "Willow",
+		},
 		Rock = { Material = "Stone", Amount = 2, RespawnSeconds = 35, HoldDuration = 1.0, Label = "Rocher" },
 	},
 
@@ -22,5 +41,11 @@ return {
 		{ "Tree", 0, 8 },
 		{ "Rock", -10, 10 },
 		{ "Rock", 11, 9 },
+	},
+
+	-- Arbre rare supplémentaire dans certains bosquets : { type, bosquets, décalage tangent, radial }.
+	Specials = {
+		{ "AncientTree", { 1, 3, 5, 7 }, 0, -17 },
+		{ "ArcaneWillow", { 2, 6 }, 0, -18 },
 	},
 }

@@ -184,6 +184,14 @@ Le code vit dans `src/` (fichiers texte versionnés). **Rojo** le synchronise en
 | 64 | Menu → Compagnons | 30 compagnons possibles en 6 raretés (Commun, Peu commun, Rare, Épique, Légendaire, Mythique) + 2 Célestes ; la fenêtre d'un œuf affiche les nouvelles probabilités. |
 | 65 | Profil d'avant cette version (Studio) | Les anciens compagnons sont convertis automatiquement (ex. Pousse sylvestre → Chat des granges, Phénix d'Éther → Kitsune astral). |
 
+### Arbres (planches du créateur)
+
+| # | Action | Attendu |
+|---|---|---|
+| 66 | Bosquets entre les bastions | Chênes, bouleaux, sapins enneigés et érables d'automne en alternance : 3 bois chacun. |
+| 67 | Un bosquet sur deux, côté château | Arbre ancestral (runes dorées) : 8 bois, repousse en 60 s. |
+| 68 | Deux bosquets seulement (opposés) | Saule arcanique violet qui brille : 6 bois **+ 1 cristal**, repousse en 2 min. |
+
 ### À plusieurs : *Test → Clients and Servers → 2 ou 3 joueurs → Start*
 
 | # | Action | Attendu |
