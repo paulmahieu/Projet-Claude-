@@ -47,30 +47,6 @@
       "$properties": {
         "FallenPartsDestroyHeight": -500
       },
-      "SafetyFloor": {
-        "$className": "Part",
-        "$properties": {
-          "Anchored": true,
-          "Size": [
-            1024,
-            2,
-            1024
-          ],
-          "Position": [
-            0,
-            -1.5,
-            0
-          ],
-          "Material": "Grass",
-          "Color": [
-            0.38,
-            0.58,
-            0.31
-          ],
-          "TopSurface": "Smooth",
-          "BottomSurface": "Smooth"
-        }
-      },
       "SafetySpawn": {
         "$className": "SpawnLocation",
         "$properties": {
@@ -89,6 +65,30 @@
           "Duration": 0,
           "Transparency": 1,
           "CanCollide": true
+        }
+      },
+      "Ground": {
+        "$className": "Part",
+        "$properties": {
+          "Anchored": true,
+          "Size": [
+            1100,
+            2,
+            1100
+          ],
+          "Position": [
+            0,
+            -1,
+            0
+          ],
+          "Material": "Grass",
+          "Color": [
+            0.41,
+            0.63,
+            0.32
+          ],
+          "TopSurface": "Smooth",
+          "BottomSurface": "Smooth"
         }
       }
     }

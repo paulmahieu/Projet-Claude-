@@ -66,6 +66,10 @@ local handlers = {
 		}
 	end,
 
+	GoToBastion = function(player)
+		return GroupService.goToBastion(player)
+	end,
+
 	Invite = function(player, p)
 		if not Validate.positiveInteger(p.UserId, MAX_USER_ID) then
 			return bad()

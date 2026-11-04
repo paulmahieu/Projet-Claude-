@@ -263,7 +263,6 @@ local function attach(player: Player, group: Group)
 	if not PlotService.get(group.Id) then
 		Notifier.send(player, Texts.NoPlot, "error")
 	end
-	PlotService.teleportToPlot(player, group.Id)
 	fire(attachedCallbacks, player, group)
 	GroupService.markChanged(group)
 	publishTo(player)
@@ -352,6 +351,16 @@ local function connectPlayer(player: Player)
 end
 
 -- Opérations d'appartenance (appelées via Net) ------------------------------------------
+
+-- Téléporte le joueur à l'entrée de son bastion (bouton « Mon bastion »).
+function GroupService.goToBastion(player: Player)
+	local group = GroupService.groupOf(player)
+	if not group or not PlotService.get(group.Id) then
+		return result(false, Texts.NoPlot)
+	end
+	PlotService.teleportToPlot(player, group.Id)
+	return result(true)
+end
 
 function GroupService.invite(player: Player, targetUserId: number)
 	local group = GroupService.groupOf(player)
@@ -584,19 +593,8 @@ function GroupService.start()
 		detach(player)
 	end)
 
-	-- Chaque réapparition se fait dans la base du groupe.
-	local function hookCharacter(player: Player)
-		player.CharacterAdded:Connect(function()
-			local id = playerGroup[player]
-			if id then
-				task.defer(PlotService.teleportToPlot, player, id)
-			end
-		end)
-	end
-	Players.PlayerAdded:Connect(hookCharacter)
-	for _, player in Players:GetPlayers() do
-		hookCharacter(player)
-	end
+	-- Les joueurs apparaissent au point d'accueil (portails, œufs) ; le bouton « Mon bastion »
+	-- et les portails de retour mènent à la base du groupe.
 
 	-- Sauvegardes périodiques étalées des groupes (renouvellent le verrou).
 	task.spawn(function()

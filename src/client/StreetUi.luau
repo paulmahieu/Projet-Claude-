@@ -47,6 +47,7 @@ function StreetUi.start(gui: ScreenGui)
 		gui3d.Size = UDim2.fromScale(14, 3)
 		gui3d.StudsOffsetWorldSpace = Vector3.new(0, 3, 0)
 		gui3d.MaxDistance = 120
+		gui3d.AlwaysOnTop = true
 		gui3d.Adornee = wall
 		gui3d.Parent = wall
 		local label = Ui.label({

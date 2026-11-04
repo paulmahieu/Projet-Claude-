@@ -68,10 +68,17 @@ end
 local gui = Ui.create("ScreenGui", {
 	Name = "HUD",
 	ResetOnSpawn = false,
-	ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets, -- zones sûres (encoches, coins arrondis)
+	-- Évite les boutons Roblox (menu, chat) en haut de l'écran et les zones non sûres (encoches).
+	ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets,
 	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 	Parent = player:WaitForChild("PlayerGui"),
 })
+-- La liste des joueurs de Roblox recouvrait le panneau du bastion (haut droite) ; les joueurs
+-- du serveur restent visibles dans Menu > Groupe et sur les panneaux de classement.
+pcall(function()
+	game:GetService("StarterGui"):SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
+end)
+
 -- Diagnostic (Studio) démarré tout de suite : il doit pouvoir afficher les erreurs même si la
 -- suite de ce script échoue.
 DiagnosticsUi.start(gui)
@@ -339,6 +346,20 @@ local menuButton = Ui.button({
 	Parent = gui,
 })
 Ui.stroke().Parent = menuButton
+
+-- Bouton « Mon bastion » : les joueurs apparaissent au point d'accueil (portails, œufs).
+local homeButton = Ui.button({
+	AnchorPoint = Vector2.new(1, 1),
+	Position = UDim2.new(1, -132, 1, -12),
+	Size = UDim2.fromOffset(130, 64),
+	BackgroundColor3 = C.Robux,
+	TextSize = 17,
+	Text = "Mon bastion",
+	Parent = gui,
+}, function()
+	request("GoToBastion", {})
+end)
+Ui.stroke().Parent = homeButton
 
 local menu = Ui.create("Frame", {
 	AnchorPoint = Vector2.new(0.5, 0.5),

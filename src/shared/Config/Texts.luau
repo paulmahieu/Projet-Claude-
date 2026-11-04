@@ -4,7 +4,7 @@
 ]]
 
 return {
-	Welcome = "Bienvenue dans ton bastion ! Récolte du bois dans les bosquets pour construire le terrain d'entraînement.",
+	Welcome = "Bienvenue ! Bouton « Mon bastion » pour rejoindre ta base, puis récolte du bois pour construire le terrain d'entraînement.",
 	Loading = "Chargement de ta progression...",
 	LoadError = "Impossible de charger ta progression pour l'instant. Nouvel essai automatique...",
 	GroupRemote = "Ton bastion est ouvert sur un autre serveur. Nouvel essai automatique... (rejoindre ce serveur : prochaine version)",

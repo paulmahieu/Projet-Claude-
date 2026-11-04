@@ -72,12 +72,22 @@ local function makePart(props): Part
 end
 PlotService.makePart = makePart
 
-local function makeBillboard(adornee: BasePart, text: string, offsetY: number, size: Vector2?): TextLabel
+-- Étiquette 3D lisible : toujours au premier plan (jamais cachée par un bâtiment), taille fixe
+-- à l'écran (ne devient pas géante de près) et visible seulement à proximité (pas de fouillis).
+local function makeBillboard(
+	adornee: BasePart,
+	text: string,
+	offsetY: number,
+	size: Vector2?,
+	maxDistance: number?
+): TextLabel
 	local gui = Instance.new("BillboardGui")
 	local s = size or Vector2.new(10, 3)
-	gui.Size = UDim2.fromScale(s.X, s.Y)
+	gui.Size = UDim2.fromOffset(s.X * 17, s.Y * 17)
 	gui.StudsOffsetWorldSpace = Vector3.new(0, offsetY, 0)
-	gui.MaxDistance = 90
+	gui.AlwaysOnTop = true
+	gui.LightInfluence = 0
+	gui.MaxDistance = maxDistance or 70
 	gui.Adornee = adornee
 	gui.Parent = adornee
 
@@ -87,7 +97,7 @@ local function makeBillboard(adornee: BasePart, text: string, offsetY: number, s
 	label.TextScaled = true
 	label.Font = Enum.Font.GothamBold
 	label.TextColor3 = Color3.new(1, 1, 1)
-	label.TextStrokeTransparency = 0.3
+	label.TextStrokeTransparency = 0
 	label.Text = text
 	label.Parent = gui
 	return label
@@ -104,7 +114,7 @@ end
 
 -- Monde --------------------------------------------------------------------------------
 
--- Terrain Roblox : herbe animée, collines à l'horizon, mare. FillBlock/FillBall remplacent
+-- Terrain Roblox : collines à l'horizon. FillBall remplace
 -- seulement les zones concernées (le reste du terrain éventuel n'est pas effacé).
 local function buildTerrain()
 	local terrain = workspace.Terrain
@@ -114,7 +124,8 @@ local function buildTerrain()
 	terrain:SetMaterialColor(Enum.Material.Grass, Color3.fromRGB(104, 160, 82))
 	terrain:SetMaterialColor(Enum.Material.Ground, Color3.fromRGB(122, 98, 70))
 	terrain:SetMaterialColor(Enum.Material.Rock, Color3.fromRGB(128, 126, 122))
-	terrain:FillBlock(CFrame.new(0, -4, 0), Vector3.new(1100, 8, 1100), Enum.Material.Grass)
+	-- Le sol plat est une pièce exacte (Workspace.Ground, dessus à y = 0) : un remplissage de
+	-- terrain remontait au-dessus de 0 et recouvrait le dallage du hub et le pied des objets.
 
 	-- Collines en anneau au-delà des parcelles, en évitant les directions des arènes (0° et 270°).
 	for i = 1, 18 do
@@ -128,10 +139,6 @@ local function buildTerrain()
 			terrain:FillBall(center, radius, if i % 5 == 0 then Enum.Material.Rock else Enum.Material.Grass)
 		end
 	end
-	-- Mare décorative entre deux parcelles.
-	local pond = Vector3.new(math.cos(math.rad(112.5)) * 72, -1.5, math.sin(math.rad(112.5)) * 72)
-	terrain:FillCylinder(CFrame.new(pond), 3, 9, Enum.Material.Water)
-	terrain:FillCylinder(CFrame.new(pond + Vector3.new(0, -2, 0)), 2, 10, Enum.Material.Sand)
 end
 
 local function buildWorld()
@@ -164,7 +171,8 @@ local function buildWorld()
 	spawn.Anchored = true
 	spawn.Neutral = true
 	spawn.Size = Vector3.new(8, 0.2, 8)
-	spawn.Position = Vector3.new(0, 1.95, 0) -- posé sur l'estrade
+	-- Posé sur l'estrade, tourné vers les portails (+Z) ; les œufs sont dans le dos (-Z).
+	spawn.CFrame = CFrame.lookAt(Vector3.new(0, 1.95, 0), Vector3.new(0, 1.95, 10))
 	spawn.Transparency = 1 -- l'estrade décorée tient lieu de point d'apparition
 	spawn.Duration = 0
 	spawn.Parent = world
@@ -456,8 +464,8 @@ function PlotService.init()
 		warn("[PlotService] Éclairage : " .. tostring(err))
 	end
 	buildWorld()
-	-- Le point d'apparition du hub existe : celui de secours ne sert plus. Le sol de secours
-	-- (fichier du projet) reste en place sous le terrain, au cas où le terrain échouerait.
+	-- Le point d'apparition du hub existe : celui de secours ne sert plus. Le sol
+	-- (Workspace.Ground, fichier du projet) existe toujours, même si un script échoue.
 	local safetySpawn = workspace:FindFirstChild("SafetySpawn")
 	if safetySpawn then
 		safetySpawn:Destroy()
