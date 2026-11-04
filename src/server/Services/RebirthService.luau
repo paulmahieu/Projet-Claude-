@@ -49,6 +49,10 @@ function RebirthService.rebirth(player: Player)
 	task.spawn(ProfileService.saveNow, player)
 
 	local mult = Formulas.rebirthMultiplier(profile.Rebirths, Rebirth)
+	Notifier.broadcast(
+		string.format("🔁 %s a fait sa renaissance n°%d !", player.DisplayName, profile.Rebirths),
+		"reward"
+	)
 	Notifier.send(
 		player,
 		string.format("Renaissance %d ! Multiplicateur permanent x%.2f", profile.Rebirths, mult),

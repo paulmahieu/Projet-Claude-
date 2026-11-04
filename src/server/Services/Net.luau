@@ -23,6 +23,7 @@ local RebirthService = require(script.Parent.RebirthService)
 local PetService = require(script.Parent.PetService)
 local BossService = require(script.Parent.BossService)
 local RewardService = require(script.Parent.RewardService)
+local TitleService = require(script.Parent.TitleService)
 local ProfileService = require(script.Parent.ProfileService)
 local Formulas = require(Shared.Formulas)
 local Training = require(Shared.Config.Training)
@@ -65,6 +66,13 @@ local handlers = {
 			pets = PetService.snapshot(player),
 			devTools = MonetizationService.devToolsEnabled(),
 		}
+	end,
+
+	EquipTitle = function(player, p)
+		if not Validate.id(p.Id, 32) then
+			return bad()
+		end
+		return TitleService.equip(player, p.Id)
 	end,
 
 	ClaimDaily = function(player)

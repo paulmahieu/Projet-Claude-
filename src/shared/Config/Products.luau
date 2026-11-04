@@ -163,7 +163,7 @@ return {
 		Name = "Titre : Gardien d'Éther",
 		Description = "Affiche le titre « Gardien d'Éther » au-dessus de ton personnage.",
 		Preview = "Titre",
-		Delivery = { Type = "Title", Title = "Gardien d'Éther" },
-		Ready = false,
+		Delivery = { Type = "Entitlement", Key = "TitleWarden" },
+		Ready = true, -- vérifié par possession du pass ; débloque le titre (Config/Titles)
 	},
 }

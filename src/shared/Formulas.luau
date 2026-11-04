@@ -434,6 +434,33 @@ function Formulas.playtimeReached(tiers, before: number, after: number)
 	return reached
 end
 
+-- Titres -------------------------------------------------------------------------------
+
+-- stats : { Rebirths, BestLevel, Harvests, StreetBest, TrophiesEarned, ForestKills, GolemKills,
+--           Passes = { [Key] = true } }
+function Formulas.titleUnlocked(title, stats): boolean
+	if title.Stat == nil then
+		return true
+	elseif title.Stat == "Pass" then
+		return stats.Passes ~= nil and stats.Passes[title.Value] == true
+	end
+	return (stats[title.Stat] or 0) >= title.Value
+end
+
+-- Titres débloqués, du plus prestigieux au moins prestigieux.
+function Formulas.unlockedTitles(titlesCfg, stats)
+	local list = {}
+	for _, title in titlesCfg do
+		if Formulas.titleUnlocked(title, stats) then
+			table.insert(list, title)
+		end
+	end
+	table.sort(list, function(a, b)
+		return a.Order > b.Order
+	end)
+	return list
+end
+
 -- Champ des champions ------------------------------------------------------------------
 
 -- Rendement dans une zone de farm (par seconde) : base x zone x Concentration x personnel.

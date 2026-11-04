@@ -26,6 +26,7 @@ local Combat = require("../src/shared/Config/Combat")
 local Street = require("../src/shared/Config/Street")
 local Farm = require("../src/shared/Config/Farm")
 local Rewards = require("../src/shared/Config/Rewards")
+local Titles = require("../src/shared/Config/Titles")
 
 local passed, failed = 0, 0
 
@@ -895,6 +896,71 @@ test("récompenses : compagnons existants, valeurs positives", function()
 	for _, tier in Rewards.Playtime do
 		check(tier.Reward)
 	end
+end)
+
+----------------------------------------------------------------------------------------
+print("Titres")
+
+local function baseStats()
+	return {
+		Rebirths = 0,
+		BestLevel = 1,
+		Harvests = 0,
+		StreetBest = 0,
+		TrophiesEarned = 0,
+		ForestKills = 0,
+		GolemKills = 0,
+		Passes = {},
+	}
+end
+
+test("titres : Recrue au départ, déblocages par le travail, ordre de prestige", function()
+	local list = Formulas.unlockedTitles(Titles, baseStats())
+	eq(#list, 1)
+	eq(list[1].Id, "Recruit")
+	local stats = baseStats()
+	stats.Rebirths = 3
+	stats.Harvests = 60
+	local unlocked = Formulas.unlockedTitles(Titles, stats)
+	eq(unlocked[1].Id, "Champion", "le plus prestigieux en premier")
+	for i = 2, #unlocked do
+		assert(unlocked[i - 1].Order >= unlocked[i].Order, "tri par prestige")
+	end
+end)
+
+test("titres : le titre du pass n'est débloqué qu'avec le pass", function()
+	local warden
+	for _, t in Titles do
+		if t.Stat == "Pass" then
+			warden = t
+		end
+	end
+	assert(not Formulas.titleUnlocked(warden, baseStats()), "sans pass")
+	local stats = baseStats()
+	stats.Passes = { [warden.Value] = true }
+	assert(Formulas.titleUnlocked(warden, stats), "avec pass")
+	local found = false
+	for _, item in Products do
+		if item.Key == warden.Value then
+			found = true
+		end
+	end
+	assert(found, "pass présent dans le catalogue")
+end)
+
+test("titres : tous atteignables (renaissances, étapes, boss existants), Id uniques", function()
+	local ids = {}
+	for _, t in Titles do
+		assert(not ids[t.Id], "Id en double " .. t.Id)
+		ids[t.Id] = true
+		assert(t.Hint and t.Hint ~= "", t.Id .. " : condition non expliquée")
+		if t.Stat == "Rebirths" then
+			assert(t.Value <= Rebirth.MaxRebirths, t.Id .. " : renaissances inaccessibles")
+		elseif t.Stat == "BestLevel" then
+			assert(t.Value <= Training.MaxLevel, t.Id .. " : niveau inaccessible")
+		end
+	end
+	assert(Bosses[1].Id == "ForestGuardian" and Bosses[2].Id == "MineGolem", "boss des titres présents")
 end)
 
 print(string.format("\n%d réussi(s), %d échec(s)", passed, failed))

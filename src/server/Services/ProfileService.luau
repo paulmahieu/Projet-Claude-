@@ -184,6 +184,7 @@ function ProfileService.sync(player: Player)
 	if not data then
 		return
 	end
+	data.BestLevel = math.max(data.BestLevel or 1, data.Level) -- statistique durable (titres)
 	player:SetAttribute("Gold", math.floor(data.Gold))
 	player:SetAttribute("Level", data.Level)
 	player:SetAttribute("TrainXp", math.floor(data.TrainXp))

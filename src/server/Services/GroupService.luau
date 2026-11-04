@@ -190,6 +190,12 @@ function GroupService.markChanged(group: Group, structuresChanged: boolean?)
 	if structuresChanged then
 		fire(structuresCallbacks, group)
 	end
+	-- Nom du bastion et nombre de membres, affichés sur la plaque de chaque membre présent.
+	local members = Membership.activeCount(group.Data)
+	for player in group.Online do
+		player:SetAttribute("BastionName", group.Data.Name)
+		player:SetAttribute("BastionSize", members)
+	end
 	if group.PublishQueued then
 		return
 	end
@@ -277,6 +283,7 @@ local function detach(player: Player)
 	end
 	fire(detachedCallbacks, player, group)
 	group.Online[player] = nil
+	player:SetAttribute("BastionName", nil)
 	if next(group.Online) == nil then
 		releaseGroup(group)
 	else

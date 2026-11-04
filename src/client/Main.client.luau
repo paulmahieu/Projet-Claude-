@@ -26,6 +26,7 @@ local Texts = require(Shared.Config.Texts)
 local Pets = require(Shared.Config.Pets)
 local Rebirth = require(Shared.Config.Rebirth)
 local Rewards = require(Shared.Config.Rewards)
+local Titles = require(Shared.Config.Titles)
 local Ui = require(script.Parent.Ui)
 local Effects = require(script.Parent.Effects)
 local PetFollowers = require(script.Parent.PetFollowers)
@@ -90,7 +91,7 @@ DiagnosticsUi.start(gui)
 
 local currencies = Ui.create("Frame", {
 	AnchorPoint = Vector2.new(0, 0),
-	Position = UDim2.new(0, 10, 0, 238),
+	Position = UDim2.new(0, 10, 0, 314),
 	Size = UDim2.fromOffset(170, 64),
 	BackgroundTransparency = 1,
 	Parent = gui,
@@ -1089,12 +1090,43 @@ local function renderRewards()
 	end
 end
 
+-- Onglet Titres : récompenses de prestige visibles par tous au-dessus du personnage
+local function renderTitles()
+	local unlocked = {}
+	for id in string.gmatch(tostring(player:GetAttribute("TitlesUnlocked") or ""), "[^,]+") do
+		unlocked[id] = true
+	end
+	local equipped = player:GetAttribute("Title")
+	heading("Titres : affichés au-dessus de ton personnage, visibles par tous")
+	local sorted = table.clone(Titles)
+	table.sort(sorted, function(a, b)
+		return a.Order < b.Order
+	end)
+	for _, title in sorted do
+		local r = row(54)
+		local isUnlocked = unlocked[title.Id] == true
+		local color = Color3.fromRGB(title.Color[1], title.Color[2], title.Color[3])
+		r.BackgroundColor3 = if title.Id == equipped then C.Row:Lerp(color, 0.35) else C.Row
+		rowText(r, (if isUnlocked then "" else "🔒 ") .. "« " .. title.Name .. " »", title.Hint, 130)
+		if title.Id == equipped then
+			rightButton(r, "Équipé", C.Disabled, 1, nil)
+		elseif isUnlocked then
+			rightButton(r, "Équiper", C.Free, 1, function()
+				request("EquipTitle", { Id = title.Id })
+			end)
+		else
+			rightButton(r, "Verrouillé", C.Disabled, 1, nil)
+		end
+	end
+end
+
 local TABS = {
 	{ Id = "Group", Label = "Groupe", Render = renderGroup },
 	{ Id = "Pets", Label = "Compagnons", Render = renderPets },
 	{ Id = "Upgrades", Label = "Arbre", Render = renderUpgrades },
 	{ Id = "Rebirth", Label = "Renaissance", Render = renderRebirth },
 	{ Id = "Rewards", Label = "Cadeaux", Render = renderRewards },
+	{ Id = "Titles", Label = "Titres", Render = renderTitles },
 	{ Id = "Shop", Label = "Boutique", Render = renderShop },
 }
 
@@ -1345,7 +1377,7 @@ end)
 -- (amélioration achetable, compagnon à équiper, renaissance possible, cadeau prêt).
 local iconColumn = Ui.create("Frame", {
 	Position = UDim2.fromOffset(10, 10),
-	Size = UDim2.fromOffset(160, 222),
+	Size = UDim2.fromOffset(160, 298),
 	BackgroundTransparency = 1,
 	Parent = gui,
 })
@@ -1362,6 +1394,7 @@ local ICONS = {
 	{ Tab = "Rebirth", Icon = "🔁", Label = "Renaissance", Color = Color3.fromRGB(210, 60, 70) },
 	{ Tab = "Rewards", Icon = "🎁", Label = "Cadeaux", Color = Color3.fromRGB(240, 120, 40) },
 	{ Tab = "Group", Icon = "🏰", Label = "Groupe", Color = Color3.fromRGB(60, 110, 200) },
+	{ Tab = "Titles", Icon = "🎖", Label = "Titres", Color = Color3.fromRGB(200, 160, 60) },
 }
 local badges = {}
 for i, entry in ICONS do
@@ -1471,6 +1504,13 @@ giftPanel.Activated:Connect(function()
 	currentTab = "Rewards"
 	setMenu(true)
 end)
+for _, name in { "Title", "TitlesUnlocked" } do
+	player:GetAttributeChangedSignal(name):Connect(function()
+		if menuOpen and currentTab == "Titles" then
+			renderTab()
+		end
+	end)
+end
 for _, name in { "DailyDay", "DailyClaimable", "PlaySeconds" } do
 	player:GetAttributeChangedSignal(name):Connect(function()
 		if menuOpen and currentTab == "Rewards" then

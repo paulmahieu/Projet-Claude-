@@ -1,0 +1,120 @@
+--[[
+	Titres affichés au-dessus du personnage : récompensent le travail du joueur.
+	Chaque titre a une condition claire et atteignable, calculée sur des statistiques
+	DURABLES (qui ne disparaissent pas à la renaissance). Order = prestige (le plus élevé
+	débloqué est équipé automatiquement ; le joueur peut en choisir un autre). Module pur.
+
+	Stat : Rebirths, BestLevel, Harvests, StreetBest, TrophiesEarned, ForestKills, GolemKills,
+	       Pass (titre lié à un pass de la boutique).
+]]
+
+return {
+	{
+		Id = "Recruit",
+		Name = "Recrue",
+		Color = { 200, 200, 200 },
+		Order = 1,
+		Stat = nil,
+		Value = 0,
+		Hint = "Dès le départ",
+	},
+	{
+		Id = "Woodcutter",
+		Name = "Bûcheron",
+		Color = { 170, 120, 70 },
+		Order = 2,
+		Stat = "Harvests",
+		Value = 50,
+		Hint = "Récolter 50 fois",
+	},
+	{
+		Id = "Squire",
+		Name = "Écuyer",
+		Color = { 130, 200, 130 },
+		Order = 3,
+		Stat = "BestLevel",
+		Value = 10,
+		Hint = "Atteindre le niveau 10",
+	},
+	{
+		Id = "Hunter",
+		Name = "Chasseur",
+		Color = { 110, 190, 110 },
+		Order = 4,
+		Stat = "StreetBest",
+		Value = 10,
+		Hint = "Étape 10 de la Rue des boss",
+	},
+	{
+		Id = "Knight",
+		Name = "Chevalier",
+		Color = { 120, 170, 255 },
+		Order = 5,
+		Stat = "Rebirths",
+		Value = 1,
+		Hint = "1 renaissance",
+	},
+	{
+		Id = "Slayer",
+		Name = "Pourfendeur",
+		Color = { 255, 150, 80 },
+		Order = 6,
+		Stat = "ForestKills",
+		Value = 1,
+		Hint = "Vaincre le Gardien sylvestre",
+	},
+	{
+		Id = "Paladin",
+		Name = "Paladin",
+		Color = { 255, 230, 140 },
+		Order = 7,
+		Stat = "StreetBest",
+		Value = 25,
+		Hint = "Étape 25 de la Rue des boss",
+	},
+	{
+		Id = "Champion",
+		Name = "Champion",
+		Color = { 255, 200, 60 },
+		Order = 8,
+		Stat = "Rebirths",
+		Value = 3,
+		Hint = "3 renaissances",
+	},
+	{
+		Id = "GiantSlayer",
+		Name = "Tueur de géants",
+		Color = { 255, 110, 90 },
+		Order = 9,
+		Stat = "GolemKills",
+		Value = 1,
+		Hint = "Vaincre le Golem des profondeurs",
+	},
+	{
+		Id = "Lord",
+		Name = "Seigneur",
+		Color = { 200, 140, 255 },
+		Order = 10,
+		Stat = "TrophiesEarned",
+		Value = 5000,
+		Hint = "Gagner 5 000 trophées",
+	},
+	{
+		Id = "Hero",
+		Name = "Héros du royaume",
+		Color = { 255, 90, 160 },
+		Order = 11,
+		Stat = "Rebirths",
+		Value = 10,
+		Hint = "10 renaissances",
+	},
+	{
+		Id = "Warden",
+		Name = "Gardien d'Éther",
+		Color = { 110, 220, 255 },
+		Order = 0,
+		Stat = "Pass",
+		Value = "TitleWarden",
+		Hint = "Pass de la boutique",
+	},
+}

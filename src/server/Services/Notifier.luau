@@ -14,4 +14,9 @@ function Notifier.send(player: Player, text: string, kind: string?)
 	end
 end
 
+-- Annonce à tous les joueurs du serveur (exploits : titre, renaissance, boss vaincu).
+function Notifier.broadcast(text: string, kind: string?)
+	NotifyRemote:FireAllClients(text, kind or "info")
+end
+
 return Notifier

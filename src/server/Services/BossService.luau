@@ -190,6 +190,16 @@ end
 local function grantRewards(arena: Arena)
 	local def = arena.Def
 	local valid = Formulas.validParticipants(arena.Damage, arena.MaxHp, def.ParticipationRatio)
+	local names = {}
+	for _, userId in valid do
+		local p = Players:GetPlayerByUserId(userId)
+		if p then
+			table.insert(names, p.DisplayName)
+		end
+	end
+	if #names > 0 then
+		Notifier.broadcast(string.format("⚔ %s : %s vaincu !", table.concat(names, ", "), def.Name), "reward")
+	end
 	local rewardedGroups = {}
 	for _, userId in valid do
 		local player = Players:GetPlayerByUserId(userId)
