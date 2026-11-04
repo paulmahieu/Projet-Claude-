@@ -24,6 +24,7 @@ local Upgrades = require(Shared.Config.Upgrades)
 local Products = require(Shared.Config.Products)
 local Texts = require(Shared.Config.Texts)
 local Ui = require(script.Parent.Ui)
+local Effects = require(script.Parent.Effects)
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local Request = Remotes:WaitForChild("Request") :: RemoteFunction
@@ -683,6 +684,7 @@ for _, name in { "Upg_Focus", "Upg_Toughness", "Gold" } do
 	end)
 end
 
+Effects.start()
 refreshHud()
 task.spawn(function()
 	local ok, res = pcall(function()
