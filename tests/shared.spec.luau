@@ -579,7 +579,10 @@ test("arènes : hors des parcelles, portails au hub, attaques valides", function
 		local d = math.sqrt(boss.Arena[1] ^ 2 + boss.Arena[2] ^ 2)
 		assert(d - boss.ArenaRadius > plotOuter, boss.Id .. " : arène trop proche des parcelles")
 		assert(d + boss.ArenaRadius < 512, boss.Id .. " : arène hors du sol")
-		assert(math.sqrt(boss.Portal[1] ^ 2 + boss.Portal[2] ^ 2) < 28, boss.Id .. " : portail hors du hub")
+		assert(
+			math.sqrt(boss.Portal[1] ^ 2 + boss.Portal[2] ^ 2) < Game.CourtyardApothem - 10,
+			boss.Id .. " : portail hors de la cour royale"
+		)
 		for _, attack in boss.Attacks do
 			assert(attack.Telegraph >= 1, boss.Id .. " : attaque non annoncée assez tôt")
 		end
@@ -640,7 +643,7 @@ test("rue : dans le ciel, au-dessus des arènes et de la carte", function()
 		assert(Street.Origin[2] - 0 > 60, "hors de la hauteur des arènes " .. boss.Id)
 	end
 	local portal = math.sqrt(Street.Portal[1] ^ 2 + Street.Portal[2] ^ 2)
-	assert(portal < 28, "portail de la rue dans le hub")
+	assert(portal < Game.CourtyardApothem - 10, "portail de la rue dans la cour royale")
 	for _, boss in Bosses do
 		local dx, dz = Street.Portal[1] - boss.Portal[1], Street.Portal[2] - boss.Portal[2]
 		assert(math.sqrt(dx * dx + dz * dz) >= 10, "portails trop proches")
@@ -709,7 +712,7 @@ test("zones sans chevauchement et lieux séparés (île, rue, arènes, hub)", fu
 		assert(math.abs(xi) + half < 92, "zone hors de l'île")
 	end
 	assert(math.abs(Farm.Origin[2] - Street.Origin[2]) > 60, "île et rue à des hauteurs différentes")
-	assert(math.sqrt(Farm.Portal[1] ^ 2 + Farm.Portal[2] ^ 2) < 28, "portail dans le hub")
+	assert(math.sqrt(Farm.Portal[1] ^ 2 + Farm.Portal[2] ^ 2) < Game.CourtyardApothem - 10, "portail dans la cour")
 	for _, egg in Pets.Eggs do
 		local dx, dz = Farm.Portal[1] - egg.Position[1], Farm.Portal[2] - egg.Position[2]
 		assert(math.sqrt(dx * dx + dz * dz) >= 7, "portail trop proche de " .. egg.Id)
@@ -785,6 +788,38 @@ test("chance : favorise Rare et plus, probabilités toujours = 100 %", function(
 	end
 	near(total, 1)
 	eq(Formulas.trophies(10, 0.25), 13)
+end)
+
+----------------------------------------------------------------------------------------
+print("Cour royale")
+
+test("cour royale : portails espacés, devant le donjon ; œufs dans la cour ; portes alignées", function()
+	local portals = { Street.Portal, Farm.Portal }
+	for _, boss in Bosses do
+		table.insert(portals, boss.Portal)
+	end
+	for i = 1, #portals do
+		for j = i + 1, #portals do
+			local dx, dz = portals[i][1] - portals[j][1], portals[i][2] - portals[j][2]
+			assert(math.sqrt(dx * dx + dz * dz) >= 12.5, "portails qui se chevauchent")
+		end
+		assert(portals[i][2] + 2.8 < Game.CourtyardApothem - 7 - 7 - 3, "portail contre les marches du donjon")
+	end
+	for _, egg in Pets.Eggs do
+		assert(
+			math.sqrt(egg.Position[1] ^ 2 + egg.Position[2] ^ 2) < Game.CourtyardApothem - 8,
+			egg.Id .. " hors de la cour"
+		)
+	end
+	-- Les portes donnent sur les allées des parcelles (angles multiples de 360 / PlotCount).
+	for _, g in Game.GateAngles do
+		eq(g % (360 / Game.PlotCount), 0, "porte alignée sur une allée de parcelle")
+	end
+	assert(
+		Game.RingRoadRadius - Game.RingRoadWidth / 2 > Game.CourtyardApothem + Game.WallThickness + 5,
+		"route hors des remparts"
+	)
+	assert(Game.RingRoadRadius + Game.RingRoadWidth / 2 < Harvest.RingRadius - 12, "route avant les bosquets")
 end)
 
 print(string.format("\n%d réussi(s), %d échec(s)", passed, failed))

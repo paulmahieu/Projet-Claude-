@@ -13,6 +13,15 @@ return {
 	PlotSize = 90,
 	PlotRingRadius = 200,
 
+	-- Cour royale (point d'apparition) : enceinte octogonale fermée par des remparts.
+	CourtyardApothem = 54, -- distance du centre à la face intérieure des remparts
+	WallHeight = 15,
+	WallThickness = 4,
+	GateAngles = { 0, 180, 270 }, -- portes : est, ouest, sud (le donjon occupe le nord)
+	GateWidth = 12,
+	RingRoadRadius = 72, -- route pavée qui fait le tour du château
+	RingRoadWidth = 10,
+
 	MaxGroupSize = 4,
 	InviteSeconds = 90,
 

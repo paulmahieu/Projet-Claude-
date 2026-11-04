@@ -104,7 +104,7 @@ return {
 			Name = "Œuf de la forêt",
 			Cost = 150,
 			Color = { 140, 200, 110 },
-			Position = { -9, -16 },
+			Position = { -7.5, -20.7 },
 			Weights = { Sprout = 45, Hare = 35, RuneWolf = 15, Owl = 5 },
 		},
 		{
@@ -112,7 +112,7 @@ return {
 			Name = "Œuf des ruines",
 			Cost = 1500,
 			Color = { 170, 140, 220 },
-			Position = { 9, -16 },
+			Position = { 7.5, -20.7 },
 			Weights = { Hare = 30, RuneWolf = 30, Owl = 22, LittleGolem = 12, LightWisp = 6 },
 		},
 		{
@@ -120,7 +120,7 @@ return {
 			Name = "Œuf d'Éther",
 			Cost = 15000,
 			Color = { 110, 210, 255 },
-			Position = { 0, -18 },
+			Position = { 0, -22 },
 			Weights = { LittleGolem = 40, LightWisp = 33, CrystalFox = 17, EmberDrake = 9, EtherPhoenix = 1 },
 		},
 	},

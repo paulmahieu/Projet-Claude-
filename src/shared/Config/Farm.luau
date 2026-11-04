@@ -7,7 +7,7 @@
 
 return {
 	Origin = { 0, 300, -260 }, -- île suspendue (aucun conflit avec la carte ni la Rue des boss)
-	Portal = { 0, -26 }, -- portail au hub
+	Portal = { 18.5, 28.5 }, -- portail dans la cour royale, devant le donjon
 	ZoneSize = 22,
 	Gap = 6,
 	Columns = 6,

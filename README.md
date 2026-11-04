@@ -69,7 +69,7 @@ Le code vit dans `src/` (fichiers texte versionnés). **Rojo** le synchronise en
 
 | # | Action | Attendu |
 |---|---|---|
-| 1 | Play | Tu apparais au **point d'accueil** pavé, face aux portails, les œufs dans le dos. Bouton **Mon bastion** (en bas à droite) : téléportation à l'entrée de ta parcelle « Bastion de *Toi* ». Panneau gauche : or, niveau, Puissance, objectif. Panneau droit : matériaux du groupe. |
+| 1 | Play | Tu apparais au centre de la **cour royale**, dans un château fermé par des remparts : portails devant le donjon (nord), œufs au sud. Sors par une **porte fortifiée** (est, ouest ou sud) et suis la route pavée pour rejoindre les bastions et les bosquets, ou utilise le bouton **Mon bastion**. |
 | 2 | Aller au bosquet (arbres entre les parcelles), maintenir **E** (manette : X, tactile : toucher) | « +3 Bois pour le bastion ». L'arbre devient transparent puis repousse (25 s). |
 | 3 | Récolter 10 bois, revenir, socle **vert** « Terrain d'entraînement », maintenir E | Construction immédiate, 2 tapis apparaissent, « Bastion niv. 2 ». Les autres socles affichent coût, effet et « Requiert ». |
 | 4 | Sur un tapis : E | Placement sur le tapis, bandeau « Entraînement · +4 XP/s · +1 or/s », XP et or montent. |

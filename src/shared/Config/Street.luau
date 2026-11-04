@@ -11,7 +11,7 @@ return {
 	Sections = 10,
 	SectionLength = 40,
 	Width = 26,
-	Portal = { 0, 24 }, -- portail au hub
+	Portal = { 6.5, 33.4 }, -- portail dans la cour royale, devant le donjon
 
 	-- Ennemis par vague : Base + floor(étape / PerStages), plafonné.
 	WaveBase = 3,

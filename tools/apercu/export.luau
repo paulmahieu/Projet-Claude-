@@ -52,7 +52,30 @@ end
 local scene = process.args[2] or "base"
 local function at(x, z) return roblox.CFrame.new(x, 0, z) end
 local V = roblox.Vector3.new
-if scene == "hub" then
+if scene == "castle" then
+	local GameCfg = loadData("/src/shared/Config/Game.luau", "Game")
+	local BossesCfg2 = loadData("/src/shared/Config/Bosses.luau", "Bosses")
+	local StreetCfg = loadData("/src/shared/Config/Street.luau", "Street")
+	local FarmCfg = loadData("/src/shared/Config/Farm.luau", "Farm")
+	local holder = roblox.Instance.new("Model")
+	Models.castle(holder, GameCfg)
+	Models.hubPlaza(holder, 28)
+	Models.hubDecor(holder, 28)
+	dump(holder)
+	local function lookCenter(pos)
+		return roblox.CFrame.lookAt(V(pos[1], 1, pos[2]), V(0, 1, 0))
+	end
+	local colors = { roblox.Color3.fromRGB(90, 170, 70), roblox.Color3.fromRGB(120, 210, 255) }
+	for i, boss in BossesCfg2 do
+		dump((Models.portal(lookCenter(boss.Portal), colors[i])))
+	end
+	dump((Models.portal(lookCenter(StreetCfg.Portal), roblox.Color3.fromRGB(220, 70, 70))))
+	dump((Models.portal(lookCenter(FarmCfg.Portal), roblox.Color3.fromRGB(110, 210, 255))))
+	for _, egg in PetsCfg.Eggs do
+		local c = egg.Color
+		dump((Models.eggStand(lookCenter(egg.Position), roblox.Color3.fromRGB(c[1], c[2], c[3]))))
+	end
+elseif scene == "hub" then
 	local holder = roblox.Instance.new("Model")
 	-- disque du hub (joints)
 	local hub = roblox.Instance.new("Part")

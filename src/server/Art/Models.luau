@@ -1727,47 +1727,9 @@ function Models.portal(base: CFrame, color: Color3): (Model, BasePart)
 	return m, veil
 end
 
--- Point d'accueil : dallage en damier à joints visibles, estrade d'apparition à anneau
--- d'or et cercle runique, bordure de marbre. `parent` au sol (dessus du disque du hub à y = 1).
-function Models.hubPlaza(parent: Instance, radius: number)
-	local tile = 5.6
-	local n = math.floor(radius * 2 / tile)
-	local start = -n * tile / 2 + tile / 2
-	for ix = 0, n - 1 do
-		for iz = 0, n - 1 do
-			local x, z = start + ix * tile, start + iz * tile
-			if math.sqrt(x * x + z * z) + tile * 0.72 <= radius - 1 then
-				local light = (ix + iz) % 2 == 0
-				local shade = if light then Color3.fromRGB(196, 196, 204) else Color3.fromRGB(168, 170, 182)
-				part(
-					parent,
-					"Tile",
-					Vector3.new(tile - 0.35, 0.16, tile - 0.35),
-					CFrame.new(x, 1.08, z),
-					shade,
-					Enum.Material.Slate
-				)
-			end
-		end
-	end
-	-- Bordure de marbre et filet d'or en anneau (segments)
-	local segments = 28
-	for k = 1, segments do
-		local a = (k / segments) * math.pi * 2
-		local len = 2 * math.pi * radius / segments * 1.02
-		local cf = CFrame.new(math.cos(a) * (radius - 0.6), 1.25, math.sin(a) * (radius - 0.6))
-			* CFrame.Angles(0, -a + math.pi / 2, 0)
-		part(parent, "Curb", Vector3.new(len, 0.5, 1.2), cf, MARBLE, Enum.Material.Marble)
-		part(
-			parent,
-			"CurbTrim",
-			Vector3.new(len, 0.1, 0.25),
-			cf * CFrame.new(0, 0.3, -0.35),
-			GOLD,
-			Enum.Material.Metal,
-			{ NoShadow = true }
-		)
-	end
+-- Estrade d'apparition au centre de la cour : trois degrés, anneau d'or, cercle runique.
+function Models.hubPlaza(parent: Instance, _radius: number)
+	-- Le sol pavé et l'enceinte sont construits par Models.castle ; ici, l'estrade centrale.
 	-- Estrade d'apparition à trois degrés
 	column(parent, "Dais1", 0.35, 15, CFrame.new(0, 1, 0), MARBLE_SHADE, Enum.Material.Marble)
 	column(parent, "Dais2", 0.35, 12, CFrame.new(0, 1.35, 0), MARBLE, Enum.Material.Marble)
@@ -2649,6 +2611,594 @@ function Models.leaderboard(base: CFrame, title: string, accent: Color3, parent:
 		)
 	end
 	return titleLabel, rows
+end
+
+-- Cour royale ------------------------------------------------------------------------------
+
+local WALL_STONE = Color3.fromRGB(150, 146, 136)
+local WALL_DARK = Color3.fromRGB(118, 114, 106)
+local WALL_LIGHT = Color3.fromRGB(184, 178, 166)
+local PAVING = Color3.fromRGB(158, 150, 138)
+local ROYAL_BLUE = Color3.fromRGB(40, 70, 150)
+
+-- Tour ronde crénelée à toit conique (étages) et drapeau facultatif. `base` au sol.
+local function roundTower(parent, base: CFrame, d: number, h: number, flag: boolean)
+	column(parent, "TowerBase", 1.5, d + 1.4, base, WALL_DARK, Enum.Material.Cobblestone)
+	column(parent, "Tower", h, d, base, WALL_STONE, Enum.Material.Cobblestone)
+	column(parent, "TowerBand", 0.8, d + 0.6, base * CFrame.new(0, h * 0.55, 0), WALL_LIGHT, Enum.Material.Slate)
+	column(parent, "TowerTop", 1.2, d + 1.6, base * CFrame.new(0, h, 0), WALL_LIGHT, Enum.Material.Slate)
+	local merlons = 10
+	for k = 1, merlons do
+		local a = (k / merlons) * math.pi * 2
+		part(
+			parent,
+			"TowerMerlon",
+			Vector3.new(1.6, 1.6, 1.2),
+			base
+				* CFrame.new(math.cos(a) * (d / 2 + 0.4), h + 2, math.sin(a) * (d / 2 + 0.4))
+				* CFrame.Angles(0, -a + math.pi / 2, 0),
+			WALL_STONE,
+			Enum.Material.Cobblestone
+		)
+	end
+	for k = 0, 3 do
+		local a = k * math.pi / 2 + math.pi / 4
+		part(
+			parent,
+			"Slit",
+			Vector3.new(0.5, 2, 0.4),
+			base
+				* CFrame.new(math.cos(a) * d / 2, h * 0.75, math.sin(a) * d / 2)
+				* CFrame.Angles(0, -a + math.pi / 2, 0),
+			Color3.fromRGB(28, 24, 22),
+			Enum.Material.SmoothPlastic,
+			{
+				NoShadow = true,
+			}
+		)
+	end
+	local roofY = h + 1.2
+	for k, scale in { 1, 0.8, 0.6, 0.4, 0.22 } do
+		column(
+			parent,
+			"TowerRoof",
+			1.6,
+			(d + 1) * scale,
+			base * CFrame.new(0, roofY + (k - 1) * 1.5, 0),
+			if k % 2 == 0 then C.RoofDark else C.Roof,
+			Enum.Material.Slate
+		)
+	end
+	if flag then
+		local top = base * CFrame.new(0, roofY + 7.5, 0)
+		column(parent, "FlagPole", 4, 0.25, top, C.WoodDark, Enum.Material.Wood)
+		part(
+			parent,
+			"Flag",
+			Vector3.new(0.1, 1.6, 2.8),
+			top * CFrame.new(0, 3.2, 1.4),
+			ROYAL_BLUE,
+			Enum.Material.Fabric,
+			{ CanCollide = false }
+		)
+		part(
+			parent,
+			"FlagStripe",
+			Vector3.new(0.12, 0.3, 2.8),
+			top * CFrame.new(0, 3.2, 1.4),
+			GOLD,
+			Enum.Material.Fabric,
+			{
+				CanCollide = false,
+				NoShadow = true,
+			}
+		)
+	end
+end
+
+-- Pan de rempart droit entre deux points (au sol), avec créneaux côté extérieur, chemin de
+-- ronde côté intérieur, torche et bannière facultatives. `frame` : -Z vers la cour.
+local function wallSegment(parent, frame: CFrame, length: number, cfg, decorate: boolean)
+	local h, t = cfg.WallHeight, cfg.WallThickness
+	part(
+		parent,
+		"WallFooting",
+		Vector3.new(length, 1.2, t + 1.2),
+		frame * CFrame.new(0, 0.6, 0),
+		WALL_DARK,
+		Enum.Material.Cobblestone
+	)
+	part(
+		parent,
+		"Wall",
+		Vector3.new(length, h, t),
+		frame * CFrame.new(0, h / 2, 0),
+		WALL_STONE,
+		Enum.Material.Cobblestone
+	)
+	part(
+		parent,
+		"WallCap",
+		Vector3.new(length, 0.6, t + 0.6),
+		frame * CFrame.new(0, h + 0.3, 0),
+		WALL_LIGHT,
+		Enum.Material.Slate
+	)
+	part(
+		parent,
+		"StringCourse",
+		Vector3.new(length, 0.5, t + 0.4),
+		frame * CFrame.new(0, h * 0.6, 0),
+		WALL_LIGHT,
+		Enum.Material.Slate
+	)
+	local count = math.max(1, math.floor(length / 3.2))
+	for k = 0, count - 1 do
+		local x = -length / 2 + (k + 0.5) * (length / count)
+		if k % 2 == 0 then
+			part(
+				parent,
+				"Merlon",
+				Vector3.new(length / count * 0.95, 1.8, 1.2),
+				frame * CFrame.new(x, h + 1.5, t / 2 - 0.6),
+				WALL_STONE,
+				Enum.Material.Cobblestone
+			)
+		end
+	end
+	if decorate then
+		-- Torche murale et grande bannière royale côté cour
+		local torch = frame * CFrame.new(-length * 0.25, h * 0.45, -t / 2 - 0.4)
+		part(parent, "Sconce", Vector3.new(0.5, 1.2, 0.6), torch, C.WoodDark, Enum.Material.Wood)
+		local flame = part(
+			parent,
+			"Flame",
+			Vector3.new(0.7, 0.9, 0.7),
+			torch * CFrame.new(0, 1, 0),
+			Color3.fromRGB(255, 160, 70),
+			Enum.Material.Neon,
+			{
+				CanCollide = false,
+				NoShadow = true,
+			}
+		)
+		local light = Instance.new("PointLight")
+		light.Color = Color3.fromRGB(255, 170, 90)
+		light.Range = 14
+		light.Parent = flame
+		local banner = frame * CFrame.new(length * 0.2, h * 0.58, -t / 2 - 0.15)
+		part(
+			parent,
+			"BannerRod",
+			Vector3.new(4.4, 0.3, 0.3),
+			banner * CFrame.new(0, 3.2, 0),
+			C.WoodDark,
+			Enum.Material.Wood
+		)
+		part(
+			parent,
+			"Banner",
+			Vector3.new(3.6, 6, 0.1),
+			banner,
+			ROYAL_BLUE,
+			Enum.Material.Fabric,
+			{ CanCollide = false }
+		)
+		part(
+			parent,
+			"BannerTrim",
+			Vector3.new(3.6, 0.35, 0.12),
+			banner * CFrame.new(0, -2.9, 0),
+			GOLD,
+			Enum.Material.Fabric,
+			{
+				CanCollide = false,
+				NoShadow = true,
+			}
+		)
+		part(
+			parent,
+			"BannerCrest",
+			Vector3.new(1.4, 1.4, 0.14),
+			banner * CFrame.new(0, 0.6, 0) * CFrame.Angles(0, 0, math.rad(45)),
+			GOLD,
+			Enum.Material.Metal,
+			{
+				CanCollide = false,
+				NoShadow = true,
+			}
+		)
+	end
+end
+
+-- Porte fortifiée : ouverture, arc de claveaux, herse relevée, vantaux ouverts, étage de garde
+-- crénelé. `frame` au centre de l'ouverture, -Z vers la cour.
+local function gatehouse(parent, frame: CFrame, cfg)
+	local h, t, w = cfg.WallHeight, cfg.WallThickness, cfg.GateWidth
+	local depth = t + 3
+	for _, side in { -1, 1 } do
+		-- Piédroits massifs de part et d'autre
+		part(
+			parent,
+			"GatePier",
+			Vector3.new(3, h + 5, depth),
+			frame * CFrame.new(side * (w / 2 + 1.5), (h + 5) / 2, 0),
+			WALL_DARK,
+			Enum.Material.Cobblestone
+		)
+		part(
+			parent,
+			"GatePierCap",
+			Vector3.new(3.6, 0.8, depth + 0.6),
+			frame * CFrame.new(side * (w / 2 + 1.5), h + 5.4, 0),
+			WALL_LIGHT,
+			Enum.Material.Slate
+		)
+		-- Vantail en bois ouvert vers la cour
+		local hinge = frame * CFrame.new(side * w / 2, 0, -depth / 2)
+		part(
+			parent,
+			"GateDoor",
+			Vector3.new(w / 2 - 0.2, 10, 0.5),
+			hinge * CFrame.Angles(0, math.rad(side * -75), 0) * CFrame.new(-side * (w / 4), 5, 0),
+			C.Wood,
+			Enum.Material.WoodPlanks
+		)
+		for _, y in { 2, 8 } do
+			part(
+				parent,
+				"DoorBand",
+				Vector3.new(w / 2 - 0.4, 0.4, 0.6),
+				hinge * CFrame.Angles(0, math.rad(side * -75), 0) * CFrame.new(-side * (w / 4), y, 0),
+				C.Metal,
+				Enum.Material.Metal,
+				{
+					NoShadow = true,
+				}
+			)
+		end
+	end
+	-- Linteau, arc et étage de garde au-dessus du passage
+	part(
+		parent,
+		"GateLintel",
+		Vector3.new(w, 4, depth),
+		frame * CFrame.new(0, h - 1, 0),
+		WALL_STONE,
+		Enum.Material.Cobblestone
+	)
+	part(
+		parent,
+		"GateUpper",
+		Vector3.new(w + 6, 5, depth),
+		frame * CFrame.new(0, h + 2.5, 0),
+		WALL_STONE,
+		Enum.Material.Cobblestone
+	)
+	for k = -3, 3 do
+		if k % 2 ~= 0 then
+			part(
+				parent,
+				"GateMerlon",
+				Vector3.new(2, 1.8, depth),
+				frame * CFrame.new(k * 2.5, h + 5.9, 0),
+				WALL_STONE,
+				Enum.Material.Cobblestone
+			)
+		end
+	end
+	for _, z in { -depth / 2 - 0.05, depth / 2 + 0.05 } do
+		arch(
+			parent,
+			frame * CFrame.new(0, h - 3 - w / 2 + 0.6, z),
+			w / 2 - 0.3,
+			1.2,
+			0.5,
+			11,
+			WALL_LIGHT,
+			Enum.Material.Slate
+		)
+	end
+	-- Herse relevée (dents de fer visibles sous le linteau)
+	for k = -5, 5 do
+		part(
+			parent,
+			"Portcullis",
+			Vector3.new(0.3, 2.4, 0.3),
+			frame * CFrame.new(k * (w / 11), h - 4, 0),
+			Color3.fromRGB(60, 60, 66),
+			Enum.Material.Metal,
+			{
+				NoShadow = true,
+			}
+		)
+	end
+	part(
+		parent,
+		"PortcullisBar",
+		Vector3.new(w, 0.3, 0.3),
+		frame * CFrame.new(0, h - 3.2, 0),
+		Color3.fromRGB(60, 60, 66),
+		Enum.Material.Metal,
+		{ NoShadow = true }
+	)
+	-- Blason au-dessus de la porte, côté extérieur
+	local crest = frame * CFrame.new(0, h + 2.6, depth / 2 + 0.1)
+	part(parent, "Crest", Vector3.new(2.6, 3, 0.3), crest, ROYAL_BLUE, Enum.Material.SmoothPlastic)
+	part(
+		parent,
+		"CrestGem",
+		Vector3.new(1.2, 1.2, 0.35),
+		crest * CFrame.Angles(0, 0, math.rad(45)),
+		GOLD,
+		Enum.Material.Metal,
+		{ NoShadow = true }
+	)
+end
+
+-- Donjon royal : corps de pierre, tourelles d'angle, fenêtres, grande porte, tour centrale.
+-- `base` au sol, -Z = façade (vers la cour).
+local function royalKeep(parent, base: CFrame)
+	local w, d, h = 30, 14, 22
+	part(
+		parent,
+		"KeepPlinth",
+		Vector3.new(w + 2, 1.4, d + 2),
+		base * CFrame.new(0, 0.7, 0),
+		WALL_DARK,
+		Enum.Material.Cobblestone
+	)
+	part(parent, "Keep", Vector3.new(w, h, d), base * CFrame.new(0, h / 2, 0), WALL_STONE, Enum.Material.Cobblestone)
+	part(
+		parent,
+		"KeepBand",
+		Vector3.new(w + 0.6, 0.6, d + 0.6),
+		base * CFrame.new(0, h * 0.5, 0),
+		WALL_LIGHT,
+		Enum.Material.Slate
+	)
+	part(
+		parent,
+		"KeepCap",
+		Vector3.new(w + 1, 0.8, d + 1),
+		base * CFrame.new(0, h + 0.4, 0),
+		WALL_LIGHT,
+		Enum.Material.Slate
+	)
+	for k = -6, 6 do
+		if k % 2 == 0 then
+			part(
+				parent,
+				"KeepMerlon",
+				Vector3.new(2, 1.8, 1.2),
+				base * CFrame.new(k * 2.2, h + 1.7, -d / 2),
+				WALL_STONE,
+				Enum.Material.Cobblestone
+			)
+		end
+	end
+	-- Tourelles d'angle
+	for _, cx in { -1, 1 } do
+		for _, cz in { -1, 1 } do
+			roundTower(parent, base * CFrame.new(cx * w / 2, 0, cz * d / 2), 5, h + 4, false)
+		end
+	end
+	-- Grande porte en arc, dorée, et escalier
+	local door = base * CFrame.new(0, 1.4, -d / 2 - 0.1)
+	part(parent, "KeepDoor", Vector3.new(6, 8, 0.4), door * CFrame.new(0, 4, 0), C.Wood, Enum.Material.WoodPlanks)
+	part(parent, "KeepDoorFrame", Vector3.new(7.4, 9, 0.3), door * CFrame.new(0, 4.4, 0.15), GOLD, Enum.Material.Metal)
+	arch(parent, door * CFrame.new(0, 8, -0.1), 3.6, 0.9, 0.6, 9, WALL_LIGHT, Enum.Material.Slate)
+	for k = 1, 3 do
+		part(
+			parent,
+			"KeepStep",
+			Vector3.new(10, 0.45, 1.4),
+			base * CFrame.new(0, 1.4 - k * 0.45 + 0.22, -d / 2 - 0.7 - (k - 1) * 1.3),
+			WALL_LIGHT,
+			Enum.Material.Slate
+		)
+	end
+	-- Fenêtres sur deux niveaux
+	for _, y in { 8, 15 } do
+		for _, x in { -10, -5, 5, 10 } do
+			local win = base * CFrame.new(x, y, -d / 2 - 0.05)
+			part(
+				parent,
+				"KeepWindow",
+				Vector3.new(1.8, 3, 0.2),
+				win,
+				Color3.fromRGB(60, 85, 120),
+				Enum.Material.Glass,
+				{ NoShadow = true }
+			)
+			part(
+				parent,
+				"KeepWindowFrame",
+				Vector3.new(2.4, 3.6, 0.15),
+				win * CFrame.new(0, 0, 0.1),
+				WALL_LIGHT,
+				Enum.Material.Slate
+			)
+		end
+	end
+	-- Bannières royales encadrant la porte
+	for _, x in { -6.5, 6.5 } do
+		local b = base * CFrame.new(x, 12, -d / 2 - 0.15)
+		part(parent, "KeepBanner", Vector3.new(3, 9, 0.1), b, ROYAL_BLUE, Enum.Material.Fabric, { CanCollide = false })
+		part(
+			parent,
+			"KeepBannerCrest",
+			Vector3.new(1.4, 1.4, 0.14),
+			b * CFrame.new(0, 1.5, 0) * CFrame.Angles(0, 0, math.rad(45)),
+			GOLD,
+			Enum.Material.Metal,
+			{
+				CanCollide = false,
+				NoShadow = true,
+			}
+		)
+	end
+	-- Tour centrale
+	local tower = base * CFrame.new(0, h + 0.8, 2)
+	part(
+		parent,
+		"CentralTower",
+		Vector3.new(10, 10, 8),
+		tower * CFrame.new(0, 5, 0),
+		WALL_STONE,
+		Enum.Material.Cobblestone
+	)
+	for k, size in { 12, 9.5, 7, 4.5, 2 } do
+		part(
+			parent,
+			"CentralRoof",
+			Vector3.new(size, 1.5, size * 0.8),
+			tower * CFrame.new(0, 10.7 + (k - 1) * 1.4, 0),
+			if k % 2 == 0 then C.RoofDark else C.Roof,
+			Enum.Material.Slate
+		)
+	end
+	local top = tower * CFrame.new(0, 17.5, 0)
+	column(parent, "KeepFlagPole", 6, 0.3, top, C.WoodDark, Enum.Material.Wood)
+	part(
+		parent,
+		"KeepFlag",
+		Vector3.new(0.1, 2.4, 4),
+		top * CFrame.new(0, 4.6, 2),
+		ROYAL_BLUE,
+		Enum.Material.Fabric,
+		{ CanCollide = false }
+	)
+	part(
+		parent,
+		"KeepFlagCrest",
+		Vector3.new(0.12, 1, 1),
+		top * CFrame.new(0, 4.6, 2) * CFrame.Angles(math.rad(45), 0, 0),
+		GOLD,
+		Enum.Material.Fabric,
+		{
+			CanCollide = false,
+			NoShadow = true,
+		}
+	)
+end
+
+--[[
+	Cour royale complète : sol pavé, allées dallées, enceinte octogonale (remparts, tours,
+	portes fortifiées), donjon au nord, route pavée extérieure et routes des portes.
+	Côtés de l'octogone centrés sur 0°, 45°, 90°... (x = cos, z = sin).
+]]
+function Models.castle(parent: Instance, cfg)
+	local A = cfg.CourtyardApothem
+	local t = cfg.WallThickness
+	local side = 2 * A * math.tan(math.rad(22.5))
+	local vertexR = (A + t / 2) / math.cos(math.rad(22.5))
+
+	-- Sol pavé (dessus à y = 1) et allées dallées vers les portes et le donjon
+	part(
+		parent,
+		"CourtyardPaving",
+		Vector3.new(1, vertexR * 2, vertexR * 2),
+		CFrame.new(0, 0.5, 0) * VERTICAL,
+		PAVING,
+		Enum.Material.Cobblestone,
+		{
+			Shape = Enum.PartType.Cylinder,
+		}
+	)
+	for _, a in { 0, 180, 270, 90 } do
+		local r = math.rad(a)
+		local len = if a == 90 then 30 else A
+		local mid = len / 2 + 4
+		part(
+			parent,
+			"Alley",
+			Vector3.new(len, 0.12, 7),
+			CFrame.new(math.cos(r) * mid, 1.04, math.sin(r) * mid) * CFrame.Angles(0, -r, 0),
+			WALL_LIGHT,
+			Enum.Material.Slate,
+			{
+				NoShadow = true,
+			}
+		)
+		for _, s in { -1, 1 } do
+			part(
+				parent,
+				"AlleyEdge",
+				Vector3.new(len, 0.16, 0.5),
+				CFrame.new(math.cos(r) * mid, 1.06, math.sin(r) * mid)
+					* CFrame.Angles(0, -r, 0)
+					* CFrame.new(0, 0, s * 3.75),
+				WALL_DARK,
+				Enum.Material.Slate,
+				{
+					NoShadow = true,
+				}
+			)
+		end
+	end
+	column(parent, "PavingRing", 0.1, 20, CFrame.new(0, 1, 0), WALL_LIGHT, Enum.Material.Slate, { NoShadow = true })
+
+	-- Enceinte
+	local gates = {}
+	for _, g in cfg.GateAngles do
+		gates[g] = true
+	end
+	for k = 0, 7 do
+		local deg = k * 45
+		local a = math.rad(deg)
+		local center = Vector3.new(math.cos(a) * (A + t / 2), 0, math.sin(a) * (A + t / 2))
+		local frame = CFrame.lookAt(center, Vector3.new(0, 0, 0)) -- -Z vers la cour
+		if gates[deg] then
+			local seg = (side - cfg.GateWidth - 6) / 2
+			for _, s in { -1, 1 } do
+				wallSegment(parent, frame * CFrame.new(s * (cfg.GateWidth / 2 + 3 + seg / 2), 0, 0), seg, cfg, false)
+			end
+			gatehouse(parent, frame, cfg)
+		else
+			wallSegment(parent, frame, side, cfg, deg ~= 90)
+		end
+		local va = a + math.rad(22.5)
+		roundTower(
+			parent,
+			CFrame.new(math.cos(va) * vertexR, 0, math.sin(va) * vertexR),
+			9,
+			cfg.WallHeight + 5,
+			k % 2 == 0
+		)
+	end
+
+	-- Donjon royal au nord, adossé au rempart
+	royalKeep(parent, CFrame.lookAt(Vector3.new(0, 0, A - 7), Vector3.new(0, 0, -100)))
+
+	-- Route pavée extérieure (anneau) et routes des portes
+	local R, W = cfg.RingRoadRadius, cfg.RingRoadWidth
+	local segments = 40
+	for k = 1, segments do
+		local a = (k / segments) * math.pi * 2
+		local len = 2 * math.pi * R / segments * 1.04
+		part(
+			parent,
+			"RingRoad",
+			Vector3.new(len, 0.6, W),
+			CFrame.new(math.cos(a) * R, 0.3, math.sin(a) * R) * CFrame.Angles(0, -a + math.pi / 2, 0),
+			PAVING,
+			Enum.Material.Cobblestone
+		)
+	end
+	for _, g in cfg.GateAngles do
+		local a = math.rad(g)
+		local from, to = A + t, R - W / 2
+		local mid = (from + to) / 2
+		part(
+			parent,
+			"GateRoad",
+			Vector3.new(to - from + 1, 0.6, cfg.GateWidth),
+			CFrame.new(math.cos(a) * mid, 0.3, math.sin(a) * mid) * CFrame.Angles(0, -a, 0),
+			PAVING,
+			Enum.Material.Cobblestone
+		)
+	end
 end
 
 return Models

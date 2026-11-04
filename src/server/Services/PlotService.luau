@@ -155,16 +155,12 @@ local function buildWorld()
 		warn("[PlotService] Terrain : " .. tostring(terrainErr))
 	end
 
-	-- Point d'accueil (futur marchand, portail d'exploration).
-	makePart({
-		Name = "Hub",
-		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(1, 56, 56),
-		CFrame = CFrame.new(0, 0.5, 0) * CFrame.Angles(0, 0, math.rad(90)),
-		Material = Enum.Material.Slate,
-		Color = Color3.fromRGB(88, 90, 102), -- teinte des joints entre les dalles
-		Parent = world,
-	})
+	-- Cour royale : point d'apparition au centre d'un château fermé par des remparts ; on en
+	-- sort par les portes fortifiées (est, ouest, sud) pour rejoindre bastions et bosquets.
+	local castle = Instance.new("Folder")
+	castle.Name = "Castle"
+	castle.Parent = world
+	Models.castle(castle, Game)
 
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "HubSpawn"
@@ -185,7 +181,7 @@ local function buildWorld()
 	-- Quelques buissons entre le hub et les parcelles (positions fixes, rendu reproductible).
 	for i = 1, Game.PlotCount * 2 do
 		local angle = (i / (Game.PlotCount * 2)) * math.pi * 2 + 0.2
-		local radius = 60 + (i % 3) * 14
+		local radius = 132 + (i % 3) * 6 -- entre les bosquets et les parcelles
 		Models.bush(CFrame.new(math.cos(angle) * radius, 0, math.sin(angle) * radius), decor, i)
 	end
 end
@@ -244,7 +240,9 @@ local function buildPlot(index: number, parent: Instance): Plot
 	})
 	model.PrimaryPart = floor
 
-	local pathLength = Game.PlotRingRadius - HALF - 28
+	-- L'allée part de la route pavée qui fait le tour du château.
+	local roadOuter = Game.RingRoadRadius + Game.RingRoadWidth / 2
+	local pathLength = Game.PlotRingRadius - HALF - roadOuter
 	makePart({
 		Name = "Path",
 		Size = Vector3.new(10, 1, pathLength),
