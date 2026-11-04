@@ -127,6 +127,75 @@ end
 
 -- Ressources ---------------------------------------------------------------------------
 
+-- Feuillage « en touffes » (style des captures) : surfaces lisses, sans texture bruitée ;
+-- le relief vient des boules qui se chevauchent et de trois teintes (dessous sombre,
+-- cœur, dessus éclairé).
+local LEAF_MAT = Enum.Material.SmoothPlastic
+local LEAF_LIGHT = Color3.fromRGB(196, 232, 120)
+local OAK_LEAVES = {
+	Dark = Color3.fromRGB(48, 122, 58),
+	Mid = Color3.fromRGB(72, 158, 66),
+	Light = Color3.fromRGB(118, 196, 84),
+}
+local BIRCH_LEAVES = {
+	Dark = Color3.fromRGB(104, 160, 66),
+	Mid = Color3.fromRGB(140, 192, 78),
+	Light = Color3.fromRGB(190, 218, 104),
+}
+local PINE_SHADES = {
+	Color3.fromRGB(46, 112, 78),
+	Color3.fromRGB(56, 128, 84),
+	Color3.fromRGB(42, 104, 74),
+	Color3.fromRGB(60, 136, 88),
+}
+
+-- Une touffe : boule centrale, couronne de boules autour (dessous sombre), petites
+-- touffes au-dessus (éclairées). `center` = centre de la touffe, `r` = rayon.
+local function crown(m: Model, center: CFrame, r: number, palette, seed: number)
+	ball(m, "Leaves", r * 2, center, palette.Mid, LEAF_MAT, { Depletable = true })
+	-- Dessous : anneau aplati, plus sombre (ombre de la couronne).
+	local n = 6
+	for j = 1, n do
+		local a = (j / n) * math.pi * 2 + seed * 0.7
+		local size = r * (1.05 + 0.15 * math.sin(seed + j * 1.9))
+		ball(
+			m,
+			"LeavesLow" .. j,
+			size,
+			center * CFrame.new(math.cos(a) * r * 0.8, -r * 0.35, math.sin(a) * r * 0.8),
+			palette.Dark,
+			LEAF_MAT,
+			{ Depletable = true, NoShadow = true }
+		)
+	end
+	-- Milieu : touffes qui débordent, teinte du cœur.
+	for j = 1, 5 do
+		local a = (j / 5) * math.pi * 2 + seed * 1.3 + 0.6
+		ball(
+			m,
+			"LeavesMid" .. j,
+			r * 1.15,
+			center * CFrame.new(math.cos(a) * r * 0.75, r * 0.2, math.sin(a) * r * 0.75),
+			palette.Mid,
+			LEAF_MAT,
+			{ Depletable = true, NoShadow = true }
+		)
+	end
+	-- Dessus : petites touffes éclairées.
+	for j = 1, 3 do
+		local a = (j / 3) * math.pi * 2 + seed * 2.1
+		ball(
+			m,
+			"LeavesTop" .. j,
+			r * 0.85,
+			center * CFrame.new(math.cos(a) * r * 0.38, r * 0.72, math.sin(a) * r * 0.38),
+			palette.Light,
+			LEAF_MAT,
+			{ Depletable = true, NoShadow = true }
+		)
+	end
+end
+
 -- variant : 1 = chêne, 2 = sapin, 3 = bouleau
 local TREE_ASSETS = { "Tree_Oak", "Tree_Pine", "Tree_Birch" }
 
@@ -187,63 +256,57 @@ function Models.tree(base: CFrame, variant: number, seed: number): Model
 		)
 	end
 
-	local leafA, leafB, leafC
 	if variant == 2 then
-		-- Sapin : tronc et 6 étages d'aiguilles en étoile (deux carrés tournés de 45° par étage)
-		column(
-			m,
-			"Trunk",
-			6 * scale,
-			1.2 * scale,
-			turn * CFrame.new(0, 1.2, 0),
-			C.Bark,
-			Enum.Material.Wood,
-			{ Depletable = true }
-		)
-		local tiers = 6
+		-- Sapin stylisé : cône de touffes (5 étages de boules qui rétrécissent vers la pointe).
+		column(m, "Trunk", 5 * scale, 1.2 * scale, turn * CFrame.new(0, 1.2, 0), C.Bark, Enum.Material.Wood, {
+			Depletable = true,
+		})
+		local tiers = 5
 		for k = 1, tiers do
-			local w = (8.5 - k * 1.15) * scale
-			local y = (2.6 + k * 1.55) * scale
-			local shade = if k % 2 == 0 then C.Pine else C.Pine:Lerp(C.Leaf2, 0.35)
-			for _, rot in { 0, 45 } do
-				part(
+			local t = (k - 1) / (tiers - 1) -- 0 en bas, 1 en haut
+			local d = (6.4 - t * 4.2) * scale
+			local y = (4.6 + t * 8.4) * scale
+			local shade = PINE_SHADES[((k - 1) % #PINE_SHADES) + 1]
+			ball(m, "Needles" .. k, d, turn * CFrame.new(0, y, 0), shade, LEAF_MAT, { Depletable = true })
+			-- Couronne de touffes plus sombres sous chaque étage (silhouette de sapin).
+			local n = 7 - math.floor(t * 3)
+			for j = 1, n do
+				local a = (j / n) * math.pi * 2 + k * 0.6 + seed
+				ball(
 					m,
-					"Needles" .. k .. "_" .. rot,
-					Vector3.new(w, 1.5, w),
-					turn * CFrame.new(0, y, 0) * CFrame.Angles(0, math.rad(rot + k * 9), 0),
-					shade,
-					Enum.Material.Grass,
-					{
-						Depletable = true,
-					}
+					"Tuft" .. k .. "_" .. j,
+					d * 0.55,
+					turn * CFrame.new(math.cos(a) * d * 0.42, y - d * 0.22, math.sin(a) * d * 0.42),
+					shade:Lerp(Color3.new(0, 0, 0), 0.15),
+					LEAF_MAT,
+					{ Depletable = true, NoShadow = true }
 				)
 			end
+			-- Reflet clair sur le dessus.
+			ball(
+				m,
+				"Cap" .. k,
+				d * 0.55,
+				turn * CFrame.new(d * 0.12, y + d * 0.28, -d * 0.1),
+				shade:Lerp(LEAF_LIGHT, 0.22),
+				LEAF_MAT,
+				{ Depletable = true, NoShadow = true }
+			)
 		end
-		part(
+		ball(
 			m,
 			"Tip",
-			Vector3.new(0.9, 1.6, 0.9) * scale,
-			turn * CFrame.new(0, (2.6 + (tiers + 1) * 1.55) * scale, 0) * CFrame.Angles(0, math.rad(45), 0),
-			C.Pine:Lerp(C.Leaf3, 0.3),
-			Enum.Material.Grass,
-			{
-				Depletable = true,
-			}
+			1.4 * scale,
+			turn * CFrame.new(0, 14.6 * scale, 0),
+			PINE_SHADES[1]:Lerp(LEAF_LIGHT, 0.3),
+			LEAF_MAT,
+			{ Depletable = true }
 		)
 	elseif variant == 3 then
-		-- Bouleau : tronc fin blanc, marques sombres, feuillage clair en grappes verticales
-		local trunk = column(
-			m,
-			"Trunk",
-			8.5 * scale,
-			1 * scale,
-			turn * CFrame.new(0, 1.2, 0),
-			C.Birch,
-			Enum.Material.SmoothPlastic,
-			{
-				Depletable = true,
-			}
-		)
+		-- Bouleau : tronc fin blanc à marques sombres, feuillage clair en 3 touffes étagées.
+		column(m, "Trunk", 9 * scale, 1 * scale, turn * CFrame.new(0, 1.2, 0), C.Birch, Enum.Material.SmoothPlastic, {
+			Depletable = true,
+		})
 		for k = 1, 7 do
 			local y = 2 + k * 1.05
 			local a = k * 2.4
@@ -256,46 +319,17 @@ function Models.tree(base: CFrame, variant: number, seed: number): Model
 					* CFrame.Angles(0, -a + math.pi / 2, 0),
 				C.WoodDark,
 				Enum.Material.SmoothPlastic,
-				{
-					Depletable = true,
-					NoShadow = true,
-				}
+				{ Depletable = true, NoShadow = true }
 			)
 		end
-		local _ = trunk
-		leafA, leafB, leafC = C.Leaf3, C.Leaf3:Lerp(C.Leaf1, 0.5), C.Leaf3:Lerp(Color3.fromRGB(230, 220, 110), 0.25)
-		local clusters = {
-			{ 0, 10, 0, 4.2 },
-			{ 1.4, 8.6, 0.6, 3.2 },
-			{ -1.3, 8.9, -0.5, 3.4 },
-			{ 0.3, 11.8, -0.4, 3 },
-			{ -0.4, 7.4, 1.2, 2.6 },
-		}
-		for k, c in clusters do
-			ball(
-				m,
-				"Leaves" .. k,
-				c[4] * scale,
-				turn * CFrame.new(c[1] * scale, c[2] * scale, c[3] * scale),
-				if k % 3 == 0 then leafC elseif k % 2 == 0 then leafB else leafA,
-				Enum.Material.Grass,
-				{
-					Depletable = true,
-				}
-			)
-		end
+		crown(m, turn * CFrame.new(0, 11 * scale, 0), 3.4 * scale, BIRCH_LEAVES, seed)
+		crown(m, turn * CFrame.new(1.4 * scale, 8.8 * scale, 0.4 * scale), 2.6 * scale, BIRCH_LEAVES, seed + 3)
+		crown(m, turn * CFrame.new(-1.3 * scale, 9.4 * scale, -0.6 * scale), 2.4 * scale, BIRCH_LEAVES, seed + 7)
 	else
-		-- Chêne : tronc en deux sections, branches, couronne de 9 boules en trois teintes
-		column(
-			m,
-			"Trunk",
-			4 * scale,
-			1.9 * scale,
-			turn * CFrame.new(0, 1.2, 0),
-			C.Bark,
-			Enum.Material.Wood,
-			{ Depletable = true }
-		)
+		-- Chêne : tronc en deux sections et branches, couronne en touffes (une grosse, deux lobes).
+		column(m, "Trunk", 4 * scale, 1.9 * scale, turn * CFrame.new(0, 1.2, 0), C.Bark, Enum.Material.Wood, {
+			Depletable = true,
+		})
 		column(
 			m,
 			"TrunkUpper",
@@ -304,9 +338,7 @@ function Models.tree(base: CFrame, variant: number, seed: number): Model
 			turn * CFrame.new(0.15, 5, 0) * CFrame.Angles(0, 0, math.rad(-6)),
 			C.Bark,
 			Enum.Material.Wood,
-			{
-				Depletable = true,
-			}
+			{ Depletable = true }
 		)
 		for k, b in { { 1.6, 5.4, 0, 35 }, { -1.5, 5.8, 0.4, -40 }, { 0.2, 6.2, -1.5, 0 } } do
 			part(
@@ -318,41 +350,12 @@ function Models.tree(base: CFrame, variant: number, seed: number): Model
 					* CFrame.Angles(math.rad(if b[4] == 0 then 30 else 0), 0, math.rad(-b[4])),
 				C.Bark,
 				Enum.Material.Wood,
-				{
-					Depletable = true,
-				}
+				{ Depletable = true }
 			)
 		end
-		leafA, leafB, leafC = C.Leaf1, C.Leaf2, C.Leaf3
-		local clusters = {
-			{ 0, 9.2, 0, 6 },
-			{ 2.6, 8.4, 0.8, 4.4 },
-			{ -2.6, 8.6, -0.6, 4.6 },
-			{ 0.6, 8.2, 2.6, 4.2 },
-			{ -0.8, 8.4, -2.6, 4.2 },
-			{ 1.8, 10.4, -1.2, 3.6 },
-			{ -1.6, 10.6, 1.4, 3.4 },
-			{ 0, 11.4, 0, 3.2 },
-			{ 0, 7.2, 0, 4.8 }, -- dessous plus sombre
-		}
-		for k, c in clusters do
-			local color = if k == #clusters
-				then leafB:Lerp(Color3.new(0, 0, 0), 0.2)
-				elseif k % 3 == 0 then leafC
-				elseif k % 2 == 0 then leafB
-				else leafA
-			ball(
-				m,
-				"Leaves" .. k,
-				c[4] * scale,
-				turn * CFrame.new(c[1] * scale, c[2] * scale, c[3] * scale),
-				color,
-				Enum.Material.Grass,
-				{
-					Depletable = true,
-				}
-			)
-		end
+		crown(m, turn * CFrame.new(0, 9.4 * scale, 0), 4.6 * scale, OAK_LEAVES, seed)
+		crown(m, turn * CFrame.new(3 * scale, 8.2 * scale, 0.8 * scale), 3 * scale, OAK_LEAVES, seed + 5)
+		crown(m, turn * CFrame.new(-2.8 * scale, 8.4 * scale, -1 * scale), 3.2 * scale, OAK_LEAVES, seed + 9)
 	end
 	m.PrimaryPart = stump
 	return m

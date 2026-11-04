@@ -52,7 +52,16 @@ end
 local scene = process.args[2] or "base"
 local function at(x, z) return roblox.CFrame.new(x, 0, z) end
 local V = roblox.Vector3.new
-if scene == "plot" then
+if scene == "trees" then
+	local floor = roblox.Instance.new("Part")
+	floor.Size = V(60, 1, 30)
+	floor.CFrame = roblox.CFrame.new(0, -0.5, 0)
+	floor.Color = roblox.Color3.fromRGB(110, 170, 80)
+	dump(floor)
+	for i = 0, 5 do
+		dump(Models.tree(at(-20 + i * 8, (i % 2) * 6 - 3), (i % 3) + 1, i + 1))
+	end
+elseif scene == "plot" then
 	local GameCfg = loadData("/src/shared/Config/Game.luau", "Game")
 	local StructuresCfg = loadData("/src/shared/Config/Structures.luau", "Structures")
 	local holder = roblox.Instance.new("Model")
