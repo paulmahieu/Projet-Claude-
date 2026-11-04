@@ -1735,7 +1735,7 @@ PetModels.Species = SPECIES
 
 -- Construit le compagnon `def` (entrée de Config/Pets.List). rarityColor : couleur de rareté
 -- (aura des raretés hautes et repli pour une espèce sans fiche).
-function PetModels.build(def, rarityColor: Color3): Model
+function PetModels.build(def, _rarityColor: Color3?): Model
 	local m = Instance.new("Model")
 	m.Name = def.Id
 	local spec = SPECIES[def.Id]
@@ -1755,17 +1755,8 @@ function PetModels.build(def, rarityColor: Color3): Model
 		body = quadruped(m, spec)
 	end
 
-	-- Halo de rareté au sol pour les raretés hautes.
-	if def.Rarity == "Legendary" or def.Rarity == "Mythic" or def.Rarity == "Celestial" then
-		part(
-			m,
-			"Aura",
-			Vector3.new(0.1, 2.4, 2.4),
-			CFrame.new(0, -1.25, 0) * CFrame.Angles(0, 0, math.rad(90)),
-			rarityColor,
-			{ Shape = Enum.PartType.Cylinder, Neon = true, Transparency = 0.55 }
-		)
-	end
+	-- (Plus de disque de rareté sous le compagnon : il marche au sol, la rareté est visible
+	-- dans le menu et à l'éclosion.)
 
 	-- Une seule pièce ancrée ; les autres y sont soudées (déplacement en un seul bloc).
 	m.PrimaryPart = body
