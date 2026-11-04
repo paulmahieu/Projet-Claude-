@@ -393,6 +393,10 @@ function PlotService.setBuildHandler(fn: (Player, string) -> ())
 	buildHandler = fn
 end
 
+function PlotService.all(): { Plot }
+	return plots
+end
+
 function PlotService.get(groupId: string): Plot?
 	return plotByGroup[groupId]
 end

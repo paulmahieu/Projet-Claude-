@@ -134,6 +134,17 @@ Le code vit dans `src/` (fichiers texte versionnés). **Rojo** le synchronise en
 | 39 | Champ des champions, au fond de l'île | 3 panneaux : TROPHÉES, PUISSANCE, RUE DES BOSS (top 10 ; dans Studio : joueurs du serveur). |
 | 40 | En haut de l'écran, hors combat | « Prochaine bataille contre le boss dans 1:12 · Gardien sylvestre » ou « … attend des combattants ! ». |
 
+### Défense du bastion
+
+| # | Action | Attendu |
+|---|---|---|
+| 41 | Dans ton bastion, maintenir **E** sur le Noyau d'Éther (« Lancer la défense ») | Message « assaut dans 10 s » ; au-dessus du Noyau : compte à rebours et points de vie du Noyau. Les boutons de combat apparaissent. |
+| 42 | Attendre près du portail du bastion | Vague 1/3 : des ennemis entrent par le portail et marchent vers le Noyau ; tu les frappes automatiquement à portée (chiffres de dégâts). Frappe runique disponible. |
+| 43 | Vaincre les 3 vagues (la dernière a un chef) | « Défense réussie ! +or, +trophées » ; bois et pierre ajoutés au bastion ; annonce à tout le serveur. Nouvelle défense possible après 4 min. |
+| 44 | Lancer une défense puis rester loin du Noyau | Le Noyau perd des PV ; à 0 : l'assaut s'arrête, le Noyau se répare, **aucune construction ni ressource perdue**. |
+| 45 | Lancer une défense puis quitter le bastion 20 s | « Défense annulée » sans pénalité. |
+| 46 | Un membre sans la permission Construire tente de lancer | « Ton rôle ne permet pas de lancer la défense. » |
+
 ### À plusieurs : *Test → Clients and Servers → 2 ou 3 joueurs → Start*
 
 | # | Action | Attendu |

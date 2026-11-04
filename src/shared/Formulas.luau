@@ -449,6 +449,16 @@ function Formulas.questProgress(quest, stats): (number, boolean)
 	return current, current >= quest.Target
 end
 
+-- Défense du bastion ----------------------------------------------------------------------
+
+function Formulas.defenseStage(defenseCfg, bastionLevel: number, wave: number): number
+	return 1 + (bastionLevel - 1) * defenseCfg.StagePerBastionLevel + (wave - 1)
+end
+
+function Formulas.defenseWaveSize(defenseCfg, wave: number, defenders: number): number
+	return defenseCfg.WaveBase + wave + math.max(0, defenders - 1)
+end
+
 -- Titres -------------------------------------------------------------------------------
 
 -- stats : { Rebirths, BestLevel, Harvests, StreetBest, TrophiesEarned, ForestKills, GolemKills,

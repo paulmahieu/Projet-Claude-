@@ -38,6 +38,7 @@ local LeaderboardService = load("LeaderboardService")
 local RewardService = load("RewardService")
 local TitleService = load("TitleService")
 local QuestService = load("QuestService")
+local DefenseService = load("DefenseService")
 local Net = load("Net")
 
 -- Exécute une étape ; en cas d'erreur, la signale et continue.
@@ -67,11 +68,16 @@ call(BossService, "init", "BossService")
 call(StreetService, "init", "StreetService")
 call(FarmService, "init", "FarmService") -- après TrainingService.init (ordre des calculs hors ligne)
 call(LeaderboardService, "init", "LeaderboardService")
+call(DefenseService, "init", "DefenseService")
 
 step("Liaisons combat", function()
 	-- Esquive et Frappe runique partagées entre arènes et Rue des boss.
 	StreetService.setInvulnerabilityCheck(BossService.isInvulnerable)
-	BossService.setStrikeFallback(StreetService.strike)
+	DefenseService.setInvulnerabilityCheck(BossService.isInvulnerable)
+	-- Hors arène : la Frappe runique vise un ennemi de la Rue, sinon un assaillant du bastion.
+	BossService.setStrikeFallback(function(player, mult, range)
+		return StreetService.strike(player, mult, range) or DefenseService.strike(player, mult, range)
+	end)
 end)
 call(Net, "init", "Net")
 
@@ -93,6 +99,7 @@ call(LeaderboardService, "start", "LeaderboardService")
 call(RewardService, "start", "RewardService")
 call(TitleService, "start", "TitleService")
 call(QuestService, "start", "QuestService")
+call(DefenseService, "begin", "DefenseService")
 call(ProfileService, "start", "ProfileService")
 Diagnostics.startVoidRescue()
 

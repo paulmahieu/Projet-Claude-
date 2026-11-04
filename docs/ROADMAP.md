@@ -49,7 +49,7 @@ Légende : ✅ implémenté · 🧪 testé automatiquement (Lune) · 🔍 à vé
 - ⏳ Missions d'introduction, parcours de progression gratuit, éclats d'Éther (P1)
 
 ## Étape 4 — Première version complète
-- ⏳ Défense de base (vagues déclenchées volontairement)
+- ✅ Défense de base (vagues déclenchées volontairement depuis le Noyau, 3 vagues, chef final, Noyau réparé en cas de défaite, annulation sans défenseur) — *à vérifier en jeu*
 - ⏳ Compagnons (loup runique, petit golem, esprit de lumière) : collection, niveaux, bonus plafonnés
 - ⏳ Mines et ruines magiques avec leurs boss
 - ⏳ Inventaire de bonus temporaires, passes, parcours premium, analytics de la boutique

@@ -191,7 +191,7 @@ function CombatUi.start(gui: ScreenGui, toast: (string, string?) -> ())
 		inArena = arenaFolder() ~= nil
 		bossFrame.Visible = inArena
 		-- Compétences visibles en arène ET dans la Rue des boss.
-		local show = inArena or player:GetAttribute("InStreet") == true
+		local show = inArena or player:GetAttribute("InStreet") == true or player:GetAttribute("InDefense") == true
 		if show ~= skillsShown then
 			skillsShown = show
 			skillFrame.Visible = show
@@ -200,6 +200,7 @@ function CombatUi.start(gui: ScreenGui, toast: (string, string?) -> ())
 	end
 	player:GetAttributeChangedSignal("InArena"):Connect(refreshMode)
 	player:GetAttributeChangedSignal("InStreet"):Connect(refreshMode)
+	player:GetAttributeChangedSignal("InDefense"):Connect(refreshMode)
 
 	local lastTimerUpdate = 0
 	RunService.Heartbeat:Connect(function()

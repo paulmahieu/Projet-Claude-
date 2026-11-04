@@ -28,6 +28,7 @@ local Farm = require("../src/shared/Config/Farm")
 local Rewards = require("../src/shared/Config/Rewards")
 local Titles = require("../src/shared/Config/Titles")
 local Quests = require("../src/shared/Config/Quests")
+local Defense = require("../src/shared/Config/Defense")
 
 local passed, failed = 0, 0
 
@@ -1021,6 +1022,33 @@ test("missions : Id uniques, stats connues, constructions existantes, récompens
 		end
 	end
 	eq(#Quests.Personal >= 6, true, "au moins 6 missions de découverte")
+end)
+
+test("Défense : étape et taille des vagues", function()
+	eq(Formulas.defenseStage(Defense, 1, 1), 1, "bastion niv. 1, vague 1")
+	eq(Formulas.defenseStage(Defense, 1, 3), 3, "la difficulté monte à chaque vague")
+	eq(
+		Formulas.defenseStage(Defense, 3, 1),
+		1 + 2 * Defense.StagePerBastionLevel,
+		"un bastion plus grand attire plus fort"
+	)
+	eq(Formulas.defenseWaveSize(Defense, 1, 1), Defense.WaveBase + 1, "un défenseur")
+	eq(Formulas.defenseWaveSize(Defense, 1, 4), Defense.WaveBase + 4, "+1 ennemi par défenseur supplémentaire")
+	eq(Formulas.defenseWaveSize(Defense, 2, 0), Defense.WaveBase + 2, "jamais négatif")
+end)
+
+test("Défense : configuration cohérente", function()
+	local matIds = {}
+	for _, mat in Materials do
+		matIds[mat.Id] = true
+	end
+	for matId, amount in Defense.Rewards.Group do
+		assert(matIds[matId], "matériau inconnu " .. matId)
+		assert(amount > 0, "récompense positive")
+	end
+	assert(Defense.Waves >= 1 and Defense.PrepSeconds >= 5, "vagues et préavis")
+	assert(Defense.CooldownSeconds > 0 and Defense.AbandonSeconds > 0, "délais")
+	assert(Defense.CoreHealthPerLevel > 0 and Defense.Rewards.TrophiesPerLevel > 0, "noyau et trophées")
 end)
 
 print(string.format("\n%d réussi(s), %d échec(s)", passed, failed))
