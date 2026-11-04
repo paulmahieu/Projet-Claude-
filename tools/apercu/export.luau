@@ -72,7 +72,56 @@ local function at(x, z)
 	return roblox.CFrame.new(x, 0, z)
 end
 local V = roblox.Vector3.new
-if scene == "portrait" then
+if scene == "exterieur" then
+	-- Extérieur : château, sols des bastions et habillage des prairies (Art/Outdoors).
+	local GameCfg = loadData("/src/shared/Config/Game.luau", "Game")
+	local HarvestCfg = loadData("/src/shared/Config/Harvest.luau", "Harvest")
+	local Outdoors = loadModule("/src/server/Art/Outdoors.luau", "Outdoors")
+	local castle = roblox.Instance.new("Folder")
+	Models.castle(castle, GameCfg)
+	dump(castle)
+	for i = 1, GameCfg.PlotCount do
+		local angle = (i - 1) / GameCfg.PlotCount * math.pi * 2
+		local center = V(math.cos(angle), 0, math.sin(angle)) * GameCfg.PlotRingRadius
+		local cf = roblox.CFrame.lookAt(center, V(0, 0, 0))
+		local floor = roblox.Instance.new("Part")
+		floor.Size = V(GameCfg.PlotSize, 1, GameCfg.PlotSize)
+		floor.CFrame = cf * roblox.CFrame.new(0, 0.5, 0)
+		floor.Color = roblox.Color3.fromRGB(150, 142, 128)
+		floor.Material = roblox.Enum.Material.Cobblestone
+		dump(floor)
+	end
+	for i = 1, GameCfg.PlotCount do
+		local angle = (i - 0.5) / GameCfg.PlotCount * math.pi * 2
+		local center = V(math.cos(angle), 0, math.sin(angle)) * HarvestCfg.RingRadius
+		local base = roblox.CFrame.lookAt(center, V(0, 0, 0))
+		for k, entry in HarvestCfg.Grove do
+			if entry[1] == "Tree" then
+				dump(Models.tree(base * roblox.CFrame.new(entry[2], 0, -entry[3]), k, i + k))
+			else
+				dump(Models.rock(base * roblox.CFrame.new(entry[2], 0, -entry[3]), i + k))
+			end
+		end
+	end
+	local outside = roblox.Instance.new("Folder")
+	local ponds = Outdoors.build(
+		outside,
+		{ Game = GameCfg, Harvest = HarvestCfg, Arenas = { V(0, 0, -490), V(490, 0, 0) } },
+		Models
+	)
+	dump(outside)
+	for _, pd in ponds do
+		local water = roblox.Instance.new("Part")
+		water.Shape = roblox.Enum.PartType.Cylinder
+		water.Size = V(0.1, pd.Radius * 2, pd.Radius * 2)
+		water.CFrame = roblox.CFrame.new(pd.Position + V(0, 0.8, 0)) * roblox.CFrame.Angles(0, 0, math.rad(90))
+		water.Color = roblox.Color3.fromRGB(46, 120, 130)
+		water.Material = roblox.Enum.Material.Glass
+		water.Transparency = 0.25
+		dump(water)
+		print(string.format("MARE %.0f,%.0f r=%.1f", pd.Position.X, pd.Position.Z, pd.Radius))
+	end
+elseif scene == "portrait" then
 	-- Un compagnon seul (argument 3 = Id), centré ; affiche la caméra de face utilisée par
 	-- les cartes des œufs (même calcul que EggPreview.portrait, champ de vision 30°).
 	local id = process.args[3]

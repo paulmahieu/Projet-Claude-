@@ -17,6 +17,9 @@ local Decors = require(Shared.Config.Decors)
 local Formulas = require(Shared.Formulas)
 
 local Models = require(script.Parent.Parent.Art.Models)
+local Outdoors = require(script.Parent.Parent.Art.Outdoors)
+local Harvest = require(Shared.Config.Harvest)
+local Bosses = require(Shared.Config.Bosses)
 local CostPanel = require(script.Parent.Parent.Art.CostPanel)
 
 local Lighting = game:GetService("Lighting")
@@ -131,6 +134,20 @@ local function buildTerrain()
 	terrain:SetMaterialColor(Enum.Material.Grass, Color3.fromRGB(104, 160, 82))
 	terrain:SetMaterialColor(Enum.Material.Ground, Color3.fromRGB(122, 98, 70))
 	terrain:SetMaterialColor(Enum.Material.Rock, Color3.fromRGB(128, 126, 122))
+	-- Eau des mares (Terrain) : claire, légèrement verte, petites vagues et reflets.
+	terrain.WaterColor = Color3.fromRGB(46, 120, 130)
+	terrain.WaterTransparency = 0.55
+	terrain.WaterReflectance = 0.6
+	terrain.WaterWaveSize = 0.06
+	terrain.WaterWaveSpeed = 6
+	-- Nuages animés intégrés de Roblox, poussés par un vent léger (qui anime aussi l'herbe
+	-- décorative du Terrain si elle est activée dans Studio).
+	local clouds = terrain:FindFirstChildOfClass("Clouds") or Instance.new("Clouds")
+	clouds.Cover = 0.55
+	clouds.Density = 0.5
+	clouds.Color = Color3.fromRGB(255, 255, 255)
+	clouds.Parent = terrain
+	workspace.GlobalWind = Vector3.new(6, 0, 3)
 	-- Le sol plat est une pièce exacte (Workspace.Ground, dessus à y = 0) : un remplissage de
 	-- terrain remontait au-dessus de 0 et recouvrait le dallage du hub et le pied des objets.
 
@@ -196,6 +213,27 @@ local function buildWorld()
 			Models.torch(CFrame.lookAt(pos, Vector3.new(0, 1, 0)), decor)
 		end
 	end
+	-- Extérieur : nappes d'herbe, touffes, fleurs, cailloux, arbres de prairie, mares.
+	local outdoorsOk, outdoorsErr = pcall(function()
+		local outside = Instance.new("Folder")
+		outside.Name = "Outdoors"
+		outside.Parent = world
+		local arenas = {}
+		for _, def in Bosses do
+			if def.Arena then
+				table.insert(arenas, Vector3.new(def.Arena[1], 0, def.Arena[2]))
+			end
+		end
+		local ponds = Outdoors.build(outside, { Game = Game, Harvest = Harvest, Arenas = arenas }, Models)
+		-- Eau du Terrain : surface à ~0,8 stud au-dessus du sol (le dessous est caché par le sol).
+		for _, p in ponds do
+			workspace.Terrain:FillCylinder(CFrame.new(p.Position), 1.6, p.Radius, Enum.Material.Water)
+		end
+	end)
+	if not outdoorsOk then
+		warn("[PlotService] Extérieur : " .. tostring(outdoorsErr))
+	end
+
 	-- Quelques buissons entre le hub et les parcelles (positions fixes, rendu reproductible).
 	for i = 1, Game.PlotCount * 2 do
 		local angle = (i / (Game.PlotCount * 2)) * math.pi * 2 + 0.2
@@ -238,6 +276,13 @@ local function setupLighting()
 	bloom.Intensity = 0.12
 	bloom.Threshold = 2.2
 	bloom.Size = 10
+	-- Rayons de soleil discrets (effet intégré) quand on regarde vers le soleil.
+	local rays = ensure("SunRaysEffect", "BastionSunRays") :: SunRaysEffect
+	rays.Intensity = 0.04
+	rays.Spread = 0.6
+	-- Teinte chaude d'après-midi, légèrement plus saturée pour l'herbe et les fleurs.
+	grading.TintColor = Color3.fromRGB(255, 251, 242)
+	grading.Saturation = 0.14
 end
 
 local function buildPlot(index: number, parent: Instance): Plot
