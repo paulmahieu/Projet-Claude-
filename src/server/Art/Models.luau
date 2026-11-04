@@ -3351,6 +3351,528 @@ function Models.arena(center: CFrame, radius: number, accent: Color3, parent: In
 	end
 end
 
+-- Arène des Cristaux (design du créateur, maquette 3D « Arène des Cristaux ») ------------------
+-- Reconstruite à l'échelle ARENA_SCALE (1 unité de la maquette = 6 studs) : sol en damier sable et
+-- ardoise, murs crénelés coiffés de sable et couverts de mousse, tours d'angle, deux portes à
+-- bannières et boucliers dorés, six braseros allumés, quatre amas de cristaux, quatre piliers à
+-- cristal flottant, cercle runique central, épée plantée dans le rocher, tonneaux et caisses.
+-- `center` : centre au sol ; le sol de combat est à y = ARENA_FLOOR. Les portes sont à ±Z.
+
+local ARENA_SCALE = 6
+local ARENA_FLOOR = 1.2
+Models.CrystalArenaHalf = Vector2.new(6.5 * ARENA_SCALE, 9.5 * ARENA_SCALE) -- murs (demi-largeurs)
+
+local function hex(v: number): Color3
+	return Color3.fromRGB(bit32.rshift(v, 16) % 256, bit32.rshift(v, 8) % 256, v % 256)
+end
+
+function Models.crystalArena(center: CFrame, parent: Instance)
+	local S, FY = ARENA_SCALE, ARENA_FLOOR
+	local rand = rng(20261105)
+	local function R(a: number, b: number): number
+		return a + (b - a) * rand()
+	end
+	-- Position (unités de la maquette, y depuis le sol de combat) -> repère du monde
+	local function at(x: number, y: number, z: number): CFrame
+		return center * CFrame.new(x * S, FY + y * S, z * S)
+	end
+	local function blk(name, w, h, d, cf, color, material, props)
+		return part(parent, name, Vector3.new(w * S, h * S, d * S), cf, color, material, props)
+	end
+
+	local slate = { hex(0x66728c), hex(0x5d6882), hex(0x717e98) }
+	local sand, sandDeep = hex(0xe2c68b), hex(0xd2b273)
+	local moss, mossLight = hex(0x5f9a34), hex(0x82bb45)
+	local gateStone, gateStoneDark = hex(0xa1a8b8), hex(0x878ea1)
+	local gold, banner, iron = hex(0xf0b52e), hex(0xa02a42), hex(0x2e3039)
+	local wood, woodDark = hex(0x94602f), hex(0x5f3b1e)
+	local rock, rockDark = hex(0x8e94a3), hex(0x737a8a)
+	local crystal, crystalPale = hex(0x67f2e2), hex(0xb8fff6)
+	local rune = hex(0x3fe8d4)
+
+	-- Sol : socle d'ardoise, damier de dalles de sable (une case sur deux)
+	local FW, FL = 16, 22
+	part(
+		parent,
+		"ArenaBase",
+		Vector3.new(FW * S + 2.4, FY, FL * S + 2.4),
+		center * CFrame.new(0, FY / 2, 0),
+		hex(0xa0a8b6),
+		Enum.Material.Slate
+	)
+	part(
+		parent,
+		"ArenaSkirt",
+		Vector3.new(FW * S + 5.4, 0.6, FL * S + 5.4),
+		center * CFrame.new(0, 0.3, 0),
+		hex(0x3e4658),
+		Enum.Material.Slate
+	)
+	for i = 0, FW - 1 do
+		for j = 0, FL - 1 do
+			if (i + j) % 2 == 0 then
+				local v = math.floor((rand() - 0.5) * 8)
+				part(
+					parent,
+					"ArenaTile",
+					Vector3.new(S, 0.1, S),
+					center * CFrame.new((i - FW / 2 + 0.5) * S, FY + 0.05, (j - FL / 2 + 0.5) * S),
+					Color3.fromRGB(216 + v, 192 + v, 143 + v),
+					Enum.Material.Sandstone,
+					{ CanCollide = false, NoShadow = true }
+				)
+			end
+		end
+	end
+
+	-- Murs : segments alternés haut/bas, chaperons de sable, mousse sur les faces
+	local H, T = 2.7, 1.0
+	local function wallRun(ax: number, az: number, bx: number, bz: number)
+		local alongX = az == bz
+		local len = if alongX then math.abs(bx - ax) else math.abs(bz - az)
+		local n = math.max(1, math.floor(len / 0.9 + 0.5))
+		local seg = len / n
+		local fixed = if alongX then az else ax
+		local inner = -math.sign(fixed)
+		for i = 0, n - 1 do
+			local t = (i + 0.5) / n
+			local cx = if alongX then ax + (bx - ax) * t else ax
+			local cz = if alongX then az else az + (bz - az) * t
+			local tall = i % 2 == 0
+			local h = H + (if tall then 0.38 else 0) + R(-0.12, 0.12)
+			local jit = R(-0.05, 0.05)
+			local px = if alongX then cx else cx + jit
+			local pz = if alongX then cz + jit else cz
+			local w = seg * 0.985
+			blk(
+				"Wall",
+				if alongX then w else T,
+				h,
+				if alongX then T else w,
+				at(px, h / 2, pz),
+				slate[1 + math.floor(rand() * 3)],
+				Enum.Material.Slate
+			)
+			local capH = if tall then 0.44 else 0.3
+			local cw = if tall then seg * 1.04 else seg * 0.92
+			local cd = T + (if tall then 0.24 else 0.1)
+			blk(
+				"WallCap",
+				if alongX then cw else cd,
+				capH,
+				if alongX then cd else cw,
+				at(px, h + capH / 2 - 0.04, pz),
+				if tall then sand else sandDeep,
+				Enum.Material.Sandstone
+			)
+			for _, side in { inner, -inner } do
+				if rand() < 0.45 then
+					local mw, mh, off = seg * R(0.35, 0.95), R(0.25, 1.15), T / 2 + 0.035
+					local mx = if alongX then px + R(-0.15, 0.15) else px + side * off
+					local mz = if alongX then pz + side * off else pz + R(-0.15, 0.15)
+					blk(
+						"Moss",
+						if alongX then mw else 0.07,
+						mh,
+						if alongX then 0.07 else mw,
+						at(mx, h - mh / 2 + 0.02, mz),
+						if rand() < 0.5 then moss else mossLight,
+						Enum.Material.Grass,
+						{ NoShadow = true }
+					)
+				end
+			end
+		end
+	end
+	wallRun(-6.5, -9, -6.5, 9)
+	wallRun(6.5, -9, 6.5, 9)
+	wallRun(-6, -9.5, -2.2, -9.5)
+	wallRun(2.2, -9.5, 6, -9.5)
+	wallRun(-6, 9.5, -2.2, 9.5)
+	wallRun(2.2, 9.5, 6, 9.5)
+
+	-- Tours d'angle
+	for _, p in { { -6.5, -9.5 }, { 6.5, -9.5 }, { -6.5, 9.5 }, { 6.5, 9.5 } } do
+		local h = H + 0.75
+		local sx, sz = math.sign(p[1]), math.sign(p[2])
+		blk("Tower", 1.4, h, 1.4, at(p[1], h / 2, p[2]), slate[3], Enum.Material.Slate)
+		blk("TowerCap", 1.65, 0.5, 1.65, at(p[1], h + 0.21, p[2]), sand, Enum.Material.Sandstone)
+		blk("TowerTop", 0.9, 0.35, 0.9, at(p[1] + 0.15, h + 0.6, p[2] - 0.1), sandDeep, Enum.Material.Sandstone)
+		blk("Moss", 1.0, 0.8, 0.07, at(p[1], h - 0.35, p[2] + sz * 0.74), moss, Enum.Material.Grass)
+		blk("Moss", 0.07, 0.6, 0.8, at(p[1] + sx * 0.74, h - 0.28, p[2]), mossLight, Enum.Material.Grass)
+	end
+
+	-- Bannière rouge à barres et losange dorés (face vers -Z du repère `cf`)
+	local function makeBanner(cf: CFrame, w: number, h: number)
+		blk("Banner", w, h, 0.06, cf, banner, Enum.Material.Fabric, { CanCollide = false })
+		blk("BannerRod", w + 0.14, 0.11, 0.11, cf * CFrame.new(0, h / 2 * S, 0.02 * S), gold, Enum.Material.Metal)
+		blk("BannerHem", w + 0.04, 0.07, 0.08, cf * CFrame.new(0, -h / 2 * S, 0), gold, Enum.Material.Metal)
+		blk(
+			"BannerEmblem",
+			0.2,
+			0.28,
+			0.02,
+			cf * CFrame.new(0, 0.05 * S, -0.04 * S) * CFrame.Angles(0, 0, math.rad(45)),
+			gold,
+			Enum.Material.Metal,
+			{ CanCollide = false, NoShadow = true }
+		)
+	end
+
+	-- Portes : piliers, linteau à corniches, bannières et boucliers dorés
+	local function gate(z: number)
+		for _, x in { -1.65, 1.65 } do
+			blk("GatePillar", 1.1, 3.9, 1.3, at(x, 1.95, z), gateStone, Enum.Material.Slate)
+			blk("GatePlinth", 1.3, 0.24, 1.5, at(x, 0.12, z), gateStoneDark, Enum.Material.Slate)
+			blk("GateBand", 1.2, 0.12, 1.4, at(x, 3.35, z), gold, Enum.Material.Metal)
+			for _, f in { 1, -1 } do
+				makeBanner(at(x, 1.95, z + f * 0.68) * CFrame.Angles(0, if f > 0 then math.pi else 0, 0), 0.72, 1.75)
+			end
+		end
+		blk("GateLintel", 4.5, 0.7, 1.36, at(0, 4.2, z), gateStone, Enum.Material.Slate)
+		blk("GateCornice", 4.6, 0.14, 1.46, at(0, 3.82, z), gateStoneDark, Enum.Material.Slate)
+		blk("GateCornice", 4.7, 0.14, 1.5, at(0, 4.6, z), gateStoneDark, Enum.Material.Slate)
+		for _, f in { 1, -1 } do
+			local face = at(0, 4.2, z + f * 0.7)
+			blk("Shield", 0.72, 0.36, 0.1, face * CFrame.new(0, 0.12 * S, 0), gold, Enum.Material.Metal)
+			blk(
+				"ShieldPoint",
+				0.48,
+				0.48,
+				0.1,
+				face * CFrame.new(0, -0.08 * S, 0) * CFrame.Angles(0, 0, math.rad(45)),
+				gold,
+				Enum.Material.Metal
+			)
+		end
+	end
+	gate(-9.5)
+	gate(9.5)
+	for _, z in { -2.6, 2.6 } do
+		for _, s in { -1, 1 } do
+			makeBanner(at(s * 5.97, 1.75, z) * CFrame.Angles(0, s * math.pi / 2, 0), 0.8, 1.9)
+		end
+	end
+
+	-- Braseros allumés (feu et lumière intégrés de Roblox)
+	for _, z in { -5.4, 0, 4.6 } do
+		for _, x in { -5.2, 5.2 } do
+			for _, sx in { -1, 1 } do
+				for _, sz in { -1, 1 } do
+					blk(
+						"BrazierLeg",
+						0.09,
+						0.78,
+						0.09,
+						at(x + sx * 0.26, 0.38, z + sz * 0.26) * CFrame.Angles(-sz * 0.12, 0, sx * 0.12),
+						iron,
+						Enum.Material.Metal
+					)
+				end
+			end
+			blk("BrazierBase", 0.66, 0.1, 0.66, at(x, 0.72, z), iron, Enum.Material.Metal)
+			blk("BrazierSide", 0.8, 0.26, 0.09, at(x, 0.88, z + 0.36), iron, Enum.Material.Metal)
+			blk("BrazierSide", 0.8, 0.26, 0.09, at(x, 0.88, z - 0.36), iron, Enum.Material.Metal)
+			blk("BrazierSide", 0.09, 0.26, 0.64, at(x + 0.36, 0.88, z), iron, Enum.Material.Metal)
+			blk("BrazierSide", 0.09, 0.26, 0.64, at(x - 0.36, 0.88, z), iron, Enum.Material.Metal)
+			local ember =
+				blk("Embers", 0.6, 0.1, 0.6, at(x, 0.86, z), hex(0xff6a1a), Enum.Material.Neon, { NoShadow = true })
+			local flame = blk(
+				"Flame",
+				0.32,
+				0.55,
+				0.32,
+				at(x, 1.2, z) * CFrame.Angles(0, math.rad(45), 0),
+				hex(0xffb02e),
+				Enum.Material.Neon,
+				{ CanCollide = false, NoShadow = true, Transparency = 0.15 }
+			)
+			local fire = Instance.new("Fire")
+			fire.Size = 7
+			fire.Heat = 9
+			fire.Color = hex(0xff8a1e)
+			fire.SecondaryColor = hex(0xffe066)
+			fire.Parent = ember
+			local light = Instance.new("PointLight")
+			light.Color = hex(0xffa040)
+			light.Range = 24
+			light.Brightness = 1.6
+			light.Shadows = false
+			light.Parent = flame
+		end
+	end
+
+	-- Cristal : fût hexagonal approché (bloc tourné) et pointe en losange
+	local function shard(base: CFrame, h: number, r: number, color: Color3)
+		blk(
+			"Crystal",
+			r * 1.8,
+			h,
+			r * 1.8,
+			base * CFrame.new(0, h / 2 * S, 0) * CFrame.Angles(0, math.rad(30), 0),
+			color,
+			Enum.Material.Neon,
+			{
+				NoShadow = true,
+				Transparency = 0.1,
+			}
+		)
+		blk(
+			"CrystalTip",
+			r * 1.3,
+			r * 1.3,
+			r * 1.3,
+			base * CFrame.new(0, h * S, 0) * CFrame.Angles(math.rad(45), 0, math.rad(45)),
+			color,
+			Enum.Material.Neon,
+			{ NoShadow = true, Transparency = 0.1, CanCollide = false }
+		)
+	end
+	local function crystalCluster(x: number, z: number, s: number)
+		local base = at(x, 0, z)
+		local function k(v: number): number
+			return v * s
+		end
+		blk(
+			"Rock",
+			k(1.9),
+			k(0.6),
+			k(1.6),
+			base * CFrame.new(0, k(0.25) * S, 0) * CFrame.Angles(0.2, 0.5, 0.1),
+			rock,
+			Enum.Material.Rock
+		)
+		blk(
+			"Rock",
+			k(0.8),
+			k(0.7),
+			k(0.8),
+			base * CFrame.new(k(0.7) * S, k(0.15) * S, k(0.35) * S) * CFrame.Angles(0.6, 0.3, 0.5),
+			rockDark,
+			Enum.Material.Rock
+		)
+		blk(
+			"Rock",
+			k(0.7),
+			k(0.6),
+			k(0.7),
+			base * CFrame.new(k(-0.75) * S, k(0.12) * S, k(-0.2) * S) * CFrame.Angles(0.4, 1.1, 0.7),
+			rock,
+			Enum.Material.Rock
+		)
+		for _, sp in
+			{
+				{ 0, 0, 1.3, 0.26, 0, 0, crystal },
+				{ 0.35, 0.1, 0.95, 0.2, -0.45, 0.2, crystal },
+				{ -0.38, 0.05, 0.9, 0.2, 0.5, -0.1, crystalPale },
+				{ 0.1, -0.35, 0.75, 0.17, 0.15, 0.5, crystal },
+				{ -0.1, 0.4, 0.65, 0.15, -0.1, -0.5, crystalPale },
+			}
+		do
+			shard(
+				base * CFrame.new(k(sp[1]) * S, k(0.35) * S, k(sp[2]) * S) * CFrame.Angles(sp[6], 0, sp[5]),
+				k(sp[3]),
+				k(sp[4]),
+				sp[7]
+			)
+		end
+		local glow = Instance.new("PointLight")
+		glow.Color = crystal
+		glow.Range = 18
+		glow.Brightness = 1.2
+		glow.Shadows = false
+		glow.Parent =
+			part(parent, "CrystalGlow", Vector3.new(0.2, 0.2, 0.2), base * CFrame.new(0, 1.2 * S, 0), crystal, nil, {
+				Transparency = 1,
+				CanCollide = false,
+			})
+	end
+	crystalCluster(-4.3, -8.35, 1.0)
+	crystalCluster(4.75, -8.3, 1.0)
+	crystalCluster(-5.0, 8.25, 1.25)
+	crystalCluster(5.0, 8.25, 1.25)
+
+	-- Piliers à cristal flottant
+	for _, p in { { -2.8, -4 }, { 2.8, -4 }, { -2.8, 4 }, { 2.8, 4 } } do
+		blk("PedestalFoot", 0.8, 0.2, 0.8, at(p[1], 0.1, p[2]), gateStoneDark, Enum.Material.Slate)
+		blk("PedestalBody", 0.56, 0.48, 0.56, at(p[1], 0.44, p[2]), gateStone, Enum.Material.Slate)
+		blk("PedestalCap", 0.7, 0.1, 0.7, at(p[1], 0.73, p[2]), gateStoneDark, Enum.Material.Slate)
+		blk(
+			"FloatingCrystal",
+			0.26,
+			0.5,
+			0.26,
+			at(p[1], 1.15, p[2]) * CFrame.Angles(0, math.rad(45), 0),
+			crystalPale,
+			Enum.Material.Neon,
+			{ CanCollide = false, NoShadow = true }
+		)
+	end
+
+	-- Cercle runique central : deux anneaux, quatre losanges, carré central
+	local function ring(r1: number, r2: number, n: number)
+		local r = (r1 + r2) / 2
+		for i = 0, n - 1 do
+			local a = i / n * math.pi * 2
+			blk(
+				"Rune",
+				(r2 - r1),
+				0.012,
+				2 * math.pi * r / n * 1.06,
+				at(math.cos(a) * r, 0.03, math.sin(a) * r) * CFrame.Angles(0, -a, 0),
+				rune,
+				Enum.Material.Neon,
+				{ CanCollide = false, NoShadow = true, Transparency = 0.15 }
+			)
+		end
+	end
+	ring(3.05, 3.24, 48)
+	ring(1.95, 2.1, 36)
+	for _, p in { { 3.15, 0 }, { -3.15, 0 }, { 0, 3.15 }, { 0, -3.15 } } do
+		blk(
+			"RuneDiamond",
+			0.62,
+			0.012,
+			0.62,
+			at(p[1], 0.035, p[2]) * CFrame.Angles(0, math.rad(45), 0),
+			rune,
+			Enum.Material.Neon,
+			{ CanCollide = false, NoShadow = true, Transparency = 0.1 }
+		)
+	end
+	for k = 0, 3 do
+		blk(
+			"RuneSquare",
+			0.7,
+			0.012,
+			0.16,
+			at(0, 0.03, 0) * CFrame.Angles(0, k * math.pi / 2 + math.rad(45), 0) * CFrame.new(0, 0, 0.43 * S),
+			rune,
+			Enum.Material.Neon,
+			{ CanCollide = false, NoShadow = true, Transparency = 0.15 }
+		)
+	end
+	local runeLight = part(parent, "RuneLight", Vector3.new(0.2, 0.2, 0.2), at(0, 1.2, 0), rune, nil, {
+		Transparency = 1,
+		CanCollide = false,
+	})
+	local light = Instance.new("PointLight")
+	light.Color = hex(0x50f0dc)
+	light.Range = 40
+	light.Brightness = 1.2
+	light.Shadows = false
+	light.Parent = runeLight
+
+	-- Épée plantée dans le rocher (près de la porte -Z)
+	local sb = at(2.85, 0, -8.15)
+	blk(
+		"SwordRock",
+		1.8,
+		1.0,
+		1.5,
+		sb * CFrame.new(0, 0.3 * S, 0) * CFrame.Angles(0.15, 0.4, 0.1),
+		rock,
+		Enum.Material.Rock
+	)
+	blk(
+		"SwordRock",
+		0.85,
+		0.8,
+		0.85,
+		sb * CFrame.new(0.8 * S, 0.2 * S, 0.3 * S) * CFrame.Angles(0.5, 0.2, 0.6),
+		rockDark,
+		Enum.Material.Rock
+	)
+	blk(
+		"SwordRock",
+		0.75,
+		0.7,
+		0.75,
+		sb * CFrame.new(-0.7 * S, 0.18 * S, 0.35 * S) * CFrame.Angles(0.3, 1.0, 0.4),
+		rock,
+		Enum.Material.Rock
+	)
+	local sw = sb * CFrame.new(0, 0.6 * S, 0) * CFrame.Angles(0.08, 0, -0.32)
+	local steel = hex(0xdfe3ec)
+	blk("Blade", 0.44, 3.4, 0.1, sw * CFrame.new(0, 1.7 * S, 0), steel, Enum.Material.Metal)
+	blk("BladeEdge", 0.1, 3.0, 0.14, sw * CFrame.new(0, 1.75 * S, 0), hex(0xb9bfcc), Enum.Material.Metal)
+	blk("Crossguard", 1.55, 0.24, 0.3, sw * CFrame.new(0, 3.5 * S, 0), gold, Enum.Material.Metal)
+	blk("GuardEnd", 0.24, 0.36, 0.34, sw * CFrame.new(-0.78 * S, 3.56 * S, 0), gold, Enum.Material.Metal)
+	blk("GuardEnd", 0.24, 0.36, 0.34, sw * CFrame.new(0.78 * S, 3.56 * S, 0), gold, Enum.Material.Metal)
+	blk(
+		"GuardGem",
+		0.2,
+		0.2,
+		0.2,
+		sw * CFrame.new(0, 3.5 * S, -0.17 * S) * CFrame.Angles(math.rad(45), 0, math.rad(45)),
+		crystal,
+		Enum.Material.Neon,
+		{ NoShadow = true }
+	)
+	part(
+		parent,
+		"Grip",
+		Vector3.new(0.8 * S, 0.21 * S, 0.21 * S),
+		sw * CFrame.new(0, 4.02 * S, 0) * VERTICAL,
+		woodDark,
+		Enum.Material.Wood,
+		{ Shape = Enum.PartType.Cylinder }
+	)
+	blk(
+		"Pommel",
+		0.28,
+		0.28,
+		0.28,
+		sw * CFrame.new(0, 4.55 * S, 0) * CFrame.Angles(math.rad(45), 0, math.rad(45)),
+		gold,
+		Enum.Material.Metal
+	)
+
+	-- Tonneaux et caisses dans les angles
+	local function barrel(x: number, z: number)
+		local b = at(x, 0, z)
+		column(parent, "Barrel", 0.76 * S, 0.62 * S, b, wood, Enum.Material.WoodPlanks)
+		column(parent, "BarrelBelly", 0.4 * S, 0.7 * S, b * CFrame.new(0, 0.18 * S, 0), wood, Enum.Material.WoodPlanks)
+		for _, y in { 0.15, 0.57 } do
+			column(parent, "BarrelBand", 0.06 * S, 0.72 * S, b * CFrame.new(0, y * S, 0), iron, Enum.Material.Metal, {
+				NoShadow = true,
+			})
+		end
+		column(parent, "BarrelLid", 0.02 * S, 0.56 * S, b * CFrame.new(0, 0.76 * S, 0), woodDark, Enum.Material.Wood, {
+			NoShadow = true,
+		})
+	end
+	local function crate(x: number, z: number, s: number, ry: number)
+		local c = at(x, 0, z) * CFrame.Angles(0, ry, 0)
+		blk("ArenaCrate", s, s, s, c * CFrame.new(0, s / 2 * S, 0), hex(0xa06a38), Enum.Material.WoodPlanks)
+		for _, y in { 0.06, s - 0.06 } do
+			blk(
+				"ArenaCrateBand",
+				s + 0.03,
+				0.1,
+				s + 0.03,
+				c * CFrame.new(0, y * S, 0),
+				hex(0x5e3719),
+				Enum.Material.Wood,
+				{
+					NoShadow = true,
+				}
+			)
+		end
+	end
+	barrel(-5.45, -7.05)
+	barrel(-4.75, -7.3)
+	crate(-5.35, -6.35, 0.7, 0.1)
+	crate(5.35, -7.0, 0.72, -0.08)
+	barrel(5.4, -6.25)
+	barrel(-5.4, 6.35)
+	barrel(-5.4, 5.65)
+	crate(-4.65, 6.3, 0.75, 0.12)
+	crate(5.3, 6.4, 0.75, -0.1)
+	barrel(4.55, 6.45)
+	barrel(5.4, 5.6)
+end
+
 -- Boss. Retourne model, Root (pièce de référence, invisible).
 function Models.boss(def, base: CFrame): (Model, BasePart)
 	local override = Models.override("Boss_" .. def.Id, base, Vector3.new(16, 0, 16))

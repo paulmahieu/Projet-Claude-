@@ -91,15 +91,19 @@ local function aliveRoot(player: Player): BasePart?
 	return nil
 end
 
+-- Dans l'enceinte rectangulaire de l'Arène des Cristaux (murs + 4 studs), à la bonne hauteur
+-- (la Rue des boss passe dans le ciel au-dessus d'une arène).
+local function insideArena(position: Vector3, arena): boolean
+	local half = Models.CrystalArenaHalf
+	local d = position - arena.Center
+	return math.abs(d.X) <= half.X + 4 and math.abs(d.Z) <= half.Y + 4 and math.abs(d.Y) < 60
+end
+
 local function playersInside(arena: Arena): { Player }
 	local list = {}
 	for _, player in Players:GetPlayers() do
 		local root = aliveRoot(player)
-		if
-			root
-			and flatDistance(root.Position, arena.Center) <= arena.Def.ArenaRadius + 4
-			and math.abs(root.Position.Y - arena.Center.Y) < 60
-		then
+		if root and insideArena(root.Position, arena) then
 			table.insert(list, player)
 		end
 	end
@@ -113,10 +117,7 @@ local function arenaOf(player: Player): Arena?
 	end
 	for _, arena in arenas do
 		-- Hauteur vérifiée : la Rue des boss passe dans le ciel au-dessus d'une arène.
-		if
-			flatDistance(root.Position, arena.Center) <= arena.Def.ArenaRadius + 4
-			and math.abs(root.Position.Y - arena.Center.Y) < 60
-		then
+		if insideArena(root.Position, arena) then
 			return arena
 		end
 	end
@@ -525,7 +526,7 @@ function BossService.init()
 		arenaFolder:SetAttribute("CenterZ", center.Z)
 		arenaFolder:SetAttribute("Radius", def.ArenaRadius)
 		arenaFolder.Parent = folder
-		Models.arena(CFrame.new(center), def.ArenaRadius, accent, arenaFolder)
+		Models.crystalArena(CFrame.new(center), arenaFolder) -- design « Arène des Cristaux »
 
 		-- Portail de retour, au bord de l'arène.
 		local backPos = center + Vector3.new(0, FLOOR_Y, def.ArenaRadius - 6)

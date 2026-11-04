@@ -20,6 +20,7 @@ local env = setmetatable({
 	Instance = roblox.Instance,
 	CFrame = roblox.CFrame,
 	Vector3 = roblox.Vector3,
+	Vector2 = roblox.Vector2,
 	Color3 = roblox.Color3,
 	Enum = roblox.Enum,
 	game = fakeGame,
@@ -72,7 +73,12 @@ local function at(x, z)
 	return roblox.CFrame.new(x, 0, z)
 end
 local V = roblox.Vector3.new
-if scene == "exterieur" then
+if scene == "arene" then
+	-- Arène des Cristaux (design du créateur), comme dans les arènes de boss.
+	local holder = roblox.Instance.new("Folder")
+	Models.crystalArena(roblox.CFrame.new(0, 0, 0), holder)
+	dump(holder)
+elseif scene == "exterieur" then
 	-- Extérieur : château, sols des bastions et habillage des prairies (Art/Outdoors).
 	local GameCfg = loadData("/src/shared/Config/Game.luau", "Game")
 	local HarvestCfg = loadData("/src/shared/Config/Harvest.luau", "Harvest")
