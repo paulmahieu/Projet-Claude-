@@ -37,6 +37,7 @@ local FarmService = load("FarmService")
 local LeaderboardService = load("LeaderboardService")
 local RewardService = load("RewardService")
 local TitleService = load("TitleService")
+local QuestService = load("QuestService")
 local Net = load("Net")
 
 -- Exécute une étape ; en cas d'erreur, la signale et continue.
@@ -91,6 +92,7 @@ call(FarmService, "start", "FarmService")
 call(LeaderboardService, "start", "LeaderboardService")
 call(RewardService, "start", "RewardService")
 call(TitleService, "start", "TitleService")
+call(QuestService, "start", "QuestService")
 call(ProfileService, "start", "ProfileService")
 Diagnostics.startVoidRescue()
 

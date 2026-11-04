@@ -27,6 +27,7 @@ local Pets = require(Shared.Config.Pets)
 local Rebirth = require(Shared.Config.Rebirth)
 local Rewards = require(Shared.Config.Rewards)
 local Titles = require(Shared.Config.Titles)
+local Quests = require(Shared.Config.Quests)
 local Ui = require(script.Parent.Ui)
 local Effects = require(script.Parent.Effects)
 local PetFollowers = require(script.Parent.PetFollowers)
@@ -295,6 +296,19 @@ local function ownedSet()
 end
 
 local function objectiveText(): string
+	-- Mission d'introduction en cours (prioritaire tant qu'il en reste).
+	local questIndex = player:GetAttribute("QuestIndex")
+	local quest = questIndex and Quests.Personal[questIndex]
+	if quest then
+		return string.format(
+			"📜 Mission %d/%d : %s (%d/%d)",
+			questIndex,
+			#Quests.Personal,
+			quest.Text,
+			player:GetAttribute("QuestProgress") or 0,
+			quest.Target
+		)
+	end
 	if not groupState or not groupState.Materials then
 		return Texts.Loading
 	end
@@ -373,6 +387,8 @@ for _, name in
 		"GroupState",
 		"FarmZone",
 		"Trophies",
+		"QuestIndex",
+		"QuestProgress",
 	}
 do
 	player:GetAttributeChangedSignal(name):Connect(refreshHud)
@@ -1120,6 +1136,63 @@ local function renderTitles()
 	end
 end
 
+-- Onglet Quêtes : missions personnelles (enchaînées) et de groupe
+local function questReward(reward): string
+	local parts = {}
+	for key, value in reward do
+		local names = {
+			Gold = "or",
+			Trophies = "trophées",
+			Xp = "XP",
+			Wood = "Bois",
+			Stone = "Pierre",
+			Ore = "Minerai",
+			Crystal = "Cristal",
+		}
+		table.insert(parts, string.format("+%s %s", Formulas.formatNumber(value), names[key] or key))
+	end
+	table.sort(parts)
+	return table.concat(parts, " · ")
+end
+
+local function renderQuests()
+	local index = player:GetAttribute("QuestIndex") or 1
+	heading(
+		string.format(
+			"Missions personnelles · %d/%d terminées",
+			math.min(index - 1, #Quests.Personal),
+			#Quests.Personal
+		)
+	)
+	for i, quest in Quests.Personal do
+		local r = row(54)
+		local status
+		if i < index then
+			status = "✔ "
+		elseif i == index then
+			status = string.format("▶ (%d/%d) ", player:GetAttribute("QuestProgress") or 0, quest.Target)
+			r.BackgroundColor3 = C.Row:Lerp(C.Ether, 0.2)
+		else
+			status = "🔒 "
+		end
+		rowText(r, status .. quest.Text, "Récompense : " .. questReward(quest.Reward), 0)
+	end
+	local done = {}
+	for id in string.gmatch(tostring(player:GetAttribute("GroupQuestsDone") or ""), "[^,]+") do
+		done[id] = true
+	end
+	heading("Missions de groupe (une récompense par bastion)")
+	for _, quest in Quests.Group do
+		local r = row(54)
+		rowText(
+			r,
+			(if done[quest.Id] then "✔ " else "▶ ") .. quest.Text,
+			"Récompense du bastion : " .. questReward(quest.Reward),
+			0
+		)
+	end
+end
+
 local TABS = {
 	{ Id = "Group", Label = "Groupe", Render = renderGroup },
 	{ Id = "Pets", Label = "Compagnons", Render = renderPets },
@@ -1127,6 +1200,7 @@ local TABS = {
 	{ Id = "Rebirth", Label = "Renaissance", Render = renderRebirth },
 	{ Id = "Rewards", Label = "Cadeaux", Render = renderRewards },
 	{ Id = "Titles", Label = "Titres", Render = renderTitles },
+	{ Id = "Quests", Label = "Quêtes", Render = renderQuests },
 	{ Id = "Shop", Label = "Boutique", Render = renderShop },
 }
 
@@ -1395,6 +1469,7 @@ local ICONS = {
 	{ Tab = "Rewards", Icon = "🎁", Label = "Cadeaux", Color = Color3.fromRGB(240, 120, 40) },
 	{ Tab = "Group", Icon = "🏰", Label = "Groupe", Color = Color3.fromRGB(60, 110, 200) },
 	{ Tab = "Titles", Icon = "🎖", Label = "Titres", Color = Color3.fromRGB(200, 160, 60) },
+	{ Tab = "Quests", Icon = "📜", Label = "Quêtes", Color = Color3.fromRGB(140, 110, 80) },
 }
 local badges = {}
 for i, entry in ICONS do
@@ -1504,6 +1579,13 @@ giftPanel.Activated:Connect(function()
 	currentTab = "Rewards"
 	setMenu(true)
 end)
+for _, name in { "QuestIndex", "QuestProgress", "GroupQuestsDone" } do
+	player:GetAttributeChangedSignal(name):Connect(function()
+		if menuOpen and currentTab == "Quests" then
+			renderTab()
+		end
+	end)
+end
 for _, name in { "Title", "TitlesUnlocked" } do
 	player:GetAttributeChangedSignal(name):Connect(function()
 		if menuOpen and currentTab == "Titles" then

@@ -27,6 +27,7 @@ local Street = require("../src/shared/Config/Street")
 local Farm = require("../src/shared/Config/Farm")
 local Rewards = require("../src/shared/Config/Rewards")
 local Titles = require("../src/shared/Config/Titles")
+local Quests = require("../src/shared/Config/Quests")
 
 local passed, failed = 0, 0
 
@@ -961,6 +962,65 @@ test("titres : tous atteignables (renaissances, étapes, boss existants), Id uni
 		end
 	end
 	assert(Bosses[1].Id == "ForestGuardian" and Bosses[2].Id == "MineGolem", "boss des titres présents")
+end)
+
+----------------------------------------------------------------------------------------
+print("Missions")
+
+test("missions : progression bornée, condition de construction", function()
+	local q = { Stat = "Harvests", Target = 10 }
+	local cur, done = Formulas.questProgress(q, { Harvests = 4 })
+	eq(cur, 4)
+	eq(done, false)
+	cur, done = Formulas.questProgress(q, { Harvests = 25 })
+	eq(cur, 10, "borné à l'objectif")
+	eq(done, true)
+	local b = { Stat = "Structure", Value = "TrainingGround", Target = 1 }
+	eq(select(2, Formulas.questProgress(b, { Structures = {} })), false)
+	eq(select(2, Formulas.questProgress(b, { Structures = { TrainingGround = true } })), true)
+end)
+
+test("missions : Id uniques, stats connues, constructions existantes, récompenses positives", function()
+	local personalStats = {
+		Harvests = true,
+		Structure = true,
+		TrainSeconds = true,
+		TreeNodes = true,
+		PetsOwned = true,
+		PetsEquipped = true,
+		StreetKills = true,
+		StreetBest = true,
+		BestLevel = true,
+		Rebirths = true,
+		BossKills = true,
+	}
+	local groupStats = { BastionLevel = true, Members = true, Structure = true }
+	local structures, matIds = {}, {}
+	for _, def in Structures do
+		structures[def.Id] = true
+	end
+	for _, m in Materials do
+		matIds[m.Id] = true
+	end
+	local ids = {}
+	for _, list in { { Quests.Personal, personalStats }, { Quests.Group, groupStats } } do
+		for _, quest in list[1] do
+			assert(not ids[quest.Id], "Id en double " .. quest.Id)
+			ids[quest.Id] = true
+			assert(list[2][quest.Stat], quest.Id .. " : stat inconnue")
+			if quest.Stat == "Structure" then
+				assert(structures[quest.Value], quest.Id .. " : construction inconnue")
+			end
+			assert(quest.Target >= 1, quest.Id .. " : objectif")
+			for key, value in quest.Reward do
+				assert(value > 0, quest.Id .. " : récompense")
+				if list[1] == Quests.Group then
+					assert(matIds[key], quest.Id .. " : matériau inconnu " .. key)
+				end
+			end
+		end
+	end
+	eq(#Quests.Personal >= 6, true, "au moins 6 missions de découverte")
 end)
 
 print(string.format("\n%d réussi(s), %d échec(s)", passed, failed))

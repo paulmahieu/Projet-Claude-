@@ -114,6 +114,7 @@ local function tick(player: Player, dt: number)
 	local r = rates(player, zone.Mult)
 	local level, xp, gained = Formulas.addXp(profile.Level, profile.TrainXp, r.Xp * dt, Training)
 	profile.Level, profile.TrainXp = level, xp
+	profile.Stats.TrainSeconds += dt
 	profile.Gold = Formulas.clamp(profile.Gold + r.Gold * dt, Economy.GoldCap)
 	if gained > 0 then
 		Notifier.send(player, string.format("Niveau %d ! Puissance %d", level, ProfileService.power(player)), "success")

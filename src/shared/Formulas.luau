@@ -434,6 +434,21 @@ function Formulas.playtimeReached(tiers, before: number, after: number)
 	return reached
 end
 
+-- Missions -----------------------------------------------------------------------------
+
+-- Progression d'une mission : current (borné à Target), done.
+-- stats : table des compteurs ; stats.Structures : { [Id] = true } pour Stat = "Structure".
+function Formulas.questProgress(quest, stats): (number, boolean)
+	local value
+	if quest.Stat == "Structure" then
+		value = if stats.Structures and stats.Structures[quest.Value] then 1 else 0
+	else
+		value = stats[quest.Stat] or 0
+	end
+	local current = math.min(value, quest.Target)
+	return current, current >= quest.Target
+end
+
 -- Titres -------------------------------------------------------------------------------
 
 -- stats : { Rebirths, BestLevel, Harvests, StreetBest, TrophiesEarned, ForestKills, GolemKills,

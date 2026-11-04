@@ -31,10 +31,11 @@ function ProfileSchema.template()
 		Street = { Stage = 1, Best = 0, Kills = 0 }, -- Rue des boss : étape en cours, meilleure, ennemis vaincus
 		Daily = { Day = 0, Cycle = 1, LastClaimDay = -1 }, -- calendrier 7 jours cumulés
 		Title = "", -- titre équipé ("" = le plus prestigieux débloqué)
+		Quest = 1, -- index de la mission personnelle en cours (Config/Quests)
 		TitlesSeen = {}, -- titres déjà annoncés { [Id] = true }
 		BestLevel = 1, -- plus haut niveau atteint (ne baisse pas à la renaissance)
 		Playtime = { Day = -1, Seconds = 0, Claimed = {} }, -- temps de jeu actif du jour UTC
-		Stats = { FirstJoin = 0, PlaySeconds = 0, Harvests = 0, TrophiesEarned = 0 },
+		Stats = { FirstJoin = 0, PlaySeconds = 0, Harvests = 0, TrophiesEarned = 0, TrainSeconds = 0 },
 	}
 end
 

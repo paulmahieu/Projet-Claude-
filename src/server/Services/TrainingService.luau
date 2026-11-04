@@ -237,6 +237,7 @@ local function tick(player: Player, station: Station, dt: number)
 	local rates = durableRates(player, station.Tier)
 	local level, xp, gained = Formulas.addXp(profile.Level, profile.TrainXp, rates.Xp * dt, Training)
 	profile.Level, profile.TrainXp = level, xp
+	profile.Stats.TrainSeconds += dt
 	profile.Gold = Formulas.clamp(profile.Gold + rates.Gold * dt, Economy.GoldCap)
 	pulse(station.Rune)
 	if gained > 0 then

@@ -61,7 +61,7 @@ function RewardService.describe(reward): string
 	return table.concat(parts, ", ")
 end
 
--- Applique une récompense au profil (sans sauvegarder).
+-- Applique une récompense au profil (sans sauvegarder). Utilisée aussi par les missions.
 local function grant(player: Player, profile, reward)
 	if reward.Gold then
 		profile.Gold = Formulas.clamp(profile.Gold + reward.Gold, Economy.GoldCap)
@@ -90,6 +90,10 @@ local function publish(player: Player)
 	player:SetAttribute("DailyResetAt", (day + 1) * Rewards.DayLength) -- heure UTC du prochain jour
 	local seconds = if profile.Playtime.Day == day then profile.Playtime.Seconds else 0
 	player:SetAttribute("PlaySeconds", math.floor(seconds))
+end
+
+RewardService.grant = function(player: Player, profile, reward)
+	grant(player, profile, reward)
 end
 
 function RewardService.claimDaily(player: Player)
