@@ -201,6 +201,18 @@ Le code vit dans `src/` (fichiers texte versionnés). **Rojo** le synchronise en
 | 71 | Étapes 11 à 60 | Régions Frontières, Marches sauvages, Cimes gelées, Fournaise, Néant : nouveaux ennemis et boss (Gardien des racines, Hydre des marais, Titan du givre, Dragon de la fournaise, Colosse du néant à l'étape 60). |
 | 72 | Étape 61 | Retour aux ennemis de la première région, avec des statistiques plus élevées. |
 
+### Rue des boss : comportements, attaques de boss, animations
+
+| # | Action | Attendu |
+|---|---|---|
+| 73 | Combattre n'importe quel ennemi | Il se dandine en marchant, se penche en avant quand il frappe, recule quand il est touché, bascule et s'enfonce en mourant. |
+| 74 | Gelée épineuse vaincue | Elle se divise en 2 petites gelées. |
+| 75 | Araignée à moyenne distance | Elle se ramasse, une zone rouge apparaît sous toi, puis elle bondit dessus : sors de la zone. |
+| 76 | Loup des ronces | Une bande rouge s'affiche devant lui, puis il charge en ligne droite. |
+| 77 | Cultiste des cendres | Il garde ses distances et lance des boules de braise (zone d'impact affichée). |
+| 78 | Orque / Golem / Chevalier | L'orque traverse l'Esquive ; le golem te repousse ; le chevalier fait pousser des ronces qui ralentissent. |
+| 79 | Boss (étapes 10, 20…60) | Roi gobelin : renforts ; Gardien : champ de racines ; Hydre : 3 crachats ; Titan : pluie de glace ; Dragon : souffle en ligne ; Colosse : onde du néant (s'éloigner) + rochers. |
+
 ### À plusieurs : *Test → Clients and Servers → 2 ou 3 joueurs → Start*
 
 | # | Action | Attendu |

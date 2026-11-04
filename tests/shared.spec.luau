@@ -1453,6 +1453,28 @@ test("Rue des boss : régions, patrons et 15 ennemis des planches", function()
 	end
 end)
 
+test("Rue des boss : comportements et attaques spéciales configurés", function()
+	local known = { Melee = true }
+	for name in Street.Behaviors do
+		known[name] = true
+	end
+	known.Unblockable = true
+	for _, def in Street.Kinds do
+		assert(def.Behavior and known[def.Behavior], def.Id .. " : comportement inconnu " .. tostring(def.Behavior))
+	end
+	for _, def in Street.Bosses do
+		assert(def.Special and Street.Specials[def.Special], def.Id .. " : attaque spéciale inconnue")
+	end
+	assert(Street.Specials.Every > Street.Patron.SlamTelegraph, "pas d'attaques simultanées en continu")
+	-- Toutes les attaques à zone laissent le temps de réagir.
+	for name, cfg in Street.Specials do
+		if type(cfg) == "table" and cfg.Telegraph then
+			assert(cfg.Telegraph >= 1, name .. " : annonce trop courte")
+		end
+	end
+	assert(Street.Behaviors.Leap.Windup + Street.Behaviors.Leap.Time >= 0.9, "bond annoncé assez tôt")
+end)
+
 print(string.format("\n%d réussi(s), %d échec(s)", passed, failed))
 if failed > 0 then
 	error("Des tests ont échoué")

@@ -46,6 +46,7 @@ return {
 	Kinds = {
 		{
 			Id = "ThornJelly",
+			Behavior = "Split",
 			Name = "Gelée épineuse",
 			Tier = "Petit",
 			Scale = 1,
@@ -55,6 +56,7 @@ return {
 		},
 		{
 			Id = "RuinSpider",
+			Behavior = "Leap",
 			Name = "Araignée des ruines",
 			Tier = "Petit",
 			Scale = 0.9,
@@ -64,6 +66,7 @@ return {
 		},
 		{
 			Id = "ScrapGoblin",
+			Behavior = "Melee",
 			Name = "Gobelin ferrailleur",
 			Tier = "Petit",
 			Scale = 1,
@@ -73,6 +76,7 @@ return {
 		},
 		{
 			Id = "SkeletonSentinel",
+			Behavior = "Melee",
 			Name = "Squelette sentinelle",
 			Tier = "Frontière",
 			Scale = 1,
@@ -82,6 +86,7 @@ return {
 		},
 		{
 			Id = "BrambleWolf",
+			Behavior = "Charge",
 			Name = "Loup des ronces",
 			Tier = "Frontière",
 			Scale = 1,
@@ -91,6 +96,7 @@ return {
 		},
 		{
 			Id = "AshCultist",
+			Behavior = "Ranged",
 			Name = "Cultiste des cendres",
 			Tier = "Frontière",
 			Scale = 1,
@@ -100,6 +106,7 @@ return {
 		},
 		{
 			Id = "ShieldbreakerOrc",
+			Behavior = "Unblockable",
 			Name = "Orque brise-bouclier",
 			Tier = "Élite",
 			Scale = 1,
@@ -110,6 +117,7 @@ return {
 		},
 		{
 			Id = "QuarryGolem",
+			Behavior = "Knockback",
 			Name = "Golem des carrières",
 			Tier = "Élite",
 			Scale = 1,
@@ -120,6 +128,7 @@ return {
 		},
 		{
 			Id = "ThornKnight",
+			Behavior = "Roots",
 			Name = "Chevalier des épines",
 			Tier = "Élite",
 			Scale = 1,
@@ -134,6 +143,7 @@ return {
 	Bosses = {
 		{
 			Id = "GoblinKing",
+			Special = "Summon",
 			Name = "Roi gobelin",
 			Tier = "Boss régional",
 			Boss = true,
@@ -146,6 +156,7 @@ return {
 		},
 		{
 			Id = "RootGuardian",
+			Special = "RootField",
 			Name = "Gardien des racines",
 			Tier = "Boss régional",
 			Boss = true,
@@ -158,6 +169,7 @@ return {
 		},
 		{
 			Id = "MarshHydra",
+			Special = "Spit",
 			Name = "Hydre des marais",
 			Tier = "Boss régional",
 			Boss = true,
@@ -170,6 +182,7 @@ return {
 		},
 		{
 			Id = "FrostTitan",
+			Special = "Icefall",
 			Name = "Titan du givre",
 			Tier = "Boss majeur",
 			Boss = true,
@@ -182,6 +195,7 @@ return {
 		},
 		{
 			Id = "FurnaceDragon",
+			Special = "Breath",
 			Name = "Dragon de la fournaise",
 			Tier = "Boss majeur",
 			Boss = true,
@@ -194,6 +208,7 @@ return {
 		},
 		{
 			Id = "VoidColossus",
+			Special = "Nova",
 			Name = "Colosse du néant",
 			Tier = "Boss final",
 			Boss = true,
@@ -204,6 +219,27 @@ return {
 			Reward = 3.5,
 			SlamRadius = 16,
 		},
+	},
+
+	-- Comportements (Behavior) et attaques spéciales des boss (Special). Toutes les attaques
+	-- dangereuses sont annoncées au sol (zone rouge) : on peut les esquiver en se déplaçant ou
+	-- avec l'Esquive, sauf « Unblockable » (orque : ses coups brisent l'Esquive).
+	Behaviors = {
+		Leap = { Cooldown = 4.5, Windup = 0.45, Time = 0.55, MinRange = 6, MaxRange = 16, Radius = 3.5, Damage = 1.5 },
+		Charge = { Cooldown = 5.5, Windup = 0.6, SpeedMult = 4, MinRange = 8, MaxRange = 22, Width = 3.5, Damage = 1.6 },
+		Ranged = { Near = 9, Far = 16, Cooldown = 2.6, ProjectileSpeed = 28, Radius = 3.2, Damage = 1.0 },
+		Split = { Count = 2, Health = 0.3, Scale = 0.55, Reward = 0.25 },
+		Knockback = { Distance = 9 },
+		Roots = { Cooldown = 7, Radius = 4.5, Telegraph = 1.2, Slow = 0.5, SlowSeconds = 2, Damage = 0.8 },
+	},
+	Specials = {
+		Every = 7, -- secondes entre deux attaques spéciales (en alternance avec le coup de zone)
+		Summon = { Count = 2, MaxAlive = 4 },
+		RootField = { Count = 4, Radius = 5, Spread = 10, Telegraph = 1.4, Damage = 1.6 },
+		Spit = { Count = 3, Spread = 5, Radius = 4, Damage = 1.4 },
+		Icefall = { Count = 6, Radius = 4.5, Spread = 12, Telegraph = 1.3, Damage = 1.8 },
+		Breath = { Length = 40, Width = 8, Telegraph = 1.3, Damage = 2.5 },
+		Nova = { Radius = 20, Telegraph = 2.0, Damage = 3, Rocks = 3 },
 	},
 
 	-- Régions de 10 étapes : ennemis des vagues (en alternance) et patrons (étapes 5 et 10).
