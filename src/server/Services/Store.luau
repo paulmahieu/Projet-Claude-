@@ -142,6 +142,7 @@ end
 	opts.onLoad(data, now) -> extra      (pur ; ex. crédit hors ligne appliqué dans la même écriture)
 	opts.steal           : prendre le verrou même s'il est détenu ailleurs
 	Retourne status ("ok" | "locked" | "missing" | "error"), data, extra
+	(pour "locked", extra = JobId du serveur détenteur du verrou)
 ]]
 function Store:load(key: string, opts)
 	local now = os.time() -- capturée une fois : stable si la transformation est rejouée
@@ -152,6 +153,7 @@ function Store:load(key: string, opts)
 		local lock = SessionLock.acquire(old, jobId, now, SAVE.LockSeconds, opts.steal)
 		if not lock then
 			status = "locked"
+			extra = old and old.Lock and old.Lock.JobId -- serveur qui détient la clé (rejoindre)
 			return nil
 		end
 		local data

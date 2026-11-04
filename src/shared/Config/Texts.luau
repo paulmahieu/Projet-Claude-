@@ -7,7 +7,7 @@ return {
 	Welcome = "Bienvenue ! Bouton « Mon bastion » pour rejoindre ta base, puis récolte du bois pour construire le terrain d'entraînement.",
 	Loading = "Chargement de ta progression...",
 	LoadError = "Impossible de charger ta progression pour l'instant. Nouvel essai automatique...",
-	GroupRemote = "Ton bastion est ouvert sur un autre serveur. Nouvel essai automatique... (rejoindre ce serveur : prochaine version)",
+	GroupRemote = "Ton bastion est ouvert sur un autre serveur. Nouvel essai automatique... (Menu > Groupe > « Rejoindre mon bastion » pour aller sur ce serveur)",
 	GroupError = "Le bastion n'a pas pu être chargé. Nouvel essai automatique...",
 	NoPlot = "Aucune parcelle libre sur ce serveur : ton bastion n'est pas affiché ici.",
 	ReadOnly = "Connexion aux sauvegardes perdue : modifications suspendues.",

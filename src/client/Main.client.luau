@@ -599,10 +599,80 @@ local renderTab -- défini plus bas
 
 -- Onglet Groupe
 local pendingAbandonConfirm = false
+-- Amis en ligne dans cette expérience (lu par le client : Player:GetFriendsOnline).
+local friendsOnline: { any }? = nil
+local friendsLoading = false
+local function loadFriends()
+	if friendsLoading then
+		return
+	end
+	friendsLoading = true
+	task.spawn(function()
+		local ok, list = pcall(function()
+			return player:GetFriendsOnline(200)
+		end)
+		local result = {}
+		if ok and type(list) == "table" then
+			for _, f in list do
+				-- LocationType 4 = dans une expérience ; même lieu = même jeu.
+				if f.PlaceId == game.PlaceId and f.VisitorId then
+					table.insert(result, {
+						UserId = f.VisitorId,
+						Name = f.DisplayName or f.UserName,
+						JobId = f.GameId,
+						Here = f.GameId == game.JobId or Players:GetPlayerByUserId(f.VisitorId) ~= nil,
+					})
+				end
+			end
+		end
+		friendsOnline = result
+		friendsLoading = false
+		if menuOpen and currentTab == "Group" then
+			renderTab()
+		end
+	end)
+end
+
+local function renderFriends()
+	heading("Amis en jeu (Rue des boss, œufs et Champ sont communs à tout le serveur)")
+	if friendsOnline == nil then
+		heading("Recherche des amis en ligne...")
+		loadFriends()
+		return
+	end
+	local list = friendsOnline :: { any }
+	if #list == 0 then
+		heading("(aucun ami Roblox dans Bastions d'Éther pour l'instant)")
+	end
+	for _, f in list do
+		local r = row(52)
+		rowText(r, tostring(f.Name), if f.Here then "sur ce serveur" else "sur un autre serveur", 130)
+		rightButton(r, if f.Here then "Visiter" else "Rejoindre", if f.Here then C.Free else C.info, 1, function()
+			request("JoinFriend", { UserId = f.UserId, JobId = if f.Here then nil else f.JobId })
+		end)
+	end
+	local refresh = row(48)
+	rowText(refresh, "Actualiser la liste", nil, 130)
+	rightButton(refresh, "Actualiser", C.Row, 1, function()
+		friendsOnline = nil
+		renderTab()
+	end)
+end
+
 local function renderGroup()
 	local state = groupState
+	if player:GetAttribute("GroupState") == "Remote" then
+		heading("Ton bastion est ouvert sur un autre serveur")
+		local r = row(60)
+		rowText(r, "Rejoins tes compagnons de bastion", "Téléportation vers le serveur qui l'a ouvert.", 200)
+		local b = rightButton(r, "Rejoindre mon bastion", C.Free, 1, function()
+			request("JoinBastionServer", {})
+		end)
+		b.Size = UDim2.fromOffset(190, 44)
+	end
 	if not state or not state.Name then
 		heading(Texts.Loading)
+		renderFriends()
 		return
 	end
 
@@ -669,6 +739,7 @@ local function renderGroup()
 			request("Leave", { Confirm = true })
 		end, true)
 	end
+	renderFriends()
 end
 
 -- Onglet Améliorations
@@ -1783,6 +1854,12 @@ for _, name in { "DailyDay", "DailyClaimable", "PlaySeconds" } do
 		end
 	end)
 end
+
+player:GetAttributeChangedSignal("GroupState"):Connect(function()
+	if menuOpen and currentTab == "Group" then
+		renderTab()
+	end
+end)
 
 for _, name in { "PassXp", "PassPremium", "PassClaimable" } do
 	player:GetAttributeChangedSignal(name):Connect(function()

@@ -34,8 +34,9 @@ Légende : ✅ implémenté · 🧪 testé automatiquement (Lune) · 🔍 à vé
   portes locales, patron toutes les 5 étapes avec butin affiché, progression sauvegardée
 
 ## Étape 2 — Persistance et construction complètes
-- ⏳ Annuaire MemoryStore groupe -> serveur, téléportation vers le bastion (décision R2)
-- ⏳ Serveur plein, échec de téléportation, attente sans copie modifiable
+- ✅ Téléportation vers le serveur du bastion (JobId lu dans le verrou du bastion) et vers un ami (liste d'amis en ligne, amitié revérifiée par le serveur) — *à vérifier dans le jeu publié*
+- ⏳ Annuaire MemoryStore groupe -> serveur (plus rapide que le verrou ; utile si le verrou expire)
+- 🟡 Serveur plein, échec de téléportation : message et nouvel essai manuel ; attente sans copie modifiable (déjà en place)
 - ⏳ Placement libre sur grille : aperçu, rotation, validation, annulation, limites, zones protégées
 - ✅🧪🔍 Récompenses quotidiennes (7 jours cumulés, 00:00 UTC, compagnon offert au 1er cycle,
   cycles répétables) et de temps de jeu actif (5/10/20/30 min), crédits idempotents

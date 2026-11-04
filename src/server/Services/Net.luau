@@ -23,6 +23,7 @@ local RebirthService = require(script.Parent.RebirthService)
 local PetService = require(script.Parent.PetService)
 local BossService = require(script.Parent.BossService)
 local RewardService = require(script.Parent.RewardService)
+local TravelService = require(script.Parent.TravelService)
 local PassService = require(script.Parent.PassService)
 local Pass = require(Shared.Config.Pass)
 local TitleService = require(script.Parent.TitleService)
@@ -83,6 +84,20 @@ local handlers = {
 			PassService.addXp(player, Pass.Xp.Daily)
 		end
 		return res
+	end,
+
+	JoinFriend = function(player, p)
+		if not Validate.positiveInteger(p.UserId, MAX_USER_ID) then
+			return bad()
+		end
+		if p.JobId ~= nil and not (type(p.JobId) == "string" and #p.JobId <= 64 and p.JobId:match("^[%w%-]+$")) then
+			return bad()
+		end
+		return TravelService.joinFriend(player, p.UserId, p.JobId)
+	end,
+
+	JoinBastionServer = function(player)
+		return TravelService.joinBastionServer(player)
 	end,
 
 	ClaimPass = function(player)

@@ -51,7 +51,7 @@ Chaque enregistrement a la forme `{ Data, Lock = { JobId, Expires } }`.
 2. Le profil donne `GroupId`. Le serveur tente de prendre le verrou du groupe :
    - **libre ou expiré** : le groupe est chargé ici, une parcelle lui est attribuée, la base est reconstruite à partir des données relatives à la parcelle ;
    - **déjà chargé ici** (un autre membre est présent) : le joueur le rejoint, sans second chargement ;
-   - **détenu par un autre serveur** : état « Remote ». **Aucune copie modifiable** n'est ouverte ici. Le serveur réessaie toutes les 30 s ; la téléportation vers le bon serveur est prévue à l'étape 2.
+   - **détenu par un autre serveur** : état « Remote ». **Aucune copie modifiable** n'est ouverte ici. Le serveur réessaie toutes les 30 s ; Menu > Groupe propose « Rejoindre mon bastion » : `TravelService` téléporte vers le serveur dont le `JobId` est inscrit dans le verrou (`Store:load` le renvoie pour l'état « locked »).
 3. Tant que le groupe est chargé, chaque sauvegarde (toutes les 90 à 120 s, étalées) **renouvelle** le verrou (validité 5 min) et vérifie qu'il appartient encore à ce serveur.
 4. Si la vérification échoue (autorité perdue) ou si le renouvellement est en échec depuis plus de 4 min, `canMutate` devient faux : plus aucune construction, récolte ni changement d'appartenance n'est accepté (état « ReadOnly »).
 5. Quand le dernier membre présent part : sauvegarde, libération du verrou et de la parcelle.

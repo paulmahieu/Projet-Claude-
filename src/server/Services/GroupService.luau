@@ -228,7 +228,14 @@ local function releaseGroup(group: Group)
 end
 
 -- Charge un groupe une seule fois même si plusieurs membres arrivent en même temps.
-local function ensureLoaded(id: string): (string, Group?)
+local remoteJob: { [Player]: string } = {} -- serveur où le bastion du joueur est ouvert
+
+-- JobId du serveur qui détient le bastion du joueur (état « Remote »), sinon nil.
+function GroupService.remoteJobOf(player: Player): string?
+	return remoteJob[player]
+end
+
+local function ensureLoaded(id: string): (string, Group?, string?)
 	if groups[id] then
 		return "ok", groups[id]
 	end
@@ -239,13 +246,13 @@ local function ensureLoaded(id: string): (string, Group?)
 		return (if groups[id] then "ok" else "retry"), groups[id]
 	end
 	loading[id] = true
-	local status, data = store:load(keyFor(id), { loader = GroupSchema.load })
+	local status, data, holder = store:load(keyFor(id), { loader = GroupSchema.load })
 	local group = nil
 	if status == "ok" then
 		group = register(id, data)
 	end
 	loading[id] = nil
-	return status, group
+	return status, group, if status == "locked" then holder else nil
 end
 
 local function createSoloGroup(player: Player): Group?
@@ -313,7 +320,8 @@ local function connectPlayer(player: Player)
 		end
 
 		local id = profile.GroupId
-		local status, group = ensureLoaded(id)
+		local status, group, holder = ensureLoaded(id)
+		remoteJob[player] = if status == "locked" then holder else nil
 		if status == "retry" then
 			continue
 		elseif status == "locked" then
@@ -596,6 +604,7 @@ function GroupService.start()
 
 	-- Au départ du joueur (avant la sauvegarde de son profil).
 	ProfileService.onRemoving(function(player)
+		remoteJob[player] = nil
 		invites[player] = nil
 		detach(player)
 	end)
