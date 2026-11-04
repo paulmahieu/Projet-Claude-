@@ -37,8 +37,8 @@ return {
 	PatronDrops = {
 		{ Kind = "Material", Id = "Crystal", Amount = 2, Chance = 1 },
 		{ Kind = "Material", Id = "Ore", Amount = 3, Chance = 0.5 },
-		{ Kind = "Pet", Id = "RuneWolf", Chance = 0.05 },
-		{ Kind = "Pet", Id = "CrystalFox", Chance = 0.005 },
+		{ Kind = "Pet", Id = "FrostWolf", Chance = 0.05 },
+		{ Kind = "Pet", Id = "SolarLion", Chance = 0.005 },
 	},
 
 	-- Types d'ennemis : alternent selon l'étape.

@@ -147,7 +147,7 @@ function PetService.openEgg(player: Player, eggId: string): string?
 	local def = petById[petId]
 	local rarity = Pets.Rarities[def.Rarity]
 	Notifier.send(player, string.format("%s ouvert : %s (%s) !", egg.Name, def.Name, rarity.Name), "reward")
-	if rarity.Order >= 5 then
+	if rarity.Order >= 6 then -- Mythique et Céleste
 		Notifier.broadcast(
 			string.format("✨ %s a obtenu %s (%s) !", player.DisplayName, def.Name, rarity.Name),
 			"reward"

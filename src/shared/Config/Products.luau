@@ -127,10 +127,10 @@ return {
 		Kind = "Pass",
 		Id = 0,
 		SuggestedPrice = 29,
-		Name = "Loup de givre",
-		Description = "Apparence pour le loup runique. Nécessite de posséder le loup runique.",
+		Name = "Loup d'aurore",
+		Description = "Apparence pour le loup du givre. Nécessite de posséder le loup du givre.",
 		Preview = "Apparence de compagnon",
-		Delivery = { Type = "Cosmetic", Item = "FrostWolf", RequiresCompanion = "RuneWolf" },
+		Delivery = { Type = "Cosmetic", Item = "AuroraWolf", RequiresCompanion = "FrostWolf" },
 		Ready = false, -- compagnons : étape 4
 	},
 	{

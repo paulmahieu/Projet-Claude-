@@ -5,7 +5,7 @@
 
 local ProfileSchema = {}
 
-ProfileSchema.VERSION = 3
+ProfileSchema.VERSION = 4
 
 function ProfileSchema.template()
 	return {
@@ -90,6 +90,25 @@ local MIGRATIONS = {
 		end
 		data.Upgrades = nil
 		data.Version = 3
+	end,
+	-- v3 -> v4 : nouveaux compagnons (planches du créateur) ; les anciens sont convertis.
+	[3] = function(data)
+		local renamed = {
+			Sprout = "BarnCat",
+			Hare = "MeadowRabbit",
+			RuneWolf = "FrostWolf",
+			Owl = "PeakEagle",
+			LittleGolem = "RuneRam",
+			LightWisp = "ArcaneRaven",
+			CrystalFox = "SolarLion",
+			EmberDrake = "RubyDragon",
+			EtherPhoenix = "AstralKitsune",
+			AstralUnicorn = "ImperialQilin",
+		}
+		for _, pet in data.Pets or {} do
+			pet.PetId = renamed[pet.PetId] or pet.PetId
+		end
+		data.Version = 4
 	end,
 }
 

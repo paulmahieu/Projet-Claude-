@@ -53,7 +53,32 @@ end
 local scene = process.args[2] or "base"
 local function at(x, z) return roblox.CFrame.new(x, 0, z) end
 local V = roblox.Vector3.new
-if scene == "eggs" then
+if scene == "pets" then
+	-- Une rareté par image (argument 3) : 5 compagnons alignés, vus de trois quarts.
+	local rarity = process.args[3] or "Common"
+	local floor = roblox.Instance.new("Part")
+	floor.Size = V(40, 1, 16)
+	floor.CFrame = roblox.CFrame.new(0, -0.5, 0)
+	floor.Color = roblox.Color3.fromRGB(226, 220, 210)
+	floor.Material = roblox.Enum.Material.SmoothPlastic
+	dump(floor)
+	local i = 0
+	for _, def in PetsCfg.List do
+		if def.Rarity == rarity then
+			i += 1
+			local r = PetsCfg.Rarities[def.Rarity].Color
+			local model = PetModels.build(def, roblox.Color3.fromRGB(r[1], r[2], r[3]))
+			local base = roblox.CFrame.new(-8 + (i - 1) * 4, 1.35, 0) * roblox.CFrame.Angles(0, math.rad(-35), 0)
+			local pivot = model.PrimaryPart.CFrame
+			for _, p in model:GetDescendants() do
+				if p:IsA("BasePart") then
+					p.CFrame = base * pivot:Inverse() * p.CFrame
+				end
+			end
+			dump(model)
+		end
+	end
+elseif scene == "eggs" then
 	local floor = roblox.Instance.new("Part")
 	floor.Size = V(60, 1, 20)
 	floor.CFrame = roblox.CFrame.new(0, -0.5, 0)

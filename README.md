@@ -176,6 +176,14 @@ Le code vit dans `src/` (fichiers texte versionnés). **Rojo** le synchronise en
 | 61 | Menu → Groupe | « Terrain : n / 6 extensions » et production des machines par minute, avec ta part d'or. |
 | 62 | Quitter puis revenir après quelques minutes (tout le groupe hors ligne) | « Pendant votre absence, les machines ont produit : … » (25 %, 8 h max). |
 
+### Compagnons (planches du créateur)
+
+| # | Action | Attendu |
+|---|---|---|
+| 63 | Ouvrir l'œuf des clairières, équiper le compagnon | Chat, chien, lapin, poule ou cochon détaillé (yeux expressifs, collier) qui suit le joueur. |
+| 64 | Menu → Compagnons | 30 compagnons possibles en 6 raretés (Commun, Peu commun, Rare, Épique, Légendaire, Mythique) + 2 Célestes ; la fenêtre d'un œuf affiche les nouvelles probabilités. |
+| 65 | Profil d'avant cette version (Studio) | Les anciens compagnons sont convertis automatiquement (ex. Pousse sylvestre → Chat des granges, Phénix d'Éther → Kitsune astral). |
+
 ### À plusieurs : *Test → Clients and Servers → 2 ou 3 joueurs → Start*
 
 | # | Action | Attendu |

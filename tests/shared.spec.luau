@@ -542,16 +542,16 @@ end)
 
 test("bonus des compagnons cumulé et plafonné", function()
 	eq(Formulas.petMultiplier(Pets, {}), 1)
-	near(Formulas.petMultiplier(Pets, { "Sprout", "RuneWolf" }), 1.35)
+	near(Formulas.petMultiplier(Pets, { "BarnCat", "FrostWolf" }), 1.45)
 	local many = {}
 	for _ = 1, 20 do
-		table.insert(many, "EtherPhoenix")
+		table.insert(many, "AstralKitsune")
 	end
 	eq(Formulas.petMultiplier(Pets, many), 1 + Pets.MaxTotalBonus)
 end)
 
 test("équiper le meilleur choisit les plus gros bonus", function()
-	local inv = { { Uid = 1, PetId = "Sprout" }, { Uid = 2, PetId = "LittleGolem" }, { Uid = 3, PetId = "Owl" } }
+	local inv = { { Uid = 1, PetId = "BarnCat" }, { Uid = 2, PetId = "RuneRam" }, { Uid = 3, PetId = "PeakEagle" } }
 	local best = Formulas.bestPets(Pets, inv, 2)
 	eq(#best, 2)
 	eq(best[1], 2)
@@ -794,8 +794,8 @@ test("chance : favorise Rare et plus, probabilités toujours = 100 %", function(
 		end
 		return 0
 	end
-	assert(chanceOf(lucky, "RuneWolf") > chanceOf(base, "RuneWolf"), "Rare favorisé")
-	assert(chanceOf(lucky, "Sprout") < chanceOf(base, "Sprout"), "Commun moins fréquent")
+	assert(chanceOf(lucky, "FrostWolf") > chanceOf(base, "FrostWolf"), "Rare favorisé")
+	assert(chanceOf(lucky, "BarnCat") < chanceOf(base, "BarnCat"), "Commun moins fréquent")
 	local total = 0
 	for _, e in lucky do
 		total += e.Chance
@@ -1313,6 +1313,53 @@ test("Groupe : champs de terrain et de machines par défaut", function()
 	eq(g.Land, 0)
 	eq(next(g.Machines), nil)
 	eq(g.MachineAt, 0)
+end)
+
+test("Compagnons : 5 par rareté (Commun à Mythique), fiche de modèle pour chacun", function()
+	-- PetModels utilise les types Roblox : chargé avec la bibliothèque @lune/roblox.
+	local roblox = require("@lune/roblox")
+	local luau = require("@lune/luau")
+	local fs = require("@lune/fs")
+	local env = setmetatable({
+		Color3 = roblox.Color3,
+		Vector3 = roblox.Vector3,
+		CFrame = roblox.CFrame,
+		Instance = roblox.Instance,
+		Enum = roblox.Enum,
+	}, { __index = _G })
+	local PetModels = luau.load(fs.readFile("src/shared/PetModels.luau"), { environment = env })()
+	local count = {}
+	local ids = {}
+	for _, def in Pets.List do
+		assert(not ids[def.Id], "Id en double " .. def.Id)
+		ids[def.Id] = true
+		assert(Pets.Rarities[def.Rarity], def.Id .. " : rareté inconnue")
+		count[def.Rarity] = (count[def.Rarity] or 0) + 1
+		assert(PetModels.Species[def.Id], def.Id .. " : pas de fiche de modèle")
+		local model = PetModels.build(def, roblox.Color3.new(1, 1, 1))
+		assert(#model:GetChildren() >= 15, def.Id .. " : modèle trop pauvre")
+	end
+	for _, r in { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic" } do
+		eq(count[r], 5, "5 compagnons " .. r)
+	end
+	-- Les bonus croissent avec la rareté.
+	local maxOf, minOf = {}, {}
+	for _, def in Pets.List do
+		local o = Pets.Rarities[def.Rarity].Order
+		maxOf[o] = math.max(maxOf[o] or 0, def.Bonus)
+		minOf[o] = math.min(minOf[o] or math.huge, def.Bonus)
+	end
+	for o = 2, 7 do
+		if minOf[o] and maxOf[o - 1] then
+			assert(minOf[o] > maxOf[o - 1], "bonus croissants avec la rareté (" .. o .. ")")
+		end
+	end
+	-- Anciens compagnons : conversion vers un compagnon existant, identique dans le schéma.
+	for old, new in Pets.Renamed do
+		assert(ids[new], old .. " -> " .. new .. " inconnu")
+		local migrated = ProfileSchema.load({ Version = 3, Pets = { { Uid = 1, PetId = old } }, EquippedPets = { 1 } })
+		eq(migrated.Pets[1].PetId, new, "migration " .. old)
+	end
 end)
 
 print(string.format("\n%d réussi(s), %d échec(s)", passed, failed))

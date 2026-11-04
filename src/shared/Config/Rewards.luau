@@ -20,7 +20,7 @@ return {
 		{ Trophies = 30, Xp = 300 },
 		{ Gold = 1000 },
 		{ Trophies = 60 },
-		{ Pet = "LightWisp", Gold = 1500 }, -- compagnon offert au premier cycle
+		{ Pet = "ArcaneRaven", Gold = 1500 }, -- compagnon offert au premier cycle
 	},
 	Repeat = {
 		{ Gold = 300 },
