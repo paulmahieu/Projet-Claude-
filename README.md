@@ -35,6 +35,13 @@ Sans réglage, Studio refuse les DataStores : le jeu passe en **mode test** (mes
 
 ---
 
+### Interface
+
+Colonne de gros boutons à gauche (Boutique, Arbre, Compagnons, Renaissance, Cadeaux, Groupe)
+avec pastilles rouges quand il y a du nouveau ; or et trophées dessous ; barre de niveau,
+d'XP et de Puissance en bas au centre, objectif juste au-dessus ; matériaux du bastion et
+cadeaux en haut à droite ; « Mon bastion » en bas à droite. Clavier M / manette Y : menu.
+
 ### En cas de problème
 
 - **Panneau rouge en bas à gauche** (Studio uniquement) : il liste les erreurs du serveur et du

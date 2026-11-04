@@ -84,49 +84,80 @@ end)
 -- suite de ce script échoue.
 DiagnosticsUi.start(gui)
 
--- Panneau personnel (haut gauche) ----------------------------------------------------
+-- Monnaies (gauche, sous la colonne de boutons) et barre de niveau (bas, centre) ---------
+-- Disposition inspirée des simulateurs : gros boutons à icônes à gauche, monnaies dessous,
+-- grande barre de niveau en bas au centre ; couleurs bois, or et cristal du jeu.
 
-local stats = Ui.create("Frame", {
-	Position = UDim2.fromOffset(10, 10),
-	Size = UDim2.fromOffset(250, 128),
-	BackgroundColor3 = C.Panel,
-	BackgroundTransparency = 0.1,
+local currencies = Ui.create("Frame", {
+	AnchorPoint = Vector2.new(0, 0),
+	Position = UDim2.new(0, 10, 0, 238),
+	Size = UDim2.fromOffset(170, 64),
+	BackgroundTransparency = 1,
 	Parent = gui,
-}, { Ui.corner(10), Ui.stroke(), Ui.padding(10) })
-
-local goldLabel = Ui.label({
-	Size = UDim2.new(1, 0, 0, 26),
-	Font = Enum.Font.GothamBold,
-	TextSize = 22,
-	TextColor3 = C.Gold,
-	Parent = stats,
 })
-local levelLabel = Ui.label({ Position = UDim2.fromOffset(0, 30), Size = UDim2.new(1, 0, 0, 18), Parent = stats })
+local function currencyLine(y: number, color: Color3)
+	return Ui.label({
+		Position = UDim2.fromOffset(0, y),
+		Size = UDim2.new(1, 0, 0, 30),
+		Font = Enum.Font.FredokaOne,
+		TextSize = 26,
+		TextColor3 = color,
+		TextStrokeTransparency = 0,
+		Parent = currencies,
+	})
+end
+local goldLabel = currencyLine(0, C.Gold)
+local powerLabel = currencyLine(32, Color3.fromRGB(255, 225, 140))
+
+local levelBar = Ui.create("Frame", {
+	AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 0, 1, -12),
+	Size = UDim2.new(0.5, 0, 0, 40),
+	BackgroundColor3 = Color3.fromRGB(30, 24, 18),
+	Parent = gui,
+}, {
+	Ui.corner(10),
+	Ui.stroke(),
+	Ui.create("UISizeConstraint", { MinSize = Vector2.new(280, 40), MaxSize = Vector2.new(520, 40) }),
+})
 local xpBack = Ui.create("Frame", {
-	Position = UDim2.fromOffset(0, 52),
-	Size = UDim2.new(1, 0, 0, 10),
+	Position = UDim2.fromOffset(4, 4),
+	Size = UDim2.new(1, -8, 1, -8),
 	BackgroundColor3 = Color3.fromRGB(18, 18, 22),
-	Parent = stats,
-}, { Ui.corner(5) })
+	Parent = levelBar,
+}, { Ui.corner(7) })
 local xpFill = Ui.create(
 	"Frame",
-	{ Size = UDim2.fromScale(0, 1), BackgroundColor3 = C.Xp, Parent = xpBack },
-	{ Ui.corner(5) }
+	{ Size = UDim2.fromScale(0, 1), BackgroundColor3 = Color3.fromRGB(240, 190, 60), Parent = xpBack },
+	{
+		Ui.corner(7),
+		Ui.create("UIGradient", {
+			Color = ColorSequence.new(Color3.fromRGB(255, 220, 110), Color3.fromRGB(230, 150, 40)),
+		}),
+	}
 )
-local powerLabel = Ui.label({
-	Position = UDim2.fromOffset(0, 66),
-	Size = UDim2.new(1, 0, 0, 18),
-	TextColor3 = C.Muted,
-	TextSize = 14,
-	Parent = stats,
+local levelLabel = Ui.label({
+	Size = UDim2.fromScale(1, 1),
+	Font = Enum.Font.FredokaOne,
+	TextSize = 20,
+	TextXAlignment = Enum.TextXAlignment.Center,
+	TextStrokeTransparency = 0,
+	ZIndex = 3,
+	Parent = levelBar,
 })
 local objectiveLabel = Ui.label({
-	Position = UDim2.fromOffset(0, 86),
-	Size = UDim2.new(1, 0, 0, 22),
+	AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 0, 1, -58),
+	Size = UDim2.new(0.5, 0, 0, 22),
+	Font = Enum.Font.GothamBold,
+	TextSize = 15,
+	TextXAlignment = Enum.TextXAlignment.Center,
 	TextColor3 = C.Ether,
-	TextScaled = true,
-	Parent = stats,
+	TextStrokeTransparency = 0.2,
+	Parent = gui,
 })
+Ui.create("UISizeConstraint", { MinSize = Vector2.new(280, 22), MaxSize = Vector2.new(560, 22) }).Parent =
+	objectiveLabel
 
 -- Panneau du groupe (haut droite) -----------------------------------------------------
 
@@ -284,13 +315,14 @@ local function refreshHud()
 	local level = player:GetAttribute("Level") or 1
 	local xp = player:GetAttribute("TrainXp") or 0
 	local xpNext = player:GetAttribute("XpNext") or 1
-	goldLabel.Text = "Or : " .. Formulas.formatNumber(player:GetAttribute("Gold") or 0)
-	levelLabel.Text =
-		string.format("Niveau %d · %s / %s XP", level, Formulas.formatNumber(xp), Formulas.formatNumber(xpNext))
-	powerLabel.Text = string.format(
-		"Puissance %s · Trophées %s",
-		Formulas.formatNumber(player:GetAttribute("Power") or 10),
-		Formulas.formatNumber(player:GetAttribute("Trophies") or 0)
+	goldLabel.Text = "💰 " .. Formulas.formatNumber(player:GetAttribute("Gold") or 0)
+	powerLabel.Text = "🏆 " .. Formulas.formatNumber(player:GetAttribute("Trophies") or 0)
+	levelLabel.Text = string.format(
+		"Niveau %d   ·   %s / %s XP   ·   🔥 Puissance %s",
+		level,
+		Formulas.formatNumber(xp),
+		Formulas.formatNumber(xpNext),
+		Formulas.formatNumber(player:GetAttribute("Power") or 10)
 	)
 	TweenService:Create(xpFill, TweenInfo.new(0.25), { Size = UDim2.fromScale(math.clamp(xp / xpNext, 0, 1), 1) })
 		:Play()
@@ -349,7 +381,7 @@ end
 
 local toastContainer = Ui.create("Frame", {
 	AnchorPoint = Vector2.new(0.5, 1),
-	Position = UDim2.new(0.5, 0, 1, -90),
+	Position = UDim2.new(0.5, 0, 1, -88),
 	Size = UDim2.new(0.9, 0, 0, 240),
 	BackgroundTransparency = 1,
 	Parent = gui,
@@ -1307,6 +1339,133 @@ PetsUpdate.OnClientEvent:Connect(function(state)
 		renderTab()
 	end
 end)
+
+-- Colonne de boutons à icônes (gauche) ---------------------------------------------------
+-- Chaque bouton ouvre l'onglet correspondant ; une pastille rouge signale une nouveauté
+-- (amélioration achetable, compagnon à équiper, renaissance possible, cadeau prêt).
+local iconColumn = Ui.create("Frame", {
+	Position = UDim2.fromOffset(10, 10),
+	Size = UDim2.fromOffset(160, 222),
+	BackgroundTransparency = 1,
+	Parent = gui,
+})
+Ui.create("UIGridLayout", {
+	CellSize = UDim2.fromOffset(76, 70),
+	CellPadding = UDim2.fromOffset(6, 6),
+	SortOrder = Enum.SortOrder.LayoutOrder,
+	Parent = iconColumn,
+})
+local ICONS = {
+	{ Tab = "Shop", Icon = "🛒", Label = "Boutique", Color = Color3.fromRGB(230, 170, 40) },
+	{ Tab = "Upgrades", Icon = "🌳", Label = "Arbre", Color = Color3.fromRGB(70, 160, 80) },
+	{ Tab = "Pets", Icon = "🐾", Label = "Compagnons", Color = Color3.fromRGB(150, 90, 220) },
+	{ Tab = "Rebirth", Icon = "🔁", Label = "Renaissance", Color = Color3.fromRGB(210, 60, 70) },
+	{ Tab = "Rewards", Icon = "🎁", Label = "Cadeaux", Color = Color3.fromRGB(240, 120, 40) },
+	{ Tab = "Group", Icon = "🏰", Label = "Groupe", Color = Color3.fromRGB(60, 110, 200) },
+}
+local badges = {}
+for i, entry in ICONS do
+	local button = Ui.button({
+		LayoutOrder = i,
+		BackgroundColor3 = entry.Color,
+		Text = "",
+		Parent = iconColumn,
+	}, function()
+		currentTab = entry.Tab
+		setMenu(true)
+	end)
+	Ui.create("UIStroke", {
+		Color = Color3.fromRGB(40, 28, 16),
+		Thickness = 3,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		Parent = button,
+	})
+	Ui.create("UIGradient", {
+		Rotation = 90,
+		Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(180, 180, 180)),
+		Parent = button,
+	})
+	Ui.label({
+		Position = UDim2.fromOffset(0, 2),
+		Size = UDim2.new(1, 0, 0, 40),
+		TextScaled = true,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		Text = entry.Icon,
+		Parent = button,
+	})
+	Ui.label({
+		Position = UDim2.new(0, 2, 1, -24),
+		Size = UDim2.new(1, -4, 0, 20),
+		Font = Enum.Font.FredokaOne,
+		TextScaled = true,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		TextStrokeTransparency = 0,
+		Text = entry.Label,
+		Parent = button,
+	})
+	local badge = Ui.label({
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(1, -6, 0, 6),
+		Size = UDim2.fromOffset(24, 24),
+		BackgroundTransparency = 0,
+		BackgroundColor3 = Color3.fromRGB(225, 40, 40),
+		Font = Enum.Font.FredokaOne,
+		TextSize = 15,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		Visible = false,
+		ZIndex = 4,
+		Parent = button,
+	})
+	Ui.corner(12).Parent = badge
+	Ui.create("UIStroke", { Color = Color3.new(1, 1, 1), Thickness = 2, Parent = badge })
+	badges[entry.Tab] = badge
+end
+
+local function setBadge(tab: string, count: number)
+	local badge = badges[tab]
+	if badge then
+		badge.Visible = count > 0
+		badge.Text = if count > 9 then "9+" else tostring(count)
+	end
+end
+
+local function refreshBadges()
+	-- Arbre : nœuds achetables avec l'or et les trophées actuels
+	local owned = ownedNodes()
+	local wallet = { Gold = player:GetAttribute("Gold") or 0, Trophies = player:GetAttribute("Trophies") or 0 }
+	local buyable = 0
+	for _, node in Tree.Nodes do
+		if Formulas.canBuyNode(Tree, owned, node.Id, wallet) then
+			buyable += 1
+		end
+	end
+	setBadge("Upgrades", buyable)
+	-- Compagnons : emplacements libres alors que des compagnons attendent
+	local pets = petState and #petState.Pets or 0
+	local equipped = petState and #petState.Equipped or 0
+	local slots = player:GetAttribute("PetSlots") or 1
+	setBadge("Pets", if pets > equipped and equipped < slots then math.min(slots - equipped, pets - equipped) else 0)
+	-- Renaissance possible
+	local canRebirth = (player:GetAttribute("Level") or 1) >= (player:GetAttribute("RebirthLevel") or math.huge)
+	setBadge("Rebirth", if canRebirth then 1 else 0)
+	-- Cadeau quotidien prêt
+	setBadge("Rewards", if player:GetAttribute("DailyClaimable") then 1 else 0)
+	-- Invitation de groupe en attente
+	setBadge("Group", if groupState and groupState.Invite then 1 else 0)
+end
+for _, name in
+	{ "Gold", "Trophies", "TreeOwned", "PetSlots", "Level", "RebirthLevel", "DailyClaimable", "EquippedPets" }
+do
+	player:GetAttributeChangedSignal(name):Connect(refreshBadges)
+end
+GroupUpdate.OnClientEvent:Connect(refreshBadges)
+PetsUpdate.OnClientEvent:Connect(function()
+	task.defer(refreshBadges)
+end)
+task.defer(refreshBadges)
+
+-- Le bouton « Menu » texte est remplacé par la colonne d'icônes (M / Y restent actifs).
+menuButton.Visible = false
 
 giftPanel.Activated:Connect(function()
 	currentTab = "Rewards"
