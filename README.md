@@ -165,6 +165,17 @@ Le code vit dans `src/` (fichiers texte versionnés). **Rojo** le synchronise en
 | 55 | Ton bastion est ouvert sur un autre serveur (un membre y joue) | Groupe → « Rejoindre mon bastion » : téléportation vers ce serveur, arrivée dans le bastion. |
 | 56 | Dans Studio | Les boutons répondent « uniquement dans le jeu publié » (TeleportService ne fonctionne pas dans Studio). |
 
+### Agrandir le bastion et machines
+
+| # | Action | Attendu |
+|---|---|---|
+| 57 | Au fond du bastion, autour de la parcelle | Terrains en friche clôturés, barrières en bois sur les passages ; la palissade a une porte centrale. |
+| 58 | Panneau « 🏗 Agrandir : Arrière I (1/6) » derrière la palissade (il faut 150 bois et 100 pierre : récolter les bosquets) | Coût affiché en matériaux du groupe ; maintenir **E** : sol pavé, friche et barrières retirées, 2 socles de machines, panneau suivant (Aile gauche). |
+| 59 | Socle « Scierie automatique » → Construire | Machine construite ; blocs de bois qui avancent sur le tapis roulant ; étiquette « +x bois/min · +y or/min par membre en ligne ». |
+| 60 | Maintenir **E** sur la machine | Niveau 2 (voyants sur le socle), production x1,5 ; jusqu'au niveau 5. |
+| 61 | Menu → Groupe | « Terrain : n / 6 extensions » et production des machines par minute, avec ta part d'or. |
+| 62 | Quitter puis revenir après quelques minutes (tout le groupe hors ligne) | « Pendant votre absence, les machines ont produit : … » (25 %, 8 h max). |
+
 ### À plusieurs : *Test → Clients and Servers → 2 ou 3 joueurs → Start*
 
 | # | Action | Attendu |

@@ -15,7 +15,7 @@ return {
 		Id = "ForestGuardian",
 		Name = "Gardien sylvestre",
 		RecommendedPower = 20,
-		Arena = { 0, -420 },
+		Arena = { 0, -490 }, -- au-delà des extensions de terrain des bastions
 		ArenaRadius = 55,
 		Portal = { -18.5, 28.5 },
 		MaxHealth = 2500,
@@ -48,7 +48,7 @@ return {
 		Id = "MineGolem",
 		Name = "Golem des profondeurs",
 		RecommendedPower = 60,
-		Arena = { 420, 0 },
+		Arena = { 490, 0 },
 		ArenaRadius = 55,
 		Portal = { -6.5, 33.4 },
 		MaxHealth = 12000,

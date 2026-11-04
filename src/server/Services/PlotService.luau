@@ -48,6 +48,8 @@ export type Plot = {
 local plots: { Plot } = {}
 local plotByGroup: { [string]: Plot } = {}
 local buildHandler: ((Player, string) -> ())? = nil
+local refreshHooks = {} -- fn(plot, groupData) après chaque mise à jour (terrain, machines)
+local releaseHooks = {} -- fn(plot) quand une parcelle est libérée
 local world: Folder
 
 local structureById = {}
@@ -133,8 +135,9 @@ local function buildTerrain()
 		local deg = math.deg(angle) % 360
 		local nearArena = deg < 25 or deg > 335 or math.abs(deg - 270) < 25
 		if not nearArena then
-			local dist = 330 + (i % 3) * 45
-			local radius = 45 + (i % 4) * 12
+			-- Au-delà des extensions de terrain (jusqu'à 405 studs du centre, Config/Land).
+			local dist = 470 + (i % 3) * 30
+			local radius = 40 + (i % 4) * 10
 			local center = Vector3.new(math.cos(angle) * dist, -radius * 0.45, math.sin(angle) * dist)
 			terrain:FillBall(center, radius, if i % 5 == 0 then Enum.Material.Rock else Enum.Material.Grass)
 		end
@@ -385,6 +388,20 @@ function PlotService.refresh(groupId: string, groupData)
 			pedestal.Prompt.Enabled = not locked
 		end
 	end
+	for _, fn in refreshHooks do
+		local ok, err = pcall(fn, plot, groupData)
+		if not ok then
+			warn("[PlotService] refresh : " .. tostring(err))
+		end
+	end
+end
+
+function PlotService.onRefresh(fn)
+	table.insert(refreshHooks, fn)
+end
+
+function PlotService.onRelease(fn)
+	table.insert(releaseHooks, fn)
 end
 
 -- API ----------------------------------------------------------------------------------
@@ -446,6 +463,9 @@ function PlotService.release(groupId: string)
 	plot.PedestalsFolder:ClearAllChildren()
 	plot.StationsFolder:ClearAllChildren()
 	table.clear(plot.Pedestals)
+	for _, fn in releaseHooks do
+		pcall(fn, plot)
+	end
 end
 
 function PlotService.rename(groupId: string, name: string)

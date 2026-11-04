@@ -82,6 +82,66 @@ elseif scene == "plot" then
 			dump((Models.trainingMat(base * roblox.CFrame.new(pos[1], 0.3, pos[2]), def.Effects.StationTier)))
 		end
 	end
+elseif scene == "land" then
+	-- Parcelle agrandie : 3 extensions achetées (pavées, machines), 3 en friche (barrières).
+	local GameCfg = loadData("/src/shared/Config/Game.luau", "Game")
+	local StructuresCfg = loadData("/src/shared/Config/Structures.luau", "Structures")
+	local LandCfg = loadData("/src/shared/Config/Land.luau", "Land")
+	local Formulas = loadData("/src/shared/Formulas.luau", "Formulas")
+	local holder = roblox.Instance.new("Model")
+	local floor = roblox.Instance.new("Part")
+	floor.Size = V(GameCfg.PlotSize, 1, GameCfg.PlotSize)
+	floor.CFrame = roblox.CFrame.new(0, 0.5, 0)
+	floor.Color = roblox.Color3.fromRGB(150, 142, 128)
+	floor.Parent = holder
+	local base = roblox.CFrame.new(0, 1, 0)
+	Models.plotDecor(base, GameCfg.PlotSize, holder)
+	dump(holder)
+	dump((Models.etherCore(base * roblox.CFrame.new(0, 0, 8))))
+	for _, def in StructuresCfg do
+		local size = V(def.Size[1], def.Size[2], def.Size[3])
+		local c = def.Color
+		dump(Models.structure(def.Id, base * roblox.CFrame.new(def.Offset[1], 0, def.Offset[2]), size, roblox.Color3.fromRGB(c[1], c[2], c[3]), roblox.Enum.Material.Slate))
+	end
+	local level = 3
+	local owned = Formulas.landOwned(LandCfg, level)
+	local land = roblox.Instance.new("Model")
+	for _, area in LandCfg.Areas do
+		local f = roblox.Instance.new("Folder")
+		f.Parent = land
+		local fl, fallow = Models.landFloor(base, area.Rect, f)
+		if owned[area.Id] then
+			fl.Color = roblox.Color3.fromRGB(150, 142, 128)
+			fallow:Destroy()
+		end
+	end
+	for _, seg in Formulas.landWalls(LandCfg) do
+		Models.landWall(base, seg.X1, seg.Z1, seg.X2, seg.Z2, land)
+	end
+	for _, o in LandCfg.Openings do
+		if not (owned[o.A] and owned[o.B]) then
+			Models.landBarrier(base, o.X, o.Z, o.Along, LandCfg.OpeningWidth).Parent = land
+		end
+	end
+	dump(land)
+	local n = 0
+	for _, area in LandCfg.Areas do
+		if owned[area.Id] then
+			for _, slot in area.Slots do
+				n += 1
+				local cf = base * roblox.CFrame.new(slot.X, 0, slot.Z)
+				if n < 4 then
+					dump((Models.machine(slot.Machine, cf, n + 1)))
+				else
+					dump((Models.pedestal(cf)))
+				end
+			end
+		end
+	end
+	-- Aperçu des machines restantes au fond (une de chaque).
+	for i, kind in { "EtherCondenser", "RoyalForge" } do
+		dump((Models.machine(kind, base * roblox.CFrame.new(-25 + i * 40 - 40 + 20, 0, 146), 5)))
+	end
 elseif scene == "castle" then
 	local GameCfg = loadData("/src/shared/Config/Game.luau", "Game")
 	local BossesCfg2 = loadData("/src/shared/Config/Bosses.luau", "Bosses")

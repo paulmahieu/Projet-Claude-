@@ -691,8 +691,12 @@ builders.Palisade = function(m: Model, base: CFrame, size: Vector3)
 	local sx, h = size.X, size.Y
 	local d = 2.4
 	local count = math.floor(sx / d)
+	local gap = 6 -- passage central vers les extensions de terrain (Config/Land)
 	for i = 0, count - 1 do
 		local x = -sx / 2 + d / 2 + i * d
+		if math.abs(x) < gap then
+			continue
+		end
 		local logH = h + (if i % 2 == 0 then 0.8 else -0.2)
 		local color = if i % 3 == 0 then C.WoodDark elseif i % 3 == 1 then C.Wood else C.Bark
 		column(m, "Log" .. i, logH, d, base * CFrame.new(x, 0, 0), color, Enum.Material.Wood)
@@ -705,16 +709,22 @@ builders.Palisade = function(m: Model, base: CFrame, size: Vector3)
 			Enum.Material.Wood
 		)
 	end
+	local wing = sx / 2 - gap + d / 2 -- longueur de chaque moitié de palissade
 	for i, y in { h * 0.28, h * 0.72 } do
-		part(
-			m,
-			"Beam" .. i,
-			Vector3.new(sx, 0.5, 0.45),
-			base * CFrame.new(0, y, d / 2 + 0.1),
-			C.WoodDark,
-			Enum.Material.Wood
-		)
+		for _, side in { -1, 1 } do
+			part(
+				m,
+				"Beam" .. i,
+				Vector3.new(wing, 0.5, 0.45),
+				base * CFrame.new(side * (sx / 2 - wing / 2), y, d / 2 + 0.1),
+				C.WoodDark,
+				Enum.Material.Wood
+			)
+		end
 		for k = 0, math.floor(sx / 8) do
+			if math.abs(-sx / 2 + 2 + k * 8) < gap then
+				continue
+			end
 			part(
 				m,
 				"Rivet",
@@ -728,15 +738,32 @@ builders.Palisade = function(m: Model, base: CFrame, size: Vector3)
 			)
 		end
 	end
+	for _, side in { -1, 1 } do
+		part(
+			m,
+			"Walkway",
+			Vector3.new(wing, 0.4, 2.2),
+			base * CFrame.new(side * (sx / 2 - wing / 2), h * 0.62, -(d / 2 + 1.4)),
+			C.WoodLight,
+			Enum.Material.WoodPlanks
+		)
+	end
+	-- Porte du passage : deux poteaux et un linteau
+	for _, side in { -1, 1 } do
+		column(m, "GatePost", h + 1.5, 1.1, base * CFrame.new(side * (gap - 0.4), 0, 0), C.WoodDark, Enum.Material.Wood)
+	end
 	part(
 		m,
-		"Walkway",
-		Vector3.new(sx, 0.4, 2.2),
-		base * CFrame.new(0, h * 0.62, -(d / 2 + 1.4)),
-		C.WoodLight,
-		Enum.Material.WoodPlanks
+		"GateLintel",
+		Vector3.new(gap * 2 + 0.6, 0.8, 1),
+		base * CFrame.new(0, h + 1.1, 0),
+		C.WoodDark,
+		Enum.Material.Wood
 	)
 	for k = 0, math.floor(sx / 12) do
+		if math.abs(-sx / 2 + 3 + k * 12) < gap + 1 then
+			continue
+		end
 		column(
 			m,
 			"WalkPost",
@@ -3213,10 +3240,22 @@ function Models.plotDecor(base: CFrame, plotSize: number, parent: Instance)
 			end
 		end
 	end
-	-- Trois côtés pleins, façade d'entrée ouverte au centre
-	lowWall(base * CFrame.new(0, 0, half - t / 2), plotSize - 4)
+	-- Façade d'entrée ouverte au centre ; passages de 10 studs vers les extensions de terrain
+	-- (fond : x = 0 ; côtés : z = 17,5 — voir Config/Land.Openings), fermés par des barrières
+	-- tant que l'extension n'est pas achetée.
+	local pass = 10
+	local function wallBetween(cf: CFrame, from: number, to: number)
+		if to - from > 0.5 then
+			lowWall(cf * CFrame.new((from + to) / 2, 0, 0), to - from)
+		end
+	end
+	wallBetween(base * CFrame.new(0, 0, half - t / 2), -half + 2, -pass / 2)
+	wallBetween(base * CFrame.new(0, 0, half - t / 2), pass / 2, half - 2)
 	for _, sx in { -1, 1 } do
-		lowWall(base * CFrame.new(sx * (half - t / 2), 0, 0) * CFrame.Angles(0, math.rad(90), 0), plotSize - 4)
+		-- Mur latéral : axe local X du mur tourné le long de Z (x' = -z pour une rotation de 90°).
+		local side = base * CFrame.new(sx * (half - t / 2), 0, 0) * CFrame.Angles(0, math.rad(90), 0)
+		wallBetween(side, -(half - 2), -(17.5 + pass / 2))
+		wallBetween(side, -(17.5 - pass / 2), half - 2)
 		local seg = (plotSize - gate) / 2 - 2
 		lowWall(base * CFrame.new(sx * (gate / 2 + seg / 2), 0, -half + t / 2), seg)
 	end
@@ -3310,6 +3349,478 @@ function Models.plotDecor(base: CFrame, plotSize: number, parent: Instance)
 			}
 		)
 	end
+end
+
+-- Extensions de terrain et machines -----------------------------------------------------
+
+local FALLOW = Color3.fromRGB(128, 140, 84) -- friche (extension non achetée)
+local FALLOW_DIRT = Color3.fromRGB(132, 108, 76)
+
+-- Sol d'une extension. `base` = origine de la parcelle au niveau du sol ; rect local.
+-- Retourne le sol (sa couleur/matière change à l'achat) et un dossier de décor de friche.
+function Models.landFloor(base: CFrame, rect, parent: Instance): (BasePart, Folder)
+	local sx, sz = rect[2] - rect[1], rect[4] - rect[3]
+	local cx, cz = (rect[1] + rect[2]) / 2, (rect[3] + rect[4]) / 2
+	local floor =
+		part(parent, "LandFloor", Vector3.new(sx, 1, sz), base * CFrame.new(cx, -0.5, cz), FALLOW, Enum.Material.Grass)
+	local weeds = Instance.new("Folder")
+	weeds.Name = "Fallow"
+	weeds.Parent = parent
+	-- Touffes d'herbes, cailloux et souches : terrain en friche (disparaît à l'achat).
+	local n = math.floor(sx * sz / 220)
+	for k = 1, n do
+		local fx = (math.noise(k * 0.71, cx * 0.13, 1.7) + 0.5) % 1
+		local fz = (math.noise(k * 0.53, cz * 0.11, 4.1) + 0.5) % 1
+		local x = rect[1] + 3 + fx * (sx - 6)
+		local z = rect[3] + 3 + fz * (sz - 6)
+		local at = base * CFrame.new(x, 0, z)
+		if k % 3 == 0 then
+			part(
+				weeds,
+				"Pebble",
+				Vector3.new(1.2, 0.6, 1),
+				at * CFrame.new(0, 0.3, 0) * CFrame.Angles(0, k, 0.2),
+				C.Stone,
+				Enum.Material.Rock,
+				{ CanCollide = false }
+			)
+		elseif k % 7 == 0 then
+			column(weeds, "OldStump", 0.7, 1.4, at, C.Bark, Enum.Material.Wood, { CanCollide = false })
+		else
+			for j = 0, 2 do
+				part(
+					weeds,
+					"Weed",
+					Vector3.new(0.25, 1.1 + j * 0.25, 0.25),
+					at * CFrame.Angles(0, j * 2.1, math.rad(14 - j * 12)) * CFrame.new(0, 0.5, 0),
+					FALLOW:Lerp(C.Leaf2, 0.5),
+					Enum.Material.Grass,
+					{ CanCollide = false, NoShadow = true }
+				)
+			end
+		end
+	end
+	part(
+		weeds,
+		"DirtPatch",
+		Vector3.new(sx * 0.5, 0.06, sz * 0.4),
+		base * CFrame.new(cx + sx * 0.12, 0.03, cz - sz * 0.1) * CFrame.Angles(0, 0.3, 0),
+		FALLOW_DIRT,
+		Enum.Material.Ground,
+		{ CanCollide = false, NoShadow = true }
+	)
+	return floor, weeds
+end
+
+-- Muret d'une extension entre deux points locaux (même style que l'enceinte du bastion).
+function Models.landWall(base: CFrame, x1: number, z1: number, x2: number, z2: number, parent: Instance)
+	local h, t = 3.6, 1.4
+	local length = math.max(math.abs(x2 - x1), math.abs(z2 - z1))
+	local mid = base * CFrame.new((x1 + x2) / 2, 0, (z1 + z2) / 2)
+	local cf = if math.abs(x2 - x1) >= math.abs(z2 - z1) then mid else mid * CFrame.Angles(0, math.rad(90), 0)
+	part(
+		parent,
+		"LandWall",
+		Vector3.new(length + t, h, t),
+		cf * CFrame.new(0, h / 2, 0),
+		WALL_STONE,
+		Enum.Material.Cobblestone
+	)
+	part(
+		parent,
+		"LandWallCap",
+		Vector3.new(length + t, 0.35, t + 0.3),
+		cf * CFrame.new(0, h + 0.17, 0),
+		WALL_LIGHT,
+		Enum.Material.Slate
+	)
+	local count = math.max(1, math.floor(length / 4))
+	for k = 0, count - 1, 2 do
+		part(
+			parent,
+			"LandMerlon",
+			Vector3.new(length / count * 0.9, 0.9, t),
+			cf * CFrame.new(-length / 2 + (k + 0.5) * (length / count), h + 0.8, 0),
+			WALL_STONE,
+			Enum.Material.Cobblestone
+		)
+	end
+end
+
+-- Barrière qui ferme un passage tant que l'extension n'est pas achetée : poteaux, planches
+-- croisées et pancarte « À vendre ». `along` = direction du mur ("X" ou "Z").
+function Models.landBarrier(base: CFrame, x: number, z: number, along: string, width: number): Model
+	local m = newModel("Barrier")
+	local cf = base
+		* CFrame.new(x, 0, z)
+		* (if along == "X" then CFrame.identity else CFrame.Angles(0, math.rad(90), 0))
+	for _, side in { -1, 1 } do
+		column(m, "Post", 4.4, 0.9, cf * CFrame.new(side * (width / 2 - 0.5), 0, 0), C.WoodDark, Enum.Material.Wood)
+	end
+	for k, y in { 1.2, 2.6 } do
+		part(m, "Plank" .. k, Vector3.new(width, 0.6, 0.35), cf * CFrame.new(0, y, 0), C.Wood, Enum.Material.WoodPlanks)
+	end
+	for _, dir in { -1, 1 } do
+		part(
+			m,
+			"Cross",
+			Vector3.new(width * 1.05, 0.45, 0.3),
+			cf * CFrame.new(0, 1.9, -0.3) * CFrame.Angles(0, 0, math.rad(dir * 16)),
+			C.WoodDark,
+			Enum.Material.Wood
+		)
+	end
+	-- Invisible et haut : on ne peut pas sauter par-dessus.
+	part(m, "Block", Vector3.new(width, 12, 1), cf * CFrame.new(0, 6, 0), C.Wood, nil, { Transparency = 1 })
+	return m
+end
+
+-- Base commune des machines : socle en pierre, voyants de niveau, tapis roulant vers une
+-- caisse. Retourne le modèle, l'ancre d'étiquette et le cadre de la machine.
+local function machineBase(base: CFrame, level: number, accent: Color3): (Model, BasePart)
+	local m = newModel("Machine")
+	part(m, "Plinth", Vector3.new(11, 0.8, 11), base * CFrame.new(0, 0.4, 0), C.StoneDark, Enum.Material.Cobblestone)
+	part(
+		m,
+		"PlinthTrim",
+		Vector3.new(11.4, 0.3, 11.4),
+		base * CFrame.new(0, 0.85, 0),
+		C.StoneLight,
+		Enum.Material.Slate,
+		{ NoShadow = true }
+	)
+	-- Voyants de niveau sur la face avant (un par niveau, dorés au maximum)
+	for k = 1, level do
+		part(
+			m,
+			"LevelLight",
+			Vector3.new(0.7, 0.4, 0.2),
+			base * CFrame.new(-3 + (k - 1) * 1.5, 0.45, -5.6),
+			if level >= 5 then GOLD else accent,
+			Enum.Material.Neon,
+			{ CanCollide = false, NoShadow = true }
+		)
+	end
+	-- Tapis roulant (devant) et caisse de collecte
+	local belt = part(
+		m,
+		"Belt",
+		Vector3.new(2.4, 0.5, 8),
+		base * CFrame.new(3.5, 0.95, -9.5),
+		Color3.fromRGB(55, 55, 60),
+		Enum.Material.Rubber
+	)
+	for _, side in { -1, 1 } do
+		part(
+			m,
+			"BeltRail",
+			Vector3.new(0.3, 0.7, 8),
+			base * CFrame.new(3.5 + side * 1.35, 1, -9.5),
+			C.Metal,
+			Enum.Material.Metal
+		)
+	end
+	for k = 0, 3 do
+		column(
+			m,
+			"BeltLeg",
+			0.8,
+			0.35,
+			base * CFrame.new(3.5 + (k % 2 == 0 and -1 or 1), 0, -6.5 - (k // 2) * 6),
+			C.Metal,
+			Enum.Material.Metal
+		)
+	end
+	part(m, "Crate", Vector3.new(3.4, 2.6, 3.4), base * CFrame.new(3.5, 1.3, -15), C.Wood, Enum.Material.WoodPlanks)
+	part(
+		m,
+		"CrateBand",
+		Vector3.new(3.6, 0.35, 3.6),
+		base * CFrame.new(3.5, 1.9, -15),
+		C.WoodDark,
+		Enum.Material.Wood,
+		{ NoShadow = true }
+	)
+	-- Points de départ et d'arrivée des blocs animés côté client (MachineFx).
+	local beltStart =
+		part(m, "BeltStart", Vector3.new(0.2, 0.2, 0.2), belt.CFrame * CFrame.new(0, 0.6, 3.6), accent, nil, {
+			Transparency = 1,
+			CanCollide = false,
+		})
+	beltStart.CanQuery = false
+	local beltEnd =
+		part(m, "BeltEnd", Vector3.new(0.2, 0.2, 0.2), belt.CFrame * CFrame.new(0, 0.6, -3.8), accent, nil, {
+			Transparency = 1,
+			CanCollide = false,
+		})
+	beltEnd.CanQuery = false
+	local anchor = part(m, "LabelAnchor", Vector3.new(0.2, 0.2, 0.2), base * CFrame.new(0, 11, 0), accent, nil, {
+		Transparency = 1,
+		CanCollide = false,
+	})
+	anchor.CanQuery = false
+	m.PrimaryPart = anchor
+	return m, anchor
+end
+
+local machineBuilders = {}
+
+-- Scierie automatique : charpente, lame circulaire, rondin sur la table, toit en bardeaux.
+machineBuilders.LumberMill = function(m: Model, base: CFrame, level: number)
+	local top = base * CFrame.new(0, 0.95, 0)
+	for _, cx in { -1, 1 } do
+		for _, cz in { -1, 1 } do
+			part(
+				m,
+				"Post",
+				Vector3.new(0.8, 6.5, 0.8),
+				top * CFrame.new(cx * 4.2, 3.25, cz * 4.2),
+				C.WoodDark,
+				Enum.Material.Wood
+			)
+		end
+	end
+	gableRoof(m, 10.5, 10.5, 2.6, top * CFrame.new(0, 6.5, 0), C.Roof)
+	part(m, "Table", Vector3.new(7, 0.6, 2.4), top * CFrame.new(0, 2, -1.5), C.WoodLight, Enum.Material.WoodPlanks)
+	part(m, "Log", Vector3.new(6, 1.4, 1.4), top * CFrame.new(-0.5, 3, -1.5), C.Bark, Enum.Material.Wood, {
+		Shape = Enum.PartType.Cylinder,
+	})
+	part(
+		m,
+		"Blade",
+		Vector3.new(0.25, 3.4, 3.4),
+		top * CFrame.new(2.6, 2.6, -1.5) * CFrame.Angles(0, math.rad(90), 0),
+		C.Metal,
+		Enum.Material.Metal,
+		{
+			Shape = Enum.PartType.Cylinder,
+		}
+	)
+	part(
+		m,
+		"Hub",
+		Vector3.new(0.4, 0.8, 0.8),
+		top * CFrame.new(2.6, 2.6, -1.5) * CFrame.Angles(0, math.rad(90), 0),
+		GOLD,
+		Enum.Material.Metal,
+		{
+			Shape = Enum.PartType.Cylinder,
+			NoShadow = true,
+		}
+	)
+	for k = 0, 2 + level do
+		part(
+			m,
+			"Plank",
+			Vector3.new(4, 0.35, 1),
+			top * CFrame.new(-2.2, 0.2 + k * 0.38, 3),
+			C.WoodLight:Lerp(C.Wood, (k % 2) * 0.3),
+			Enum.Material.WoodPlanks
+		)
+	end
+end
+
+-- Concasseur : trémie en pierre, deux rouleaux métalliques, cadre riveté.
+machineBuilders.StoneCrusher = function(m: Model, base: CFrame, level: number)
+	local top = base * CFrame.new(0, 0.95, 0)
+	part(
+		m,
+		"Body",
+		Vector3.new(8, 4, 7),
+		top * CFrame.new(0, 2, 0.5),
+		C.Metal:Lerp(C.StoneDark, 0.4),
+		Enum.Material.DiamondPlate
+	)
+	-- Trémie en entonnoir : quatre plaques inclinées vers l'extérieur, cadre doré en haut.
+	local hop = top * CFrame.new(0, 5.6, 0.5)
+	for k = 0, 3 do
+		local dir = CFrame.Angles(0, math.rad(k * 90), 0)
+		local width = if k % 2 == 0 then 8 else 7
+		part(
+			m,
+			"Hopper",
+			Vector3.new(width, 3, 0.4),
+			hop * dir * CFrame.new(0, 0, (if k % 2 == 0 then 3.5 else 4) - 0.6) * CFrame.Angles(math.rad(-25), 0, 0),
+			C.StoneDark:Lerp(C.Metal, 0.3),
+			Enum.Material.DiamondPlate
+		)
+	end
+	for k = 0, 3 do
+		local width = if k % 2 == 0 then 9.2 else 8.6
+		part(
+			m,
+			"HopperRim",
+			Vector3.new(width, 0.4, 0.5),
+			hop * CFrame.Angles(0, math.rad(k * 90), 0) * CFrame.new(0, 1.4, if k % 2 == 0 then 4.3 else 4.6),
+			GOLD,
+			Enum.Material.Metal,
+			{ NoShadow = true }
+		)
+	end
+	for _, x in { -1.4, 1.4 } do
+		part(m, "Roller", Vector3.new(6.6, 1.6, 1.6), top * CFrame.new(0, 4.1, 0.5 + x), C.Metal, Enum.Material.Metal, {
+			Shape = Enum.PartType.Cylinder,
+		})
+	end
+	for k = 1, level do
+		part(m, "Rock", Vector3.new(1, 0.8, 0.9), top * CFrame.new(-3 + k, 6.4, 0.5), C.Stone, Enum.Material.Rock)
+	end
+	part(
+		m,
+		"Chute",
+		Vector3.new(2.4, 0.4, 3),
+		top * CFrame.new(3.5, 1.1, -3.5) * CFrame.Angles(math.rad(-18), 0, 0),
+		C.Metal,
+		Enum.Material.Metal
+	)
+end
+
+-- Foreuse : derrick en treillis, foret, wagonnet de minerai.
+machineBuilders.OreDrill = function(m: Model, base: CFrame, level: number)
+	local top = base * CFrame.new(0, 0.95, 0)
+	local h = 8 + level
+	for k, a in { 0, 120, 240 } do
+		local dir = CFrame.Angles(0, math.rad(a), 0)
+		part(
+			m,
+			"Leg" .. k,
+			Vector3.new(0.7, h, 0.7),
+			top * dir * CFrame.new(0, h / 2, 3.2) * CFrame.Angles(math.rad(-20), 0, 0),
+			C.WoodDark,
+			Enum.Material.Wood
+		)
+	end
+	part(m, "Head", Vector3.new(2.4, 1.6, 2.4), top * CFrame.new(0, h - 0.6, 0), C.Metal, Enum.Material.Metal)
+	column(m, "Shaft", h - 1.5, 0.6, top, C.Metal, Enum.Material.Metal)
+	ball(m, "Bit", 1.4, top * CFrame.new(0, 0.6, 0), GOLD, Enum.Material.Metal)
+	part(
+		m,
+		"Engine",
+		Vector3.new(3, 2.4, 2.4),
+		top * CFrame.new(-3, 1.2, 2.5),
+		Color3.fromRGB(150, 70, 50),
+		Enum.Material.Metal
+	)
+	column(m, "Exhaust", 3, 0.6, top * CFrame.new(-3.8, 2.4, 3.2), C.StoneDark, Enum.Material.Metal)
+	part(m, "Cart", Vector3.new(2.6, 1.4, 2), top * CFrame.new(3, 1.1, 2.5), C.Wood, Enum.Material.WoodPlanks)
+	for k = 1, 3 do
+		ball(m, "Ore", 0.9, top * CFrame.new(2.4 + k * 0.4, 2, 2.5), Color3.fromRGB(190, 120, 80), Enum.Material.Rock)
+	end
+end
+
+-- Condenseur d'Éther : base de marbre, cristal lumineux dans une cage, anneaux dorés.
+machineBuilders.EtherCondenser = function(m: Model, base: CFrame, level: number)
+	local top = base * CFrame.new(0, 0.95, 0)
+	column(m, "Base", 1.4, 7, top, MARBLE, Enum.Material.Marble)
+	column(m, "BaseTrim", 0.3, 7.4, top * CFrame.new(0, 1.4, 0), GOLD, Enum.Material.Metal, { NoShadow = true })
+	for k = 0, 3 do
+		local a = math.rad(k * 90 + 45)
+		part(
+			m,
+			"Pillar",
+			Vector3.new(0.6, 6, 0.6),
+			top * CFrame.new(math.cos(a) * 2.6, 4.4, math.sin(a) * 2.6),
+			MARBLE_SHADE,
+			Enum.Material.Marble
+		)
+	end
+	part(
+		m,
+		"Crystal",
+		Vector3.new(1.6, 3.6, 1.6),
+		top * CFrame.new(0, 4.4, 0) * CFrame.Angles(0, math.rad(45), 0),
+		C.RuneBlue:Lerp(C.Ether, 0.5),
+		Enum.Material.Neon,
+		{ NoShadow = true }
+	)
+	for k = 1, math.min(level, 3) do
+		part(
+			m,
+			"Ring" .. k,
+			Vector3.new(0.25, 4.4 + k * 0.5, 4.4 + k * 0.5),
+			top
+				* CFrame.new(0, 2.6 + k * 1.3, 0)
+				* CFrame.Angles(0, 0, math.rad(90))
+				* CFrame.Angles(math.rad(k * 25), 0, 0),
+			GOLD,
+			Enum.Material.Metal,
+			{
+				Shape = Enum.PartType.Cylinder,
+				CanCollide = false,
+				NoShadow = true,
+			}
+		)
+	end
+	part(m, "Cap", Vector3.new(6.4, 0.6, 6.4), top * CFrame.new(0, 7.6, 0), MARBLE, Enum.Material.Marble)
+	ball(m, "Orb", 1.2, top * CFrame.new(0, 8.5, 0), C.Ether, Enum.Material.Neon, { NoShadow = true })
+end
+
+-- Forge royale : four en brique, gueule incandescente, cheminée, enclume et dorures.
+machineBuilders.RoyalForge = function(m: Model, base: CFrame, level: number)
+	local top = base * CFrame.new(0, 0.95, 0)
+	part(
+		m,
+		"Furnace",
+		Vector3.new(8, 6, 7),
+		top * CFrame.new(0, 3, 1),
+		Color3.fromRGB(150, 70, 55),
+		Enum.Material.Brick
+	)
+	part(
+		m,
+		"Mouth",
+		Vector3.new(3.4, 2.4, 0.4),
+		top * CFrame.new(0, 2, -2.55),
+		Color3.fromRGB(255, 140, 50),
+		Enum.Material.Neon,
+		{ NoShadow = true }
+	)
+	part(m, "Lintel", Vector3.new(4.4, 0.6, 0.6), top * CFrame.new(0, 3.5, -2.6), GOLD, Enum.Material.Metal)
+	column(m, "Chimney", 6 + level, 2.2, top * CFrame.new(2.4, 6, 2.4), C.StoneDark, Enum.Material.Brick)
+	column(
+		m,
+		"ChimneyCap",
+		0.5,
+		2.8,
+		top * CFrame.new(2.4, 12 + level, 2.4),
+		GOLD,
+		Enum.Material.Metal,
+		{ NoShadow = true }
+	)
+	part(m, "Roof", Vector3.new(8.6, 0.6, 7.6), top * CFrame.new(0, 6.3, 1), C.RoofDark, Enum.Material.Slate)
+	part(m, "Anvil", Vector3.new(2.2, 1, 1), top * CFrame.new(-3, 1.6, -3.2), C.StoneDark, Enum.Material.Metal)
+	part(m, "AnvilFoot", Vector3.new(1, 1.1, 0.8), top * CFrame.new(-3, 0.55, -3.2), C.WoodDark, Enum.Material.Wood)
+	for k = 1, level do
+		part(
+			m,
+			"Ingot",
+			Vector3.new(1.2, 0.4, 0.6),
+			top * CFrame.new(-4 + k * 0.1, 0.2 + k * 0.42, -0.5),
+			GOLD,
+			Enum.Material.Metal
+		)
+	end
+end
+
+local MACHINE_ACCENT = {
+	LumberMill = Color3.fromRGB(150, 100, 55),
+	StoneCrusher = Color3.fromRGB(170, 170, 175),
+	OreDrill = Color3.fromRGB(200, 125, 80),
+	EtherCondenser = Color3.fromRGB(140, 120, 255),
+	RoyalForge = Color3.fromRGB(255, 190, 70),
+}
+
+-- Machine de production complète. `base` = emplacement au sol, -Z = face avant (tapis).
+-- Retourne le modèle et l'ancre d'étiquette.
+function Models.machine(kind: string, base: CFrame, level: number): (Model, BasePart)
+	local accent = MACHINE_ACCENT[kind] or C.Metal
+	local m, anchor = machineBase(base, level, accent)
+	m.Name = kind
+	local builder = machineBuilders[kind]
+	if builder then
+		builder(m, base, level)
+	end
+	return m, anchor
 end
 
 return Models

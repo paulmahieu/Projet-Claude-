@@ -23,6 +23,10 @@ local Formulas = require(Shared.Formulas)
 local Game = require(Shared.Config.Game)
 local Groups = require(Shared.Config.Groups)
 local Structures = require(Shared.Config.Structures)
+local Machines = require(Shared.Config.Machines)
+local Land = require(Shared.Config.Land)
+local Materials = require(Shared.Config.Materials)
+local Economy = require(Shared.Config.Economy)
 local Texts = require(Shared.Config.Texts)
 
 local Store = require(script.Parent.Store)
@@ -44,6 +48,7 @@ export type Group = {
 	Online: { [Player]: boolean },
 	Busy: boolean,
 	PublishQueued: boolean,
+	OfflineCredit: { [string]: number }?,
 }
 
 local store
@@ -170,6 +175,8 @@ local function snapshot(group: Group?, viewer: Player)
 		snap.Structures = owned
 		snap.BastionLevel = Formulas.bastionLevel(Structures, group.Data.Structures)
 		snap.MaxSize = Game.MaxGroupSize
+		snap.Land = group.Data.Land
+		snap.Production = Formulas.machineRates(Machines, Land, group.Data.Land, group.Data.Machines)
 	end
 	return snap
 end
@@ -246,13 +253,34 @@ local function ensureLoaded(id: string): (string, Group?, string?)
 		return (if groups[id] then "ok" else "retry"), groups[id]
 	end
 	loading[id] = true
-	local status, data, holder = store:load(keyFor(id), { loader = GroupSchema.load })
+	local status, data, extra = store:load(keyFor(id), {
+		loader = GroupSchema.load,
+		-- Production hors ligne des machines, écrite dans la même opération que le verrou :
+		-- un rechargement immédiat ne recrédite jamais la même période.
+		onLoad = function(loaded, now)
+			local rates = Formulas.machineRates(Machines, Land, loaded.Land or 0, loaded.Machines or {})
+			local credit = {}
+			if (loaded.MachineAt or 0) > 0 then
+				credit = Formulas.machineOffline(rates, now - loaded.MachineAt, Economy.Offline)
+				for matId, amount in credit do
+					local total = (loaded.MachineCarry[matId] or 0) + amount
+					local whole = math.floor(total)
+					loaded.MachineCarry[matId] = total - whole
+					loaded.Materials[matId] =
+						Formulas.clamp((loaded.Materials[matId] or 0) + whole, Economy.MaterialCap)
+				end
+			end
+			loaded.MachineAt = now
+			return credit
+		end,
+	})
 	local group = nil
 	if status == "ok" then
 		group = register(id, data)
+		group.OfflineCredit = extra -- crédit hors ligne des machines (annoncé à l'arrivée)
 	end
 	loading[id] = nil
-	return status, group, if status == "locked" then holder else nil
+	return status, group, if status == "locked" then extra else nil
 end
 
 local function createSoloGroup(player: Player): Group?
@@ -279,6 +307,25 @@ local function attach(player: Player, group: Group)
 	fire(attachedCallbacks, player, group)
 	GroupService.markChanged(group)
 	publishTo(player)
+	-- Production des machines pendant l'absence de tout le groupe (une seule annonce).
+	local credit = group.OfflineCredit
+	group.OfflineCredit = nil
+	if credit and next(credit) then
+		local parts = {}
+		for _, mat in Materials do
+			local amount = math.floor(credit[mat.Id] or 0)
+			if amount > 0 then
+				table.insert(parts, string.format("+%s %s", Formulas.formatNumber(amount), mat.Name))
+			end
+		end
+		if #parts > 0 then
+			Notifier.send(
+				player,
+				"Pendant votre absence, les machines ont produit : " .. table.concat(parts, ", "),
+				"reward"
+			)
+		end
+	end
 end
 
 -- Retire le joueur du groupe chargé ; libère le groupe s'il n'y a plus personne. Peut céder.

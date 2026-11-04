@@ -50,6 +50,7 @@ Légende : ✅ implémenté · 🧪 testé automatiquement (Lune) · 🔍 à vé
 - ⏳ Missions d'introduction, parcours de progression gratuit, éclats d'Éther (P1)
 
 ## Étape 4 — Première version complète
+- ✅ Agrandissement du terrain (6 extensions, matériaux du groupe) et machines de production (5 types, 5 niveaux, part d'or personnelle, production hors ligne) — *à vérifier en jeu*
 - ✅ Défense de base (vagues déclenchées volontairement depuis le Noyau, 3 vagues, chef final, Noyau réparé en cas de défaite, annulation sans défenseur) — *à vérifier en jeu*
 - ⏳ Compagnons (loup runique, petit golem, esprit de lumière) : collection, niveaux, bonus plafonnés
 - ⏳ Mines et ruines magiques avec leurs boss

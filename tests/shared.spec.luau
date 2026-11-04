@@ -30,6 +30,8 @@ local Titles = require("../src/shared/Config/Titles")
 local Quests = require("../src/shared/Config/Quests")
 local Defense = require("../src/shared/Config/Defense")
 local Pass = require("../src/shared/Config/Pass")
+local Land = require("../src/shared/Config/Land")
+local Machines = require("../src/shared/Config/Machines")
 
 local passed, failed = 0, 0
 
@@ -583,7 +585,7 @@ test("arènes : hors des parcelles, portails au hub, attaques valides", function
 	for _, boss in Bosses do
 		local d = math.sqrt(boss.Arena[1] ^ 2 + boss.Arena[2] ^ 2)
 		assert(d - boss.ArenaRadius > plotOuter, boss.Id .. " : arène trop proche des parcelles")
-		assert(d + boss.ArenaRadius < 512, boss.Id .. " : arène hors du sol")
+		assert(d + boss.ArenaRadius < 600, boss.Id .. " : arène hors du sol (sol de 1 240 studs)")
 		assert(
 			math.sqrt(boss.Portal[1] ^ 2 + boss.Portal[2] ^ 2) < Game.CourtyardApothem - 10,
 			boss.Id .. " : portail hors de la cour royale"
@@ -1184,6 +1186,128 @@ test("Parcours : récompenses valides, premium plus fort, tapis x500 au dernier 
 	for key, value in Pass.Xp do
 		assert(value > 0, "XP " .. key)
 	end
+end)
+
+test("Terrain : extensions dans l'espace libre (voisins, arènes, collines)", function()
+	local function world(index: number, x: number, z: number)
+		local a = (index - 1) / Game.PlotCount * math.pi * 2
+		local cx, cz = math.cos(a) * Game.PlotRingRadius, math.sin(a) * Game.PlotRingRadius
+		-- Repère de la parcelle : +Z local vers l'extérieur, X local = (sin a, -cos a).
+		return cx + z * math.cos(a) + x * math.sin(a), cz + z * math.sin(a) - x * math.cos(a), a
+	end
+	local half = math.pi / Game.PlotCount
+	for index = 1, Game.PlotCount do
+		for _, area in Land.Areas do
+			local r = area.Rect
+			for _, corner in { { r[1], r[3] }, { r[1], r[4] }, { r[2], r[3] }, { r[2], r[4] } } do
+				local wx, wz, a = world(index, corner[1], corner[2])
+				local dist = math.sqrt(wx * wx + wz * wz)
+				assert(dist <= 415, area.Id .. " : trop loin du centre")
+				local diff = math.abs((math.atan2(wz, wx) - a + math.pi) % (2 * math.pi) - math.pi)
+				assert(diff < half - math.rad(1.5), area.Id .. " : déborde vers la parcelle voisine")
+				for _, boss in Bosses do
+					local dx, dz = wx - boss.Arena[1], wz - boss.Arena[2]
+					assert(math.sqrt(dx * dx + dz * dz) > boss.ArenaRadius + 15, area.Id .. " : touche une arène")
+				end
+			end
+		end
+	end
+end)
+
+test("Terrain : murs, passages et emplacements cohérents", function()
+	local areas = { Base = true }
+	for i, area in Land.Areas do
+		areas[area.Id] = true
+		eq(Land.Openings[Land.SignOpening[area.Id]].B, area.Id, "panneau devant un passage menant à " .. area.Id)
+		for matId, amount in area.Cost do
+			assert(amount > 0, area.Id .. " : coût")
+			local known = false
+			for _, mat in Materials do
+				known = known or mat.Id == matId
+			end
+			assert(known, area.Id .. " : matériau inconnu")
+		end
+		if i > 1 then
+			local prev = 0
+			for _, amount in Land.Areas[i - 1].Cost do
+				prev += amount
+			end
+			local cur = 0
+			for _, amount in area.Cost do
+				cur += amount
+			end
+			assert(cur > prev, area.Id .. " : coût croissant")
+		end
+		for _, slot in area.Slots do
+			local def
+			for _, m in Machines.List do
+				if m.Id == slot.Machine then
+					def = m
+				end
+			end
+			assert(def, slot.Id .. " : machine inconnue")
+			-- Emprise : socle 11 x 11 et tapis + caisse jusqu'à 17 studs devant.
+			local r = area.Rect
+			assert(slot.X - 5.5 >= r[1] and slot.X + 5.5 <= r[2], slot.Id .. " : hors de l'extension (x)")
+			assert(slot.Z - 17 >= r[3] and slot.Z + 5.5 <= r[4], slot.Id .. " : hors de l'extension (z)")
+		end
+	end
+	for _, o in Land.Openings do
+		assert(areas[o.A] and areas[o.B], "passage vers une zone inconnue")
+	end
+	local walls = Formulas.landWalls(Land)
+	assert(#walls >= 8, "murs des extensions")
+	for _, w in walls do
+		for _, o in Land.Openings do
+			if o.Along == "X" and w.Z1 == w.Z2 and math.abs(w.Z1 - o.Z) < 0.01 then
+				assert(w.X2 <= o.X - 5 or w.X1 >= o.X + 5, "mur sur un passage")
+			elseif o.Along == "Z" and w.X1 == w.X2 and math.abs(w.X1 - o.X) < 0.01 then
+				assert(w.Z2 <= o.Z - 5 or w.Z1 >= o.Z + 5, "mur sur un passage")
+			end
+		end
+	end
+	eq(Formulas.landAreaAt(Land, 0, 0), "Base")
+	eq(Formulas.landAreaAt(Land, 0, 60), "Back1")
+	eq(Formulas.landAreaAt(Land, 60, 0), "WingL")
+	eq(Formulas.landAreaAt(Land, 0, 300), nil)
+	local owned = Formulas.landOwned(Land, 2)
+	assert(owned.Base and owned.Back1 and owned.WingL and not owned.WingR, "extensions dans l'ordre")
+	eq(Formulas.landNext(Land, #Land.Areas), nil, "tout acheté")
+end)
+
+test("Machines : production, part d'or, amélioration, hors ligne", function()
+	local lumber
+	for _, def in Machines.List do
+		if def.Id == "LumberMill" then
+			lumber = def
+		end
+	end
+	near(Formulas.machineRate(Machines, lumber, 1), lumber.Rate)
+	near(Formulas.machineRate(Machines, lumber, 3), lumber.Rate * Machines.LevelRateMult ^ 2)
+	local c1 = Formulas.machineUpgradeCost(Machines, lumber, 1)
+	local c2 = Formulas.machineUpgradeCost(Machines, lumber, 2)
+	assert(c2.Wood > c1.Wood and c1.Wood > lumber.Cost.Wood, "amélioration de plus en plus chère")
+	-- Seules les machines d'extensions possédées produisent.
+	local machines = { Back1_1 = 2, WingL_1 = 1 }
+	local rates = Formulas.machineRates(Machines, Land, 1, machines)
+	near(rates.Materials.Wood, Formulas.machineRate(Machines, lumber, 2))
+	near(rates.PersonalGold, Formulas.machineGold(Machines, lumber, 2) * Machines.PersonalGoldShare)
+	assert(Machines.PersonalGoldShare > 0 and Machines.PersonalGoldShare <= 0.2, "or personnel : faible part")
+	local all = Formulas.machineRates(Machines, Land, 2, machines)
+	near(all.Materials.Wood, Formulas.machineRate(Machines, lumber, 2) + lumber.Rate)
+	-- Hors ligne : 25 %, plafonné.
+	local off = Formulas.machineOffline(rates, 3600, Economy.Offline)
+	near(off.Wood, rates.Materials.Wood * 3600 * Economy.Offline.Rate)
+	local capped = Formulas.machineOffline(rates, 1e7, Economy.Offline)
+	near(capped.Wood, rates.Materials.Wood * Economy.Offline.MaxSeconds * Economy.Offline.Rate)
+	eq(next(Formulas.machineOffline(Formulas.machineRates(Machines, Land, 0, {}), 3600, Economy.Offline)), nil)
+end)
+
+test("Groupe : champs de terrain et de machines par défaut", function()
+	local g = GroupSchema.load({ Id = "x", Name = "y", Members = {}, Materials = { Wood = 1 } })
+	eq(g.Land, 0)
+	eq(next(g.Machines), nil)
+	eq(g.MachineAt, 0)
 end)
 
 print(string.format("\n%d réussi(s), %d échec(s)", passed, failed))

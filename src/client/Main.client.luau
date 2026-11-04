@@ -35,6 +35,8 @@ local PetFollowers = require(script.Parent.PetFollowers)
 local CombatUi = require(script.Parent.CombatUi)
 local StreetUi = require(script.Parent.StreetUi)
 local FarmUi = require(script.Parent.FarmUi)
+local MachineFx = require(script.Parent.MachineFx)
+local Land = require(Shared.Config.Land)
 local DiagnosticsUi = require(script.Parent.DiagnosticsUi)
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local PolicyService = game:GetService("PolicyService")
@@ -729,6 +731,43 @@ local function renderGroup()
 		if not any then
 			heading("(aucun autre joueur sur ce serveur)")
 		end
+	end
+
+	-- Terrain et production des machines
+	local landLevel = state.Land or 0
+	heading(string.format("Terrain : %d / %d extensions", landLevel, #Land.Areas))
+	local production = state.Production
+	local prodRow = row(60)
+	if production and next(production.Materials) then
+		local parts = {}
+		for _, mat in Materials do
+			local perSecond = production.Materials[mat.Id]
+			if perSecond then
+				table.insert(
+					parts,
+					string.format("%s %s/min", Formulas.formatNumber(math.floor(perSecond * 600 + 0.5) / 10), mat.Name)
+				)
+			end
+		end
+		rowText(
+			prodRow,
+			"⚙ Machines : " .. table.concat(parts, " · "),
+			string.format(
+				"Ta part : +%s or/min tant que tu es en ligne · hors ligne : 25 %% des matériaux (8 h max)",
+				Formulas.formatNumber(math.floor(production.PersonalGold * 60 + 0.5))
+			),
+			0
+		)
+	else
+		local nextArea = Land.Areas[landLevel + 1]
+		rowText(
+			prodRow,
+			"⚙ Aucune machine pour l'instant",
+			if nextArea
+				then "Agrandis le terrain au panneau « Agrandir » au fond du bastion, puis construis des machines."
+				else "Construis des machines sur les emplacements de tes extensions.",
+			0
+		)
 	end
 
 	if #state.Members > 1 then
@@ -1882,6 +1921,7 @@ PetFollowers.start()
 CombatUi.start(gui, toast)
 StreetUi.start(gui)
 FarmUi.start()
+MachineFx.start()
 refreshHud()
 task.spawn(function()
 	local ok, res = pcall(function()

@@ -665,4 +665,162 @@ function Formulas.passClaimable(passCfg, state, premium: boolean)
 	return list
 end
 
+-- Terrain du bastion et machines ---------------------------------------------------------
+
+-- Zones possédées pour un niveau de terrain (nombre d'extensions achetées, dans l'ordre).
+function Formulas.landOwned(landCfg, landLevel: number): { [string]: boolean }
+	local owned = { Base = true }
+	for i, area in landCfg.Areas do
+		if i <= landLevel then
+			owned[area.Id] = true
+		end
+	end
+	return owned
+end
+
+-- Prochaine extension achetable (nil = tout est acheté).
+function Formulas.landNext(landCfg, landLevel: number)
+	return landCfg.Areas[landLevel + 1]
+end
+
+local BASE_RECT = { -45, 45, -45, 45 }
+
+local function inRect(r, x: number, z: number): boolean
+	return x > r[1] and x < r[2] and z > r[3] and z < r[4]
+end
+
+-- Zone contenant un point local ("Base", Id d'extension, ou nil hors terrain).
+function Formulas.landAreaAt(landCfg, x: number, z: number): string?
+	if inRect(BASE_RECT, x, z) then
+		return "Base"
+	end
+	for _, area in landCfg.Areas do
+		if inRect(area.Rect, x, z) then
+			return area.Id
+		end
+	end
+	return nil
+end
+
+-- Murs des extensions : segments { X1, Z1, X2, Z2 } sur les limites entre zones différentes
+-- (ou vers l'extérieur), hors limites du terrain de base (murets existants) et hors passages.
+function Formulas.landWalls(landCfg)
+	local g = landCfg.Grid
+	local xMin, xMax, zMin, zMax = BASE_RECT[1], BASE_RECT[2], BASE_RECT[3], BASE_RECT[4]
+	for _, area in landCfg.Areas do
+		xMin, xMax = math.min(xMin, area.Rect[1]), math.max(xMax, area.Rect[2])
+		zMin, zMax = math.min(zMin, area.Rect[3]), math.max(zMax, area.Rect[4])
+	end
+	local half = landCfg.OpeningWidth / 2
+	local function isOpening(along: string, fixed: number, pos: number): boolean
+		for _, o in landCfg.Openings do
+			if o.Along == along then
+				local oFixed = if along == "X" then o.Z else o.X
+				local oPos = if along == "X" then o.X else o.Z
+				if math.abs(oFixed - fixed) < 0.01 and math.abs(pos - oPos) < half then
+					return true
+				end
+			end
+		end
+		return false
+	end
+	local function wallBetween(a: string?, b: string?): boolean
+		return a ~= b and a ~= "Base" and b ~= "Base"
+	end
+	local segments = {}
+	-- Murs parallèles à X (z fixe)
+	for z = zMin, zMax + 0.01, g do
+		local start = nil
+		for x = xMin, xMax + 0.01, g do
+			local mid = x + g / 2
+			local wall = x < xMax - 0.01
+				and wallBetween(
+					Formulas.landAreaAt(landCfg, mid, z - g / 2),
+					Formulas.landAreaAt(landCfg, mid, z + g / 2)
+				)
+				and not isOpening("X", z, mid)
+			if wall and not start then
+				start = x
+			elseif not wall and start then
+				table.insert(segments, { X1 = start, Z1 = z, X2 = x, Z2 = z })
+				start = nil
+			end
+		end
+	end
+	-- Murs parallèles à Z (x fixe)
+	for x = xMin, xMax + 0.01, g do
+		local start = nil
+		for z = zMin, zMax + 0.01, g do
+			local mid = z + g / 2
+			local wall = z < zMax - 0.01
+				and wallBetween(
+					Formulas.landAreaAt(landCfg, x - g / 2, mid),
+					Formulas.landAreaAt(landCfg, x + g / 2, mid)
+				)
+				and not isOpening("Z", x, mid)
+			if wall and not start then
+				start = z
+			elseif not wall and start then
+				table.insert(segments, { X1 = x, Z1 = start, X2 = x, Z2 = z })
+				start = nil
+			end
+		end
+	end
+	return segments
+end
+
+-- Production d'une machine par seconde à un niveau.
+function Formulas.machineRate(machinesCfg, def, level: number): number
+	return def.Rate * machinesCfg.LevelRateMult ^ (level - 1)
+end
+
+-- Valeur en or par seconde d'une machine à un niveau (avant la part personnelle).
+function Formulas.machineGold(machinesCfg, def, level: number): number
+	return def.Gold * machinesCfg.LevelRateMult ^ (level - 1)
+end
+
+-- Coût pour passer du niveau `level` au suivant.
+function Formulas.machineUpgradeCost(machinesCfg, def, level: number)
+	local cost = {}
+	for id, amount in def.Cost do
+		cost[id] = math.ceil(amount * machinesCfg.UpgradeCostMult ^ level)
+	end
+	return cost
+end
+
+-- Production totale d'un bastion : { Materials = { [Id] = /s }, PersonalGold = or/s par membre }.
+-- machines : { [SlotId] = niveau } ; seules les machines d'extensions possédées comptent.
+function Formulas.machineRates(machinesCfg, landCfg, landLevel: number, machines)
+	local defs = {}
+	for _, def in machinesCfg.List do
+		defs[def.Id] = def
+	end
+	local owned = Formulas.landOwned(landCfg, landLevel)
+	local result = { Materials = {}, PersonalGold = 0 }
+	for _, area in landCfg.Areas do
+		if owned[area.Id] then
+			for _, slot in area.Slots do
+				local level = machines[slot.Id]
+				local def = defs[slot.Machine]
+				if level and level > 0 and def then
+					result.Materials[def.Material] = (result.Materials[def.Material] or 0)
+						+ Formulas.machineRate(machinesCfg, def, level)
+					result.PersonalGold += Formulas.machineGold(machinesCfg, def, level) * machinesCfg.PersonalGoldShare
+				end
+			end
+		end
+	end
+	return result
+end
+
+-- Production hors ligne : taux réduit, durée plafonnée. Retourne { [Id] = quantité }.
+function Formulas.machineOffline(rates, seconds: number, offlineCfg)
+	local credited = math.clamp(seconds, 0, offlineCfg.MaxSeconds)
+	local out = {}
+	for id, perSecond in rates.Materials do
+		out[id] = perSecond * credited * offlineCfg.Rate
+	end
+	return out
+end
+
 return Formulas

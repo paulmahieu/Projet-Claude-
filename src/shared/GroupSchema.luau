@@ -40,6 +40,10 @@ function GroupSchema.template()
 		Members = {},
 		Materials = { Wood = 0, Stone = 0, Ore = 0, Crystal = 0 },
 		Structures = {}, -- { [StructureId] = true }
+		Land = 0, -- extensions de terrain achetées (dans l'ordre de Config/Land)
+		Machines = {}, -- { [SlotId] = niveau }
+		MachineAt = 0, -- os.time() de la dernière production comptabilisée (hors ligne)
+		MachineCarry = {}, -- fractions de matériaux reportées { [Id] = x }
 		-- Placement libre (étape 2) : { { Id, Item, X, Z, Rot } } en coordonnées de grille
 		-- relatives à l'origine de la parcelle -> reconstructible sur n'importe quelle parcelle.
 		Placements = {},
