@@ -1384,6 +1384,75 @@ test("Arbres : rares plus précieux, moins nombreux, matériaux connus", functio
 	end
 end)
 
+test("Rue des boss : régions, patrons et 15 ennemis des planches", function()
+	local ids = {}
+	for _, def in Street.Kinds do
+		ids[def.Id] = def
+	end
+	for _, def in Street.Bosses do
+		ids[def.Id] = def
+		assert(def.Boss and def.SlamRadius, def.Id .. " : boss incomplet")
+	end
+	local count = 0
+	for _ in ids do
+		count += 1
+	end
+	eq(count, 15, "15 ennemis (9 + 6 boss)")
+	local used = {}
+	for _, region in Street.Regions do
+		for _, id in region.Pool do
+			assert(ids[id] and not ids[id].Boss, region.Name .. " : " .. id .. " inconnu ou boss")
+			used[id] = true
+		end
+		eq(#region.Patrons, 2)
+		for _, id in region.Patrons do
+			assert(ids[id], region.Name .. " : patron " .. id .. " inconnu")
+			used[id] = true
+		end
+	end
+	for id in ids do
+		assert(used[id], id .. " n'apparaît jamais dans la rue")
+	end
+	eq(Formulas.streetKindId(10, 1, Street), "GoblinKing")
+	eq(Formulas.streetKindId(5, 1, Street), "ShieldbreakerOrc")
+	eq(Formulas.streetKindId(60, 1, Street), "VoidColossus", "boss final à l'étape 60")
+	eq(Formulas.streetRegion(61, Street), 1, "retour à la première région")
+	local a, b = Formulas.streetKindId(1, 1, Street), Formulas.streetKindId(1, 2, Street)
+	assert(a ~= b, "vague variée")
+	-- Les boss sont bien plus résistants qu'un ennemi de la même étape.
+	local boss = Formulas.streetEnemyOf(10, Street, ids.GoblinKing)
+	local grunt = Formulas.streetEnemyOf(9, Street, ids.ScrapGoblin)
+	assert(boss.Health > grunt.Health * 6, "boss résistant")
+	-- Modèles : chaque ennemi se construit et tient dans la rue.
+	local roblox = require("@lune/roblox")
+	local luau = require("@lune/luau")
+	local fs = require("@lune/fs")
+	local fakeGame = {
+		GetService = function()
+			return {
+				FindFirstChild = function()
+					return nil
+				end,
+			}
+		end,
+	}
+	local env = setmetatable({
+		Instance = roblox.Instance,
+		CFrame = roblox.CFrame,
+		Vector3 = roblox.Vector3,
+		Color3 = roblox.Color3,
+		Enum = roblox.Enum,
+		game = fakeGame,
+	}, { __index = _G })
+	local Models = luau.load(fs.readFile("src/server/Art/Models.luau"), { environment = env })()
+	for id, def in ids do
+		local model, root = Models.enemy(def, roblox.CFrame.new(), def.Scale or 1, false)
+		assert(#model:GetChildren() >= 15, id .. " : modèle trop pauvre")
+		assert(root.Size.Y <= 22, id .. " : trop grand pour la rue")
+		assert(root.Size.X <= Street.Width - 6, id .. " : trop large pour la rue")
+	end
+end)
+
 print(string.format("\n%d réussi(s), %d échec(s)", passed, failed))
 if failed > 0 then
 	error("Des tests ont échoué")

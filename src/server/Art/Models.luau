@@ -3167,178 +3167,1987 @@ function Models.street(origin: CFrame, cfg, parent: Instance)
 end
 
 -- Ennemi de la rue. Retourne model, Root (invisible, référence de position et de portée).
+-- Ennemis de la Rue des boss (planches du créateur) -----------------------------------------
+-- Constructeurs : bipède paramétrique (gobelin, squelette, cultiste, orque, golem, chevalier,
+-- roi, gardien, titan, colosse), quadrupède (loup, hydre, dragon), gelée, araignée. `base` au
+-- sol, -Z = face. Toutes les pièces sont soudées à la pièce « Root » (un seul bloc déplacé).
+
+local function ep(parent, name: string, size: Vector3, cf: CFrame, color: Color3, material, props)
+	local p = table.clone(props or {})
+	p.CanCollide = false
+	return part(parent, name, size, cf, color, material, p)
+end
+
+local function blob(parent, name: string, size: Vector3, cf: CFrame, color: Color3, material, props)
+	local p = ep(parent, name, size, cf, color, material, props)
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Sphere
+	mesh.Parent = p
+	return p
+end
+
+local function glow(parent, name: string, size: Vector3, cf: CFrame, color: Color3, shape)
+	return ep(parent, name, size, cf, color, Enum.Material.Neon, { NoShadow = true, Shape = shape })
+end
+
+local IRON = Color3.fromRGB(110, 106, 104)
+local RUST = Color3.fromRGB(150, 95, 60)
+local LEATHER = Color3.fromRGB(105, 70, 45)
+local ROPE = Color3.fromRGB(200, 165, 105)
+
+-- Armes -------------------------------------------------------------------------------------
+
+local function weaponSword(m, hand: CFrame, len: number, blade: Color3, guard: Color3, glowColor: Color3?)
+	local w = len * 0.13
+	ep(m, "Grip", Vector3.new(w * 0.5, len * 0.2, w * 0.5), hand, LEATHER, Enum.Material.Fabric)
+	ep(
+		m,
+		"Guard",
+		Vector3.new(w * 2.2, w * 0.4, w * 0.6),
+		hand * CFrame.new(0, -len * 0.11, 0),
+		guard,
+		Enum.Material.Metal
+	)
+	local b = hand * CFrame.new(0, -len * 0.11 - len * 0.4, 0)
+	ep(m, "Blade", Vector3.new(w, len * 0.8, w * 0.25), b, blade, Enum.Material.Metal)
+	ep(
+		m,
+		"BladeTip",
+		Vector3.new(w * 0.71, w * 0.71, w * 0.25),
+		b * CFrame.new(0, -len * 0.4, 0) * CFrame.Angles(0, 0, math.rad(45)),
+		blade,
+		Enum.Material.Metal
+	)
+	if glowColor then
+		glow(m, "BladeRune", Vector3.new(w * 0.2, len * 0.6, w * 0.3), b, glowColor)
+	end
+end
+
+local function weaponCleaver(m, hand: CFrame, size: number)
+	ep(m, "Grip", Vector3.new(size * 0.12, size * 0.35, size * 0.12), hand, LEATHER, Enum.Material.Wood)
+	local b = hand * CFrame.new(size * 0.15, -size * 0.55, 0)
+	ep(
+		m,
+		"Cleaver",
+		Vector3.new(size * 0.5, size * 0.75, size * 0.06),
+		b,
+		IRON:Lerp(RUST, 0.45),
+		Enum.Material.CorrodedMetal
+	)
+	for k = 0, 2 do
+		ep(
+			m,
+			"Notch",
+			Vector3.new(size * 0.08, size * 0.08, size * 0.07),
+			b * CFrame.new(size * 0.25, size * (0.25 - k * 0.25), 0),
+			Color3.fromRGB(70, 60, 55),
+			Enum.Material.Metal
+		)
+	end
+end
+
+local function weaponHammer(m, hand: CFrame, size: number, head: Color3, rune: Color3?)
+	ep(
+		m,
+		"Haft",
+		Vector3.new(size * 0.12, size * 1.0, size * 0.12),
+		hand * CFrame.new(0, -size * 0.3, 0),
+		Color3.fromRGB(130, 55, 45),
+		Enum.Material.Wood
+	)
+	local h = hand * CFrame.new(0, -size * 0.85, 0)
+	ep(m, "HammerHead", Vector3.new(size * 0.55, size * 0.4, size * 0.4), h, head, Enum.Material.Slate)
+	for _, side in { -1, 1 } do
+		ep(
+			m,
+			"HammerBand",
+			Vector3.new(size * 0.06, size * 0.44, size * 0.44),
+			h * CFrame.new(side * size * 0.2, 0, 0),
+			RUST,
+			Enum.Material.Metal
+		)
+	end
+	if rune then
+		glow(
+			m,
+			"HammerRune",
+			Vector3.new(size * 0.2, size * 0.2, 0.05),
+			h * CFrame.new(0, 0, -size * 0.21) * CFrame.Angles(0, 0, math.rad(45)),
+			rune
+		)
+	end
+end
+
+local function weaponMace(m, hand: CFrame, size: number)
+	ep(
+		m,
+		"Haft",
+		Vector3.new(size * 0.12, size * 0.9, size * 0.12),
+		hand * CFrame.new(0, -size * 0.25, 0),
+		LEATHER,
+		Enum.Material.Wood
+	)
+	local h = hand * CFrame.new(0, -size * 0.85, 0)
+	ep(
+		m,
+		"MaceHead",
+		Vector3.new(size * 0.5, size * 0.5, size * 0.5),
+		h,
+		Color3.fromRGB(70, 60, 55),
+		Enum.Material.Metal,
+		{ Shape = Enum.PartType.Ball }
+	)
+	for k = 0, 9 do
+		local a = k * 2.4
+		ep(
+			m,
+			"Spike",
+			Vector3.new(size * 0.1, size * 0.22, size * 0.1),
+			h * CFrame.Angles(a, k * 1.3, 0) * CFrame.new(0, size * 0.28, 0),
+			Color3.fromRGB(190, 160, 90),
+			Enum.Material.Metal
+		)
+	end
+end
+
+local function weaponStaff(m, hand: CFrame, len: number, crystal: Color3)
+	ep(
+		m,
+		"Staff",
+		Vector3.new(len * 0.05, len, len * 0.05),
+		hand * CFrame.new(0, len * 0.25, 0),
+		C.WoodDark,
+		Enum.Material.Wood
+	)
+	local top = hand * CFrame.new(0, len * 0.78, 0)
+	for k = 0, 3 do
+		ep(
+			m,
+			"Claw",
+			Vector3.new(len * 0.03, len * 0.12, len * 0.03),
+			top * CFrame.Angles(0, k * math.pi / 2, 0) * CFrame.new(0, 0, -len * 0.05) * CFrame.Angles(-0.4, 0, 0),
+			C.WoodDark,
+			Enum.Material.Wood
+		)
+	end
+	local gem = glow(
+		m,
+		"Ember",
+		Vector3.new(len * 0.08, len * 0.13, len * 0.08),
+		top * CFrame.new(0, len * 0.04, 0) * CFrame.Angles(0, math.rad(45), 0),
+		crystal
+	)
+	local light = Instance.new("PointLight")
+	light.Color = crystal
+	light.Range = 10
+	light.Parent = gem
+end
+
+local function plankShield(m, arm: CFrame, w: number, h: number, wood: Color3, emblem: Color3?)
+	local s = arm * CFrame.new(0, 0, -w * 0.15)
+	for k = -1, 1 do
+		ep(
+			m,
+			"ShieldPlank",
+			Vector3.new(w / 3 * 0.95, h, w * 0.08),
+			s * CFrame.new(k * w / 3, 0, 0),
+			wood:Lerp(Color3.new(0, 0, 0), (k + 1) * 0.06),
+			Enum.Material.WoodPlanks
+		)
+	end
+	for _, y in { -0.33, 0.33 } do
+		ep(
+			m,
+			"ShieldBand",
+			Vector3.new(w * 1.04, h * 0.08, w * 0.1),
+			s * CFrame.new(0, y * h, -0.02),
+			IRON,
+			Enum.Material.Metal
+		)
+	end
+	if emblem then
+		ep(
+			m,
+			"ShieldEmblem",
+			Vector3.new(w * 0.32, w * 0.32, w * 0.1),
+			s * CFrame.new(0, 0, -w * 0.05) * CFrame.Angles(0, 0, math.rad(45)),
+			emblem,
+			Enum.Material.SmoothPlastic
+		)
+	end
+end
+
+-- Bipède -------------------------------------------------------------------------------------
+-- spec : H (hauteur), Bulk, Head (proportion), Skin, Torso, Pants, Boots, Hands. Retourne les
+-- repères utiles : mains, tête, poitrine, dos, épaules.
+local function biped(m, base: CFrame, s)
+	local H, b = s.H, s.Bulk or 1
+	local headS = H * (s.Head or 0.2)
+	local legH = (H - headS) * 0.48
+	local torsoH = (H - headS) * 0.48
+	local torsoW, torsoD = H * 0.3 * b, H * 0.18 * b
+	local hipW = torsoW * 0.62
+	local legW = H * 0.11 * b
+	for _, side in { -1, 1 } do
+		ep(
+			m,
+			"Leg",
+			Vector3.new(legW, legH, legW * 1.1),
+			base * CFrame.new(side * hipW / 2, legH / 2, 0),
+			s.Pants,
+			s.PantsMat or Enum.Material.Fabric
+		)
+		ep(
+			m,
+			"Boot",
+			Vector3.new(legW * 1.3, legH * 0.32, legW * 1.6),
+			base * CFrame.new(side * hipW / 2, legH * 0.16, -legW * 0.2),
+			s.Boots,
+			s.BootsMat or Enum.Material.Fabric
+		)
+		if s.Knee then
+			ep(
+				m,
+				"Knee",
+				Vector3.new(legW * 1.2, legW * 0.9, legW * 0.4),
+				base * CFrame.new(side * hipW / 2, legH * 0.55, -legW * 0.6),
+				s.Knee,
+				Enum.Material.Metal
+			)
+		end
+	end
+	local chestY = legH + torsoH / 2
+	ep(
+		m,
+		"Torso",
+		Vector3.new(torsoW, torsoH, torsoD),
+		base * CFrame.new(0, chestY, 0),
+		s.Torso,
+		s.TorsoMat or Enum.Material.Fabric
+	)
+	ep(
+		m,
+		"Belt",
+		Vector3.new(torsoW * 1.04, torsoH * 0.12, torsoD * 1.06),
+		base * CFrame.new(0, legH + torsoH * 0.12, 0),
+		s.Belt or LEATHER,
+		Enum.Material.Fabric
+	)
+	local armW = H * 0.11 * b
+	local armL = torsoH * 1.05
+	local hands = {}
+	for _, side in { -1, 1 } do
+		local shoulder = base * CFrame.new(side * (torsoW / 2 + armW * 0.45), legH + torsoH - armW * 0.4, 0)
+		local arm = shoulder * CFrame.Angles(0, 0, side * 0.12)
+		ep(
+			m,
+			"Arm",
+			Vector3.new(armW, armL, armW),
+			arm * CFrame.new(0, -armL / 2, 0),
+			s.Arms or s.Skin,
+			s.ArmsMat or Enum.Material.SmoothPlastic
+		)
+		local hand = arm * CFrame.new(0, -armL - armW * 0.1, 0)
+		ep(
+			m,
+			"Hand",
+			Vector3.new(armW * 1.35, armW * 1.2, armW * 1.35),
+			hand,
+			s.Hands or s.Skin,
+			s.HandsMat or Enum.Material.SmoothPlastic
+		)
+		if s.Bracer then
+			ep(
+				m,
+				"Bracer",
+				Vector3.new(armW * 1.2, armL * 0.3, armW * 1.2),
+				arm * CFrame.new(0, -armL * 0.75, 0),
+				s.Bracer,
+				Enum.Material.Metal
+			)
+		end
+		hands[side] = hand
+	end
+	local headCf = base * CFrame.new(0, legH + torsoH + headS * 0.5, 0)
+	return {
+		H = H,
+		Head = headCf,
+		HeadS = headS,
+		Chest = base * CFrame.new(0, chestY, -torsoD / 2),
+		Back = base * CFrame.new(0, chestY, torsoD / 2),
+		ShoulderL = base * CFrame.new(-(torsoW / 2 + armW * 0.45), legH + torsoH, 0),
+		ShoulderR = base * CFrame.new(torsoW / 2 + armW * 0.45, legH + torsoH, 0),
+		HandL = hands[-1],
+		HandR = hands[1],
+		TorsoW = torsoW,
+		TorsoD = torsoD,
+		LegH = legH,
+		TorsoH = torsoH,
+	}
+end
+
+local function eyesPair(m, head: CFrame, spread: number, y: number, z: number, size: number, color: Color3)
+	for _, side in { -1, 1 } do
+		glow(m, "Eye", Vector3.new(size, size * 0.8, 0.08), head * CFrame.new(side * spread, y, -z), color)
+	end
+end
+
+local function spikedPauldron(m, at: CFrame, size: number, plate: Color3, spikes: Color3, side: number)
+	blob(
+		m,
+		"Pauldron",
+		Vector3.new(size * 1.3, size * 0.8, size * 1.2),
+		at * CFrame.new(side * size * 0.15, size * 0.1, 0),
+		plate,
+		Enum.Material.Metal
+	)
+	for k = -1, 1 do
+		ep(
+			m,
+			"PauldronSpike",
+			Vector3.new(size * 0.18, size * 0.5, size * 0.18),
+			at * CFrame.new(side * size * 0.3, size * 0.45, k * size * 0.32) * CFrame.Angles(0, 0, -side * 0.4),
+			spikes,
+			Enum.Material.Metal
+		)
+	end
+end
+
+local function leafyPauldron(m, at: CFrame, size: number, color: Color3, side: number)
+	for k = 0, 5 do
+		local a = (k - 2.5) * 0.45
+		ep(
+			m,
+			"ThornLeaf",
+			Vector3.new(size * 0.35, size * 0.9, size * 0.08),
+			at
+				* CFrame.new(side * size * 0.3, size * 0.25, 0)
+				* CFrame.Angles(0, a, -side * 0.9)
+				* CFrame.new(0, size * 0.35, 0)
+				* CFrame.Angles(0, 0, math.rad(45)),
+			color:Lerp(Color3.new(0, 0, 0), (k % 2) * 0.12),
+			Enum.Material.Grass
+		)
+	end
+end
+
+local function cape(m, back: CFrame, w: number, h: number, color: Color3, tatters: number)
+	ep(
+		m,
+		"Cape",
+		Vector3.new(w, h, 0.12),
+		back * CFrame.new(0, -h * 0.35, 0.12) * CFrame.Angles(0.08, 0, 0),
+		color,
+		Enum.Material.Fabric
+	)
+	for k = 0, tatters - 1 do
+		local x = -w / 2 + (k + 0.5) * w / tatters
+		ep(
+			m,
+			"CapeTatter",
+			Vector3.new(w / tatters * 0.8, h * 0.18, 0.1),
+			back * CFrame.new(x, -h * 0.86 - (k % 2) * h * 0.05, 0.2) * CFrame.Angles(0.1, 0, math.rad(45)),
+			color:Lerp(Color3.new(0, 0, 0), 0.1),
+			Enum.Material.Fabric
+		)
+	end
+end
+
+-- Quadrupède (loup, hydre, dragon) -----------------------------------------------------------
+local function quad(m, base: CFrame, s)
+	local L, Hb, W = s.L, s.Hb, s.W
+	local legH = s.LegH
+	local body = base * CFrame.new(0, legH + Hb / 2, 0)
+	blob(m, "Body", Vector3.new(W, Hb, L), body, s.Skin, s.SkinMat or Enum.Material.SmoothPlastic)
+	if s.Belly then
+		blob(
+			m,
+			"Belly",
+			Vector3.new(W * 0.75, Hb * 0.7, L * 0.8),
+			body * CFrame.new(0, -Hb * 0.15, -L * 0.05),
+			s.Belly,
+			Enum.Material.SmoothPlastic
+		)
+	end
+	for _, p in { { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } } do
+		local leg = base * CFrame.new(p[1] * W * 0.32, legH / 2 + Hb * 0.1, p[2] * L * 0.3)
+		ep(
+			m,
+			"Leg",
+			Vector3.new(W * 0.24, legH + Hb * 0.2, W * 0.26),
+			leg,
+			s.Legs or s.Skin,
+			s.SkinMat or Enum.Material.SmoothPlastic
+		)
+		local paw = base * CFrame.new(p[1] * W * 0.32, W * 0.06, p[2] * L * 0.3 - W * 0.05)
+		ep(
+			m,
+			"Paw",
+			Vector3.new(W * 0.3, W * 0.12, W * 0.36),
+			paw,
+			s.Paws or s.Legs or s.Skin,
+			Enum.Material.SmoothPlastic
+		)
+		for k = -1, 1 do
+			ep(
+				m,
+				"Claw",
+				Vector3.new(W * 0.05, W * 0.06, W * 0.12),
+				paw * CFrame.new(k * W * 0.09, 0, -W * 0.2),
+				s.Claws or Color3.fromRGB(230, 220, 190),
+				Enum.Material.SmoothPlastic
+			)
+		end
+	end
+	return body
+end
+
+local function beastHead(m, at: CFrame, size: number, s)
+	blob(m, "Head", Vector3.new(size, size * 0.8, size), at, s.Skin, s.SkinMat or Enum.Material.SmoothPlastic)
+	ep(
+		m,
+		"Snout",
+		Vector3.new(size * 0.55, size * 0.4, size * 0.75),
+		at * CFrame.new(0, -size * 0.12, -size * 0.55),
+		s.Skin:Lerp(Color3.new(0, 0, 0), 0.1),
+		s.SkinMat or Enum.Material.SmoothPlastic
+	)
+	ep(
+		m,
+		"Jaw",
+		Vector3.new(size * 0.5, size * 0.14, size * 0.6),
+		at * CFrame.new(0, -size * 0.36, -size * 0.45) * CFrame.Angles(math.rad(s.Open or 10), 0, 0),
+		s.Belly or s.Skin,
+		Enum.Material.SmoothPlastic
+	)
+	ep(
+		m,
+		"Nose",
+		Vector3.new(size * 0.18, size * 0.12, size * 0.1),
+		at * CFrame.new(0, -size * 0.02, -size * 0.92),
+		Color3.fromRGB(30, 26, 28),
+		Enum.Material.SmoothPlastic
+	)
+	for _, side in { -1, 1 } do
+		glow(
+			m,
+			"Eye",
+			Vector3.new(size * 0.16, size * 0.1, 0.08),
+			at * CFrame.new(side * size * 0.24, size * 0.12, -size * 0.48),
+			s.Eye
+		)
+		if s.Teeth then
+			ep(
+				m,
+				"Fang",
+				Vector3.new(size * 0.06, size * 0.16, size * 0.06),
+				at * CFrame.new(side * size * 0.16, -size * 0.32, -size * 0.8),
+				Color3.fromRGB(240, 235, 220),
+				Enum.Material.SmoothPlastic
+			)
+		end
+		if s.Ears then
+			ep(
+				m,
+				"Ear",
+				Vector3.new(size * 0.3, size * 0.3, size * 0.1),
+				at * CFrame.new(side * size * 0.3, size * 0.42, size * 0.1) * CFrame.Angles(0, 0, math.rad(45)),
+				s.Skin,
+				s.SkinMat or Enum.Material.SmoothPlastic
+			)
+		end
+		if s.Horns then
+			local cf = at
+				* CFrame.new(side * size * 0.28, size * 0.35, size * 0.25)
+				* CFrame.Angles(0.7, 0, -side * 0.3)
+			for _, w in { 0.2, 0.16, 0.12, 0.08 } do
+				ep(
+					m,
+					"Horn",
+					Vector3.new(size * w, size * 0.28, size * w),
+					cf * CFrame.new(0, size * 0.13, 0),
+					s.Horns,
+					Enum.Material.SmoothPlastic
+				)
+				cf = cf * CFrame.new(0, size * 0.25, 0) * CFrame.Angles(0.35, 0, 0)
+			end
+		end
+	end
+end
+
+local function batWingsBig(m, at: CFrame, span: number, skin: Color3, bone: Color3)
+	for _, side in { -1, 1 } do
+		-- Ailes dressées en V, membranes inclinées vers l'avant (visibles de face et de profil)
+		local root = at * CFrame.Angles(0, 0, side * 0.75)
+		ep(
+			m,
+			"WingArm",
+			Vector3.new(span, span * 0.06, span * 0.06),
+			root * CFrame.new(side * span / 2, 0, 0),
+			bone,
+			Enum.Material.SmoothPlastic
+		)
+		ep(
+			m,
+			"WingClaw",
+			Vector3.new(span * 0.08, span * 0.12, span * 0.08),
+			root * CFrame.new(side * span, span * 0.05, 0),
+			Color3.fromRGB(220, 200, 160),
+			Enum.Material.SmoothPlastic
+		)
+		for k = 0, 3 do
+			local len = span * (1 - k * 0.14)
+			local fan = root * CFrame.Angles(0, -side * (0.25 + k * 0.32), 0)
+			blob(
+				m,
+				"WingSkin",
+				Vector3.new(len, span * 0.03, span * 0.34),
+				fan * CFrame.new(side * len * 0.48, -span * 0.05, span * 0.1) * CFrame.Angles(math.rad(55), 0, 0),
+				skin:Lerp(Color3.new(0, 0, 0), k * 0.07),
+				Enum.Material.SmoothPlastic
+			)
+			ep(
+				m,
+				"WingBone",
+				Vector3.new(len, span * 0.04, span * 0.04),
+				fan * CFrame.new(side * len * 0.5, 0, 0),
+				bone,
+				Enum.Material.SmoothPlastic
+			)
+		end
+	end
+end
+
+-- Fiches --------------------------------------------------------------------------------------
+
+local enemyBuilders = {}
+
+-- Gelée épineuse : gelée verte translucide, graine-cœur et racines, épines de bois moussues.
+enemyBuilders.ThornJelly = function(m, base, k)
+	local green = Color3.fromRGB(150, 210, 50)
+	blob(
+		m,
+		"Seed",
+		Vector3.new(1.1, 1.0, 1.1) * k,
+		base * CFrame.new(0, 0.8 * k, 0.1 * k),
+		Color3.fromRGB(100, 70, 45),
+		Enum.Material.Wood
+	)
+	blob(
+		m,
+		"Jelly",
+		Vector3.new(3.0, 2.2, 2.8) * k,
+		base * CFrame.new(0, 1.0 * k, 0),
+		green,
+		Enum.Material.Glass,
+		{ Transparency = 0.35 }
+	)
+	ep(
+		m,
+		"JellyBase",
+		Vector3.new(3.2, 0.25, 3.0) * k,
+		base * CFrame.new(0, 0.12 * k, 0),
+		green:Lerp(Color3.new(1, 1, 0.5), 0.2),
+		Enum.Material.Glass,
+		{ Transparency = 0.3 }
+	)
+	for _, side in { -1, 1 } do
+		glow(
+			m,
+			"Eye",
+			Vector3.new(0.38, 0.38, 0.1) * k,
+			base * CFrame.new(side * 0.5 * k, 1.2 * k, -1.33 * k) * CFrame.Angles(0, 0, math.rad(45)),
+			Color3.fromRGB(255, 160, 30)
+		)
+	end
+	for i, sp in { { 0, 2.4, 0, 1.2 }, { -0.9, 2.0, 0.3, 0.8 }, { 0.9, 2.0, 0.2, 0.8 }, { 0.2, 1.8, 0.9, 0.7 } } do
+		local at = base * CFrame.new(sp[1] * k, sp[2] * k, sp[3] * k) * CFrame.Angles(0, i, sp[1] * -0.3)
+		ep(m, "Thorn", Vector3.new(0.45, sp[4], 0.45) * k, at, Color3.fromRGB(120, 80, 50), Enum.Material.Wood)
+		ep(
+			m,
+			"ThornTip",
+			Vector3.new(0.32, 0.32, 0.32) * k,
+			at * CFrame.new(0, sp[4] * 0.5 * k, 0) * CFrame.Angles(math.rad(45), 0, math.rad(45)),
+			Color3.fromRGB(120, 80, 50),
+			Enum.Material.Wood
+		)
+		ep(
+			m,
+			"Moss",
+			Vector3.new(0.5, 0.15, 0.5) * k,
+			at * CFrame.new(0, -sp[4] * 0.3 * k, 0),
+			C.Leaf2,
+			Enum.Material.Grass
+		)
+	end
+	return 2.8 * k
+end
+
+-- Araignée des ruines : abdomen violet sous des plaques de pierre gravées, huit pattes de pierre
+-- articulées, yeux turquoise, crocs.
+enemyBuilders.RuinSpider = function(m, base, k)
+	local stone = Color3.fromRGB(140, 130, 125)
+	local body = base * CFrame.new(0, 1.3 * k, 0.5 * k)
+	blob(m, "Abdomen", Vector3.new(2.4, 1.6, 2.4) * k, body, Color3.fromRGB(95, 60, 100), Enum.Material.Slate)
+	for i, p in { { 0, 0.75, 0, 1.4 }, { -0.75, 0.45, 0.2, 0.9 }, { 0.75, 0.45, 0.2, 0.9 }, { 0, 0.5, 0.95, 1.0 } } do
+		local plate = body * CFrame.new(p[1] * k, p[2] * k, p[3] * k) * CFrame.Angles(0, i * 0.4, p[1] * -0.4)
+		ep(m, "Plate", Vector3.new(p[4], 0.25, p[4]) * k, plate, stone, Enum.Material.Slate)
+		ep(
+			m,
+			"Spiral",
+			Vector3.new(p[4] * 0.5, 0.06, p[4] * 0.5) * k,
+			plate * CFrame.new(0, 0.14 * k, 0) * CFrame.Angles(0, math.rad(45), 0),
+			stone:Lerp(Color3.new(1, 1, 1), 0.25),
+			Enum.Material.Slate
+		)
+	end
+	glow(
+		m,
+		"BackGem",
+		Vector3.new(0.4, 0.4, 0.1) * k,
+		body * CFrame.new(0, -0.2 * k, 1.2 * k) * CFrame.Angles(0, 0, math.rad(45)),
+		Color3.fromRGB(255, 160, 40)
+	)
+	local head = base * CFrame.new(0, 1.1 * k, -1.0 * k)
+	ep(m, "Head", Vector3.new(1.3, 0.9, 1.0) * k, head, stone, Enum.Material.Slate)
+	for _, e in { { -0.3, 0.1 }, { 0.3, 0.1 }, { -0.15, -0.12 }, { 0.15, -0.12 } } do
+		glow(
+			m,
+			"Eye",
+			Vector3.new(0.18, 0.18, 0.08) * k,
+			head * CFrame.new(e[1] * k, e[2] * k, -0.52 * k),
+			Color3.fromRGB(60, 230, 220),
+			Enum.PartType.Ball
+		)
+	end
+	for _, side in { -1, 1 } do
+		ep(
+			m,
+			"Fang",
+			Vector3.new(0.12, 0.4, 0.12) * k,
+			head * CFrame.new(side * 0.25 * k, -0.5 * k, -0.4 * k),
+			Color3.fromRGB(235, 225, 200),
+			Enum.Material.SmoothPlastic
+		)
+		for j = 0, 3 do
+			local a = (j - 1.5) * 0.45
+			local hip = base * CFrame.new(side * 0.8 * k, 1.2 * k, (j - 1.5) * 0.45 * k) * CFrame.Angles(0, side * a, 0)
+			local up = hip * CFrame.Angles(0, 0, side * -0.55)
+			ep(
+				m,
+				"LegUpper",
+				Vector3.new(1.4, 0.35, 0.35) * k,
+				up * CFrame.new(side * 0.7 * k, 0, 0),
+				stone:Lerp(Color3.new(0, 0, 0), j % 2 * 0.08),
+				Enum.Material.Slate
+			)
+			local knee = up * CFrame.new(side * 1.4 * k, 0, 0)
+			ep(
+				m,
+				"Joint",
+				Vector3.new(0.3, 0.3, 0.3) * k,
+				knee,
+				IRON,
+				Enum.Material.Metal,
+				{ Shape = Enum.PartType.Ball }
+			)
+			local low = knee * CFrame.Angles(0, 0, side * 1.3)
+			ep(
+				m,
+				"LegLower",
+				Vector3.new(1.5, 0.3, 0.3) * k,
+				low * CFrame.new(side * 0.75 * k, 0, 0),
+				stone,
+				Enum.Material.Slate
+			)
+			ep(
+				m,
+				"LegTip",
+				Vector3.new(0.22, 0.22, 0.22) * k,
+				low * CFrame.new(side * 1.5 * k, 0, 0) * CFrame.Angles(math.rad(45), 0, math.rad(45)),
+				Color3.fromRGB(80, 60, 50),
+				Enum.Material.Slate
+			)
+		end
+	end
+	return 2.6 * k
+end
+
+-- Gobelin ferrailleur : gobelin à capuche, tunique rapiécée, épaulières rouillées, couperet,
+-- bouclier de planches à rouage, sac à dos (pioche, tuyaux).
+enemyBuilders.ScrapGoblin = function(m, base, k)
+	local skin = Color3.fromRGB(130, 165, 70)
+	local b = biped(m, base, {
+		H = 4.2 * k,
+		Bulk = 1.15,
+		Head = 0.3,
+		Skin = skin,
+		Torso = LEATHER,
+		Pants = Color3.fromRGB(90, 60, 40),
+		Boots = Color3.fromRGB(80, 55, 38),
+		Bracer = RUST,
+	})
+	local hs = b.HeadS
+	blob(m, "Head", Vector3.new(hs * 0.95, hs * 0.85, hs * 0.9), b.Head, skin)
+	blob(
+		m,
+		"Hood",
+		Vector3.new(hs * 1.05, hs * 0.75, hs * 0.95),
+		b.Head * CFrame.new(0, hs * 0.18, hs * 0.08),
+		LEATHER:Lerp(RUST, 0.2),
+		Enum.Material.Fabric
+	)
+	for _, side in { -1, 1 } do
+		ep(
+			m,
+			"Ear",
+			Vector3.new(hs * 0.65, hs * 0.18, hs * 0.08),
+			b.Head * CFrame.new(side * hs * 0.65, hs * 0.05, 0) * CFrame.Angles(0, 0, side * 0.25),
+			skin
+		)
+		ep(
+			m,
+			"Pauldron",
+			Vector3.new(b.TorsoW * 0.45, hs * 0.2, b.TorsoD * 1.1),
+			(if side < 0 then b.ShoulderL else b.ShoulderR) * CFrame.new(0, 0, 0) * CFrame.Angles(0, 0, side * 0.3),
+			RUST,
+			Enum.Material.CorrodedMetal
+		)
+	end
+	eyesPair(m, b.Head, hs * 0.2, hs * 0.02, hs * 0.44, hs * 0.16, Color3.fromRGB(255, 220, 60))
+	ep(
+		m,
+		"Tusk",
+		Vector3.new(hs * 0.08, hs * 0.12, hs * 0.06),
+		b.Head * CFrame.new(hs * 0.15, -hs * 0.3, -hs * 0.4),
+		Color3.fromRGB(240, 235, 210)
+	)
+	ep(
+		m,
+		"Rope",
+		Vector3.new(b.TorsoW * 1.06, b.TorsoH * 0.08, b.TorsoD * 1.08),
+		b.Chest * CFrame.new(0, -b.TorsoH * 0.32, b.TorsoD / 2),
+		ROPE,
+		Enum.Material.Fabric
+	)
+	ep(
+		m,
+		"Strap",
+		Vector3.new(b.TorsoW * 0.15, b.TorsoH * 1.1, 0.1),
+		b.Chest * CFrame.new(0, 0, -0.05) * CFrame.Angles(0, 0, 0.6),
+		LEATHER:Lerp(Color3.new(0, 0, 0), 0.2),
+		Enum.Material.Fabric
+	)
+	-- Sac à dos, pioche et tuyaux
+	local pack = b.Back * CFrame.new(0, 0, b.TorsoD * 0.35)
+	ep(m, "Backpack", Vector3.new(b.TorsoW * 0.8, b.TorsoH * 0.75, b.TorsoD * 0.7), pack, LEATHER, Enum.Material.Fabric)
+	for _, x in { -0.15, 0.12 } do
+		ep(
+			m,
+			"Pipe",
+			Vector3.new(b.TorsoW * 0.12, b.TorsoH * 0.45, b.TorsoW * 0.12),
+			pack * CFrame.new(x * b.TorsoW, b.TorsoH * 0.5, 0),
+			IRON,
+			Enum.Material.Metal,
+			{ Shape = Enum.PartType.Cylinder }
+		)
+	end
+	ep(
+		m,
+		"PickHandle",
+		Vector3.new(0.12, b.TorsoH * 1.3, 0.12) * k,
+		pack * CFrame.new(b.TorsoW * 0.25, b.TorsoH * 0.55, 0.1) * CFrame.Angles(0, 0, -0.3),
+		C.WoodDark,
+		Enum.Material.Wood
+	)
+	ep(
+		m,
+		"PickHead",
+		Vector3.new(b.TorsoW * 0.9, 0.14 * k, 0.14 * k),
+		pack * CFrame.new(b.TorsoW * 0.45, b.TorsoH * 1.15, 0.1) * CFrame.Angles(0, 0, -0.3),
+		IRON,
+		Enum.Material.Metal
+	)
+	weaponCleaver(m, b.HandR, b.H * 0.4)
+	plankShield(
+		m,
+		b.HandL * CFrame.new(-0.2 * k, b.H * 0.05, -0.2 * k),
+		b.H * 0.3,
+		b.H * 0.4,
+		Color3.fromRGB(150, 105, 65),
+		Color3.fromRGB(225, 215, 195)
+	)
+	return b.H
+end
+
+-- Squelette sentinelle : os, cage thoracique et gemme d'âme, tabard rouge, chapeau de fer,
+-- épée et bouclier.
+enemyBuilders.SkeletonSentinel = function(m, base, k)
+	local bone = Color3.fromRGB(225, 210, 175)
+	local red = Color3.fromRGB(130, 40, 45)
+	local b = biped(m, base, {
+		H = 5.6 * k,
+		Bulk = 0.7,
+		Head = 0.2,
+		Skin = bone,
+		Torso = bone:Lerp(Color3.new(0, 0, 0), 0.25),
+		Pants = bone,
+		Boots = LEATHER,
+		Bracer = LEATHER,
+	})
+	local hs = b.HeadS
+	ep(m, "Skull", Vector3.new(hs * 0.85, hs * 0.85, hs * 0.85), b.Head, bone)
+	ep(
+		m,
+		"Jaw",
+		Vector3.new(hs * 0.6, hs * 0.22, hs * 0.6),
+		b.Head * CFrame.new(0, -hs * 0.5, -hs * 0.08),
+		bone:Lerp(Color3.new(0, 0, 0), 0.08)
+	)
+	eyesPair(m, b.Head, hs * 0.2, hs * 0.05, hs * 0.43, hs * 0.2, Color3.fromRGB(255, 200, 60))
+	ep(
+		m,
+		"HatBrim",
+		Vector3.new(hs * 0.08, hs * 1.6, hs * 1.6),
+		b.Head * CFrame.new(0, hs * 0.38, 0) * CFrame.Angles(0, 0, math.rad(90)),
+		IRON:Lerp(RUST, 0.3),
+		Enum.Material.Metal,
+		{ Shape = Enum.PartType.Cylinder }
+	)
+	blob(
+		m,
+		"HatDome",
+		Vector3.new(hs * 1.0, hs * 0.6, hs * 1.0),
+		b.Head * CFrame.new(0, hs * 0.5, 0),
+		IRON:Lerp(RUST, 0.3),
+		Enum.Material.Metal
+	)
+	for r = 0, 3 do
+		ep(
+			m,
+			"Rib",
+			Vector3.new(b.TorsoW * 1.05, b.TorsoH * 0.07, b.TorsoD * 1.1),
+			b.Chest * CFrame.new(0, b.TorsoH * (0.3 - r * 0.15), b.TorsoD / 2),
+			bone
+		)
+	end
+	glow(
+		m,
+		"SoulGem",
+		Vector3.new(b.TorsoW * 0.2, b.TorsoW * 0.32, 0.12),
+		b.Chest * CFrame.new(0, b.TorsoH * 0.1, -0.05) * CFrame.Angles(0, 0, math.rad(45)),
+		Color3.fromRGB(255, 190, 50)
+	)
+	ep(
+		m,
+		"Tabard",
+		Vector3.new(b.TorsoW * 0.6, b.TorsoH * 0.9, 0.08),
+		b.Chest * CFrame.new(0, -b.TorsoH * 0.55, -0.06),
+		red,
+		Enum.Material.Fabric
+	)
+	ep(
+		m,
+		"Mantle",
+		Vector3.new(b.TorsoW * 1.3, b.TorsoH * 0.25, b.TorsoD * 1.2),
+		b.Chest * CFrame.new(0, b.TorsoH * 0.42, b.TorsoD / 2),
+		red,
+		Enum.Material.Fabric
+	)
+	weaponSword(
+		m,
+		b.HandR * CFrame.Angles(math.rad(-20), 0, 0),
+		b.H * 0.4,
+		IRON:Lerp(Color3.new(1, 1, 1), 0.2),
+		LEATHER
+	)
+	plankShield(
+		m,
+		b.HandL * CFrame.new(-0.2 * k, b.H * 0.08, -0.25 * k),
+		b.H * 0.26,
+		b.H * 0.38,
+		Color3.fromRGB(110, 70, 45),
+		Color3.fromRGB(200, 170, 120)
+	)
+	return b.H
+end
+
+-- Loup des ronces : fourrure sombre, plaques de bois moussues serties de ronces, yeux verts.
+enemyBuilders.BrambleWolf = function(m, base, k)
+	local fur = Color3.fromRGB(60, 58, 62)
+	local s = {
+		L = 4.2 * k,
+		Hb = 1.8 * k,
+		W = 1.7 * k,
+		LegH = 1.4 * k,
+		Skin = fur,
+		Belly = fur:Lerp(Color3.new(1, 1, 1), 0.12),
+		Eye = Color3.fromRGB(170, 255, 60),
+		Teeth = true,
+		Ears = true,
+	}
+	local body = quad(m, base, s)
+	beastHead(m, body * CFrame.new(0, 0.5 * k, -2.3 * k), 1.5 * k, s)
+	local wood = Color3.fromRGB(120, 80, 50)
+	for i, p in
+		{
+			{ 0, 0.85, -0.9 },
+			{ 0, 0.9, 0.3 },
+			{ 0, 0.8, 1.4 },
+			{ -0.75, 0.4, -0.4 },
+			{ 0.75, 0.4, -0.4 },
+			{ -0.75, 0.4, 0.9 },
+			{ 0.75, 0.4, 0.9 },
+		}
+	do
+		local plate = body * CFrame.new(p[1] * k, p[2] * k, p[3] * k) * CFrame.Angles(0.15, 0, p[1] * -0.8)
+		ep(
+			m,
+			"BarkPlate",
+			Vector3.new(1.1, 0.25, 1.0) * k,
+			plate,
+			wood:Lerp(Color3.new(0, 0, 0), i % 2 * 0.1),
+			Enum.Material.Wood
+		)
+		ep(
+			m,
+			"PlateMoss",
+			Vector3.new(0.6, 0.1, 0.4) * k,
+			plate * CFrame.new(0, 0.15 * k, -0.2 * k),
+			C.Leaf2,
+			Enum.Material.Grass
+		)
+		glow(
+			m,
+			"BrambleVein",
+			Vector3.new(0.06, 0.06, 0.8) * k,
+			plate * CFrame.new(0.2 * k, 0.14 * k, 0),
+			Color3.fromRGB(150, 230, 60)
+		)
+		ep(
+			m,
+			"Thorn",
+			Vector3.new(0.12, 0.45, 0.12) * k,
+			plate * CFrame.new(0, 0.3 * k, 0.3 * k) * CFrame.Angles(0.5, 0, 0),
+			Color3.fromRGB(150, 110, 70),
+			Enum.Material.Wood
+		)
+	end
+	for k2 = 0, 2 do
+		blob(
+			m,
+			"Tail",
+			Vector3.new(0.7, 0.7, 1.1) * k * (1 - k2 * 0.15),
+			body * CFrame.new(0, (0.2 + k2 * 0.25) * k, (2.2 + k2 * 0.7) * k) * CFrame.Angles(-0.5, 0, 0),
+			fur,
+			Enum.Material.SmoothPlastic
+		)
+	end
+	return 3.6 * k
+end
+
+-- Cultiste des cendres : robe sombre à liserés rouges, capuche et demi-masque de cuivre, bâton
+-- à cristal de braise, fioles à la ceinture.
+enemyBuilders.AshCultist = function(m, base, k)
+	local robe = Color3.fromRGB(55, 45, 50)
+	local red = Color3.fromRGB(130, 35, 40)
+	local b = biped(m, base, {
+		H = 5.9 * k,
+		Bulk = 1.0,
+		Head = 0.2,
+		Skin = robe,
+		Torso = robe,
+		Pants = robe,
+		Boots = Color3.fromRGB(40, 32, 35),
+		Hands = Color3.fromRGB(70, 55, 50),
+	})
+	local hs = b.HeadS
+	-- Robe longue jusqu'au sol
+	ep(
+		m,
+		"RobeSkirt",
+		Vector3.new(b.TorsoW * 1.2, b.LegH * 0.95, b.TorsoD * 1.4),
+		base * CFrame.new(0, b.LegH * 0.5, 0),
+		robe,
+		Enum.Material.Fabric
+	)
+	ep(
+		m,
+		"RobeTrim",
+		Vector3.new(b.TorsoW * 1.22, b.LegH * 0.08, b.TorsoD * 1.42),
+		base * CFrame.new(0, b.LegH * 0.06, 0),
+		red,
+		Enum.Material.Fabric
+	)
+	ep(
+		m,
+		"Sash",
+		Vector3.new(b.TorsoW * 0.32, b.TorsoH * 1.4, 0.08),
+		b.Chest * CFrame.new(0, -b.TorsoH * 0.35, -0.06),
+		red,
+		Enum.Material.Fabric
+	)
+	glow(
+		m,
+		"SashSigil",
+		Vector3.new(b.TorsoW * 0.16, b.TorsoW * 0.16, 0.05),
+		b.Chest * CFrame.new(0, -b.TorsoH * 0.4, -0.11) * CFrame.Angles(0, 0, math.rad(45)),
+		Color3.fromRGB(255, 120, 60)
+	)
+	blob(
+		m,
+		"Hood",
+		Vector3.new(hs * 1.25, hs * 1.3, hs * 1.25),
+		b.Head * CFrame.new(0, hs * 0.08, hs * 0.05),
+		robe:Lerp(Color3.new(0, 0, 0), 0.15),
+		Enum.Material.Fabric
+	)
+	ep(
+		m,
+		"HoodTrim",
+		Vector3.new(hs * 1.0, hs * 0.08, hs * 0.1),
+		b.Head * CFrame.new(0, hs * 0.48, -hs * 0.55),
+		red,
+		Enum.Material.Fabric
+	)
+	ep(
+		m,
+		"Mask",
+		Vector3.new(hs * 0.75, hs * 0.75, hs * 0.1),
+		b.Head * CFrame.new(0, 0, -hs * 0.56),
+		Color3.fromRGB(185, 115, 70),
+		Enum.Material.Metal
+	)
+	eyesPair(m, b.Head, hs * 0.17, hs * 0.08, hs * 0.62, hs * 0.13, Color3.fromRGB(255, 140, 60))
+	for _, side in { -1, 1 } do
+		ep(
+			m,
+			"Mantle",
+			Vector3.new(b.TorsoW * 0.5, b.TorsoH * 0.3, b.TorsoD * 1.25),
+			(if side < 0 then b.ShoulderL else b.ShoulderR) * CFrame.new(-side * b.TorsoW * 0.1, -b.TorsoH * 0.05, 0),
+			red,
+			Enum.Material.Fabric
+		)
+		glow(
+			m,
+			"Potion",
+			Vector3.new(0.35, 0.45, 0.35) * k,
+			b.Chest * CFrame.new(side * b.TorsoW * 0.35, -b.TorsoH * 0.42, -0.1),
+			Color3.fromRGB(230, 60, 50),
+			Enum.PartType.Ball
+		)
+	end
+	weaponStaff(m, b.HandR, b.H * 0.95, Color3.fromRGB(255, 150, 40))
+	return b.H
+end
+
+-- Orque brise-bouclier (élite) : massif, épaulières à pointes, pagne rouge, gemme de ceinture,
+-- marteau de pierre runique.
+enemyBuilders.ShieldbreakerOrc = function(m, base, k)
+	local skin = Color3.fromRGB(110, 140, 70)
+	local b = biped(m, base, {
+		H = 7.5 * k,
+		Bulk = 1.45,
+		Head = 0.19,
+		Skin = skin,
+		Torso = skin,
+		Pants = Color3.fromRGB(70, 60, 55),
+		Boots = Color3.fromRGB(65, 55, 50),
+		Bracer = IRON,
+		Knee = IRON,
+	})
+	local hs = b.HeadS
+	ep(m, "Head", Vector3.new(hs * 0.95, hs * 0.9, hs * 0.9), b.Head, skin)
+	ep(
+		m,
+		"Brow",
+		Vector3.new(hs * 0.95, hs * 0.18, hs * 0.2),
+		b.Head * CFrame.new(0, hs * 0.15, -hs * 0.42),
+		skin:Lerp(Color3.new(0, 0, 0), 0.2)
+	)
+	eyesPair(m, b.Head, hs * 0.2, hs * 0.02, hs * 0.46, hs * 0.13, Color3.fromRGB(255, 200, 60))
+	for _, side in { -1, 1 } do
+		ep(
+			m,
+			"Tusk",
+			Vector3.new(hs * 0.1, hs * 0.25, hs * 0.1),
+			b.Head * CFrame.new(side * hs * 0.22, -hs * 0.32, -hs * 0.42),
+			Color3.fromRGB(240, 235, 210)
+		)
+		ep(
+			m,
+			"Ear",
+			Vector3.new(hs * 0.35, hs * 0.2, hs * 0.08),
+			b.Head * CFrame.new(side * hs * 0.55, hs * 0.05, 0) * CFrame.Angles(0, 0, side * 0.3),
+			skin
+		)
+		spikedPauldron(
+			m,
+			if side < 0 then b.ShoulderL else b.ShoulderR,
+			b.TorsoW * 0.5,
+			IRON,
+			Color3.fromRGB(200, 195, 180),
+			side
+		)
+	end
+	ep(
+		m,
+		"Mohawk",
+		Vector3.new(hs * 0.15, hs * 0.5, hs * 0.8),
+		b.Head * CFrame.new(0, hs * 0.6, 0.1),
+		Color3.fromRGB(35, 30, 30)
+	)
+	ep(
+		m,
+		"Strap",
+		Vector3.new(b.TorsoW * 0.15, b.TorsoH * 1.15, 0.12),
+		b.Chest * CFrame.new(0, 0, -0.06) * CFrame.Angles(0, 0, 0.55),
+		LEATHER,
+		Enum.Material.Fabric
+	)
+	glow(
+		m,
+		"BeltGem",
+		Vector3.new(b.TorsoW * 0.18, b.TorsoW * 0.18, 0.12),
+		b.Chest * CFrame.new(0, -b.TorsoH * 0.38, -0.1) * CFrame.Angles(0, 0, math.rad(45)),
+		Color3.fromRGB(255, 160, 40)
+	)
+	ep(
+		m,
+		"Loincloth",
+		Vector3.new(b.TorsoW * 0.4, b.LegH * 0.6, 0.1),
+		base * CFrame.new(0, b.LegH * 0.7, -b.TorsoD / 2 - 0.05),
+		Color3.fromRGB(140, 40, 40),
+		Enum.Material.Fabric
+	)
+	weaponHammer(m, b.HandR, b.H * 0.5, Color3.fromRGB(120, 115, 110), Color3.fromRGB(230, 190, 120))
+	return b.H
+end
+
+-- Golem des carrières (élite) : blocs de grès, mousse sur les épaules, cœur de cristal turquoise
+-- et runes gravées.
+enemyBuilders.QuarryGolem = function(m, base, k)
+	local sand = Color3.fromRGB(190, 160, 115)
+	local b = biped(m, base, {
+		H = 8.5 * k,
+		Bulk = 1.7,
+		Head = 0.15,
+		Skin = sand,
+		Torso = sand,
+		Pants = sand:Lerp(Color3.new(0, 0, 0), 0.1),
+		Boots = sand:Lerp(Color3.new(0, 0, 0), 0.15),
+		TorsoMat = Enum.Material.Sandstone,
+		PantsMat = Enum.Material.Sandstone,
+		BootsMat = Enum.Material.Sandstone,
+		ArmsMat = Enum.Material.Sandstone,
+		HandsMat = Enum.Material.Sandstone,
+	})
+	local hs = b.HeadS
+	ep(m, "Head", Vector3.new(hs * 1.1, hs * 0.9, hs), b.Head, sand, Enum.Material.Sandstone)
+	eyesPair(m, b.Head, hs * 0.22, 0, hs * 0.52, hs * 0.16, Color3.fromRGB(80, 230, 200))
+	glow(
+		m,
+		"Core",
+		Vector3.new(b.TorsoW * 0.28, b.TorsoW * 0.36, 0.2),
+		b.Chest * CFrame.new(0, b.TorsoH * 0.1, -0.1) * CFrame.Angles(0, 0, math.rad(45)),
+		Color3.fromRGB(60, 230, 190)
+	)
+	local rand = rng(17)
+	for i = 1, 10 do
+		local at = b.Chest
+			* CFrame.new(
+				(rand() - 0.5) * b.TorsoW * 0.9,
+				(rand() - 0.5) * b.TorsoH * 0.9,
+				b.TorsoD * (rand() < 0.5 and 0 or 1)
+			)
+		ep(
+			m,
+			"Block",
+			Vector3.new(b.TorsoW * 0.3, b.TorsoH * 0.22, 0.3 * k),
+			at * CFrame.Angles(0, 0, rand() * 0.3),
+			sand:Lerp(Color3.new(0, 0, 0), rand() * 0.15),
+			Enum.Material.Sandstone
+		)
+		if i % 3 == 0 then
+			glow(
+				m,
+				"Rune",
+				Vector3.new(b.TorsoW * 0.12, b.TorsoW * 0.12, 0.05),
+				at * CFrame.new(0, 0, -0.17 * k) * CFrame.Angles(0, 0, math.rad(45)),
+				Color3.fromRGB(80, 220, 190)
+			)
+		end
+	end
+	for _, side in { -1, 1 } do
+		local sh = if side < 0 then b.ShoulderL else b.ShoulderR
+		ep(
+			m,
+			"ShoulderRock",
+			Vector3.new(b.TorsoW * 0.55, b.TorsoW * 0.45, b.TorsoD * 1.2),
+			sh * CFrame.new(side * b.TorsoW * 0.05, b.TorsoW * 0.05, 0),
+			sand,
+			Enum.Material.Sandstone
+		)
+		blob(
+			m,
+			"Moss",
+			Vector3.new(b.TorsoW * 0.5, b.TorsoW * 0.18, b.TorsoD * 1.1),
+			sh * CFrame.new(side * b.TorsoW * 0.05, b.TorsoW * 0.28, 0),
+			C.Leaf2,
+			Enum.Material.Grass
+		)
+		ep(
+			m,
+			"Fist",
+			Vector3.new(b.TorsoW * 0.45, b.TorsoW * 0.45, b.TorsoW * 0.45),
+			(if side < 0 then b.HandL else b.HandR) * CFrame.new(0, -b.TorsoW * 0.1, 0),
+			sand,
+			Enum.Material.Sandstone
+		)
+	end
+	return b.H
+end
+
+-- Chevalier des épines (élite) : armure verte à feuilles épineuses, cape pourpre en lambeaux,
+-- heaume à bois de cerf et visière lumineuse, épée à runes.
+enemyBuilders.ThornKnight = function(m, base, k)
+	local armor = Color3.fromRGB(75, 95, 60)
+	local b = biped(m, base, {
+		H = 8.0 * k,
+		Bulk = 1.2,
+		Head = 0.17,
+		Skin = armor,
+		Torso = armor,
+		Pants = armor:Lerp(Color3.new(0, 0, 0), 0.15),
+		Boots = armor:Lerp(Color3.new(0, 0, 0), 0.25),
+		TorsoMat = Enum.Material.Metal,
+		PantsMat = Enum.Material.Metal,
+		BootsMat = Enum.Material.Metal,
+		ArmsMat = Enum.Material.Metal,
+		Knee = Color3.fromRGB(150, 130, 70),
+		Bracer = Color3.fromRGB(150, 130, 70),
+	})
+	local hs = b.HeadS
+	ep(
+		m,
+		"Helm",
+		Vector3.new(hs * 0.95, hs, hs * 0.95),
+		b.Head,
+		armor:Lerp(Color3.new(0, 0, 0), 0.1),
+		Enum.Material.Metal
+	)
+	ep(
+		m,
+		"HelmCrest",
+		Vector3.new(hs * 0.12, hs * 0.5, hs * 0.9),
+		b.Head * CFrame.new(0, hs * 0.5, 0),
+		Color3.fromRGB(150, 130, 70),
+		Enum.Material.Metal
+	)
+	glow(
+		m,
+		"Visor",
+		Vector3.new(hs * 0.6, hs * 0.1, 0.08),
+		b.Head * CFrame.new(0, hs * 0.05, -hs * 0.48),
+		Color3.fromRGB(220, 255, 90)
+	)
+	glow(
+		m,
+		"VisorV",
+		Vector3.new(hs * 0.1, hs * 0.35, 0.08),
+		b.Head * CFrame.new(0, -hs * 0.1, -hs * 0.48),
+		Color3.fromRGB(220, 255, 90)
+	)
+	for _, side in { -1, 1 } do
+		local cf = b.Head * CFrame.new(side * hs * 0.3, hs * 0.5, 0) * CFrame.Angles(0, 0, -side * 0.4)
+		ep(
+			m,
+			"Antler",
+			Vector3.new(0.18 * k, hs * 0.8, 0.18 * k),
+			cf * CFrame.new(0, hs * 0.4, 0),
+			Color3.fromRGB(110, 75, 50),
+			Enum.Material.Wood
+		)
+		ep(
+			m,
+			"AntlerTine",
+			Vector3.new(0.14 * k, hs * 0.45, 0.14 * k),
+			cf * CFrame.new(0, hs * 0.55, 0) * CFrame.Angles(0, 0, side * 0.8) * CFrame.new(0, hs * 0.2, 0),
+			Color3.fromRGB(110, 75, 50),
+			Enum.Material.Wood
+		)
+		leafyPauldron(
+			m,
+			if side < 0 then b.ShoulderL else b.ShoulderR,
+			b.TorsoW * 0.55,
+			Color3.fromRGB(85, 120, 55),
+			side
+		)
+	end
+	cape(m, b.Back * CFrame.new(0, b.TorsoH * 0.45, 0), b.TorsoW * 1.3, b.H * 0.6, Color3.fromRGB(110, 40, 70), 6)
+	ep(
+		m,
+		"Tasset",
+		Vector3.new(b.TorsoW * 0.9, b.LegH * 0.45, b.TorsoD * 1.15),
+		base * CFrame.new(0, b.LegH * 0.85, 0),
+		armor,
+		Enum.Material.Metal
+	)
+	weaponSword(
+		m,
+		b.HandR * CFrame.Angles(math.rad(-15), 0, 0),
+		b.H * 0.6,
+		Color3.fromRGB(170, 175, 160),
+		Color3.fromRGB(150, 130, 70),
+		Color3.fromRGB(180, 230, 90)
+	)
+	return b.H
+end
+
+-- Roi gobelin (boss régional) : énorme gobelin couronné, cape rouge, armure cloutée, fermoir
+-- rubis, écus pendus à la ceinture, tonneaux dans le dos, masse à pointes.
+enemyBuilders.GoblinKing = function(m, base, k)
+	local skin = Color3.fromRGB(120, 155, 65)
+	local b = biped(m, base, {
+		H = 11 * k,
+		Bulk = 1.65,
+		Head = 0.2,
+		Skin = skin,
+		Torso = Color3.fromRGB(95, 85, 80),
+		TorsoMat = Enum.Material.Metal,
+		Pants = Color3.fromRGB(80, 60, 45),
+		Boots = Color3.fromRGB(70, 60, 55),
+		BootsMat = Enum.Material.Metal,
+		Bracer = IRON,
+		Knee = IRON,
+	})
+	local hs = b.HeadS
+	blob(m, "Head", Vector3.new(hs * 1.1, hs * 0.95, hs), b.Head, skin)
+	eyesPair(m, b.Head, hs * 0.22, hs * 0.05, hs * 0.46, hs * 0.13, Color3.fromRGB(255, 210, 60))
+	for _, side in { -1, 1 } do
+		ep(
+			m,
+			"Ear",
+			Vector3.new(hs * 0.7, hs * 0.2, hs * 0.08),
+			b.Head * CFrame.new(side * hs * 0.75, hs * 0.08, 0) * CFrame.Angles(0, 0, side * 0.2),
+			skin
+		)
+		ep(
+			m,
+			"Tusk",
+			Vector3.new(hs * 0.1, hs * 0.2, hs * 0.08),
+			b.Head * CFrame.new(side * hs * 0.2, -hs * 0.32, -hs * 0.42),
+			Color3.fromRGB(240, 235, 210)
+		)
+		spikedPauldron(
+			m,
+			if side < 0 then b.ShoulderL else b.ShoulderR,
+			b.TorsoW * 0.45,
+			Color3.fromRGB(100, 90, 85),
+			Color3.fromRGB(210, 180, 100),
+			side
+		)
+	end
+	-- Couronne
+	local crownCf = b.Head * CFrame.new(0, hs * 0.55, 0)
+	ep(
+		m,
+		"CrownBand",
+		Vector3.new(hs * 0.25, hs * 0.85, hs * 0.85),
+		crownCf * CFrame.Angles(0, 0, math.rad(90)),
+		GOLD,
+		Enum.Material.Metal,
+		{ Shape = Enum.PartType.Cylinder }
+	)
+	for i = 0, 6 do
+		local a = i / 7 * math.pi * 2
+		ep(
+			m,
+			"CrownSpike",
+			Vector3.new(hs * 0.12, hs * 0.35, hs * 0.12),
+			crownCf * CFrame.Angles(0, a, 0) * CFrame.new(0, hs * 0.2, -hs * 0.38),
+			GOLD,
+			Enum.Material.Metal
+		)
+	end
+	glow(
+		m,
+		"CrownRuby",
+		Vector3.new(hs * 0.15, hs * 0.15, 0.06),
+		crownCf * CFrame.new(0, 0, -hs * 0.43) * CFrame.Angles(0, 0, math.rad(45)),
+		Color3.fromRGB(230, 30, 40)
+	)
+	cape(m, b.Back * CFrame.new(0, b.TorsoH * 0.45, 0), b.TorsoW * 1.4, b.H * 0.55, Color3.fromRGB(150, 35, 40), 7)
+	ep(
+		m,
+		"Clasp",
+		Vector3.new(b.TorsoW * 0.22, b.TorsoW * 0.22, 0.2),
+		b.Chest * CFrame.new(0, b.TorsoH * 0.3, -0.1) * CFrame.Angles(0, 0, math.rad(45)),
+		GOLD,
+		Enum.Material.Metal
+	)
+	glow(
+		m,
+		"ClaspRuby",
+		Vector3.new(b.TorsoW * 0.12, b.TorsoW * 0.12, 0.22),
+		b.Chest * CFrame.new(0, b.TorsoH * 0.3, -0.12) * CFrame.Angles(0, 0, math.rad(45)),
+		Color3.fromRGB(230, 30, 40)
+	)
+	for i, col in { Color3.fromRGB(60, 90, 160), Color3.fromRGB(170, 40, 40), Color3.fromRGB(60, 120, 70) } do
+		ep(
+			m,
+			"Crest",
+			Vector3.new(b.TorsoW * 0.22, b.TorsoW * 0.26, 0.12),
+			b.Chest * CFrame.new((i - 2) * b.TorsoW * 0.3, -b.TorsoH * 0.42, -0.12),
+			col,
+			Enum.Material.Wood
+		)
+	end
+	for _, side in { -1, 1 } do
+		ep(
+			m,
+			"Barrel",
+			Vector3.new(b.TorsoH * 0.55, b.TorsoW * 0.35, b.TorsoW * 0.35),
+			b.Back * CFrame.new(side * b.TorsoW * 0.22, 0, b.TorsoD * 0.2) * CFrame.Angles(0, 0, math.rad(90)),
+			C.Wood,
+			Enum.Material.WoodPlanks,
+			{ Shape = Enum.PartType.Cylinder }
+		)
+	end
+	weaponMace(m, b.HandR, b.H * 0.4)
+	return b.H
+end
+
+-- Gardien des racines (boss régional) : colosse de bois tressé, feuillage sur les épaules, cœur
+-- d'ambre, runes dorées, bois de branches, champignons dans le dos.
+enemyBuilders.RootGuardian = function(m, base, k)
+	local wood = Color3.fromRGB(125, 90, 60)
+	local b = biped(m, base, {
+		H = 14 * k,
+		Bulk = 1.45,
+		Head = 0.14,
+		Skin = wood,
+		Torso = wood,
+		Pants = wood:Lerp(Color3.new(0, 0, 0), 0.1),
+		Boots = wood:Lerp(Color3.new(0, 0, 0), 0.2),
+		TorsoMat = Enum.Material.Wood,
+		PantsMat = Enum.Material.Wood,
+		BootsMat = Enum.Material.Wood,
+		ArmsMat = Enum.Material.Wood,
+		HandsMat = Enum.Material.Wood,
+	})
+	local hs = b.HeadS
+	ep(m, "Head", Vector3.new(hs * 0.9, hs * 1.1, hs * 0.9), b.Head, wood, Enum.Material.Wood)
+	eyesPair(m, b.Head, hs * 0.2, hs * 0.1, hs * 0.46, hs * 0.13, Color3.fromRGB(255, 200, 60))
+	glow(
+		m,
+		"AmberHeart",
+		Vector3.new(b.TorsoW * 0.25, b.TorsoW * 0.3, 0.25),
+		b.Chest * CFrame.new(0, b.TorsoH * 0.12, -0.15) * CFrame.Angles(0, 0, math.rad(45)),
+		Color3.fromRGB(255, 170, 40)
+	)
+	for _, side in { -1, 1 } do
+		ep(
+			m,
+			"BarkDoor",
+			Vector3.new(b.TorsoW * 0.3, b.TorsoH * 0.5, 0.25 * k),
+			b.Chest * CFrame.new(side * b.TorsoW * 0.28, b.TorsoH * 0.12, -0.2) * CFrame.Angles(0, side * 0.4, 0),
+			wood:Lerp(Color3.new(0, 0, 0), 0.15),
+			Enum.Material.Wood
+		)
+		leafClump(
+			m,
+			(if side < 0 then b.ShoulderL else b.ShoulderR) * CFrame.new(side * b.TorsoW * 0.15, b.TorsoW * 0.3, 0),
+			b.TorsoW * 0.45,
+			{ Color3.fromRGB(46, 110, 52), Color3.fromRGB(70, 140, 60), Color3.fromRGB(150, 200, 70) },
+			40 + side
+		)
+		glow(
+			m,
+			"ArmRune",
+			Vector3.new(b.TorsoW * 0.15, b.TorsoW * 0.15, 0.05),
+			(if side < 0 then b.HandL else b.HandR)
+				* CFrame.new(0, b.TorsoH * 0.45, -b.TorsoW * 0.2)
+				* CFrame.Angles(0, 0, math.rad(45)),
+			Color3.fromRGB(255, 200, 70)
+		)
+		local tine = b.Head * CFrame.new(side * hs * 0.25, hs * 0.5, 0) * CFrame.Angles(0, 0, -side * 0.5)
+		ep(
+			m,
+			"Branch",
+			Vector3.new(0.4 * k, hs * 1.2, 0.4 * k),
+			tine * CFrame.new(0, hs * 0.6, 0),
+			wood,
+			Enum.Material.Wood
+		)
+		ep(
+			m,
+			"Twig",
+			Vector3.new(0.3 * k, hs * 0.6, 0.3 * k),
+			tine * CFrame.new(0, hs * 0.9, 0) * CFrame.Angles(0, 0, side * 0.9) * CFrame.new(0, hs * 0.3, 0),
+			wood,
+			Enum.Material.Wood
+		)
+		-- Doigts en racines
+		for f = -1, 1 do
+			ep(
+				m,
+				"RootFinger",
+				Vector3.new(0.35 * k, b.TorsoW * 0.35, 0.35 * k),
+				(if side < 0 then b.HandL else b.HandR)
+					* CFrame.new(f * b.TorsoW * 0.1, -b.TorsoW * 0.25, -b.TorsoW * 0.05)
+					* CFrame.Angles(0.2, 0, f * 0.2),
+				wood:Lerp(Color3.new(0, 0, 0), 0.2),
+				Enum.Material.Wood
+			)
+		end
+	end
+	for i = 0, 3 do
+		local at = b.Back * CFrame.new((i - 1.5) * b.TorsoW * 0.22, (i % 2 - 0.5) * b.TorsoH * 0.4, 0.15)
+		ep(
+			m,
+			"MushStem",
+			Vector3.new(0.3 * k, 0.6 * k, 0.3 * k),
+			at,
+			Color3.fromRGB(235, 225, 205),
+			Enum.Material.SmoothPlastic
+		)
+		blob(
+			m,
+			"MushCap",
+			Vector3.new(1.0 * k, 0.5 * k, 1.0 * k),
+			at * CFrame.new(0, 0.35 * k, 0.1 * k),
+			Color3.fromRGB(200, 60, 55),
+			Enum.Material.SmoothPlastic
+		)
+	end
+	return b.H
+end
+
+-- Hydre des marais (boss régional) : corps écailleux sarcelle, ventre beige, trois têtes de
+-- dragon cornues aux sacs de gorge lumineux, crêtes orange.
+enemyBuilders.MarshHydra = function(m, base, k)
+	local teal = Color3.fromRGB(35, 90, 100)
+	local s = {
+		L = 9 * k,
+		Hb = 4.2 * k,
+		W = 5 * k,
+		LegH = 2.6 * k,
+		Skin = teal,
+		Belly = Color3.fromRGB(210, 190, 150),
+		Eye = Color3.fromRGB(230, 255, 80),
+		Teeth = true,
+		Horns = Color3.fromRGB(200, 180, 140),
+		Open = 25,
+	}
+	local body = quad(m, base, s)
+	local fin = Color3.fromRGB(220, 150, 60)
+	for i = 0, 5 do
+		ep(
+			m,
+			"BackFin",
+			Vector3.new(0.25 * k, (1.6 - math.abs(i - 2) * 0.2) * k, 1.2 * k),
+			body * CFrame.new(0, 2.2 * k, (-2 + i * 0.9) * k),
+			fin,
+			Enum.Material.SmoothPlastic
+		)
+	end
+	local rand = rng(9)
+	for _ = 1, 26 do
+		local a = rand() * math.pi - math.pi / 2
+		local z = (rand() - 0.5) * 7 * k
+		ep(
+			m,
+			"Scale",
+			Vector3.new(0.9, 0.9, 0.12) * k,
+			body
+				* CFrame.new(math.sin(a) * 2.45 * k, math.cos(a) * 2.0 * k, z)
+				* CFrame.Angles(0, math.pi / 2 * math.sign(a), 0)
+				* CFrame.Angles(0, 0, math.rad(45)),
+			teal:Lerp(Color3.new(0, 0, 0), rand() * 0.25),
+			Enum.Material.Slate
+		)
+	end
+	for i, angle in { -0.55, 0, 0.55 } do
+		local neckBase = body * CFrame.new(angle * 2.6 * k, 1.2 * k, -3.6 * k)
+		local neck = neckBase * CFrame.Angles(-0.6, -angle * 0.6, -angle * 0.5)
+		blob(
+			m,
+			"Neck",
+			Vector3.new(1.4 * k, 4.2 * k, 1.5 * k),
+			neck * CFrame.new(0, 1.9 * k, 0),
+			teal,
+			Enum.Material.SmoothPlastic
+		)
+		local head = neck * CFrame.new(0, 4.0 * k, -0.4 * k) * CFrame.Angles(0.6, 0, 0)
+		beastHead(m, head, (if i == 2 then 2.0 else 1.7) * k, s)
+		glow(
+			m,
+			"ThroatSac",
+			Vector3.new(1.0, 0.9, 1.0) * k,
+			head * CFrame.new(0, -0.9 * k, -0.4 * k),
+			Color3.fromRGB(180, 240, 60),
+			Enum.PartType.Ball
+		)
+		ep(
+			m,
+			"HeadFin",
+			Vector3.new(0.18 * k, 0.9 * k, 1.1 * k),
+			head * CFrame.new(0, 0.6 * k, 0.3 * k),
+			fin,
+			Enum.Material.SmoothPlastic
+		)
+	end
+	for t = 0, 4 do
+		blob(
+			m,
+			"Tail",
+			Vector3.new(2.2 - t * 0.4, 1.8 - t * 0.3, 2.2) * k,
+			body * CFrame.new(0, (-0.6 - t * 0.2) * k, (4.5 + t * 1.6) * k),
+			teal,
+			Enum.Material.SmoothPlastic
+		)
+	end
+	return 11 * k
+end
+
+-- Titan du givre (boss majeur) : géant de roche sombre couvert de cristaux de glace, barbe de
+-- glace, noyau cobalt, gourdin de glace.
+enemyBuilders.FrostTitan = function(m, base, k)
+	local rock = Color3.fromRGB(60, 62, 72)
+	local ice = Color3.fromRGB(160, 215, 245)
+	local b = biped(m, base, {
+		H = 17 * k,
+		Bulk = 1.6,
+		Head = 0.14,
+		Skin = rock,
+		Torso = rock,
+		Pants = rock,
+		Boots = rock:Lerp(Color3.new(0, 0, 0), 0.15),
+		TorsoMat = Enum.Material.Slate,
+		PantsMat = Enum.Material.Slate,
+		BootsMat = Enum.Material.Slate,
+		ArmsMat = Enum.Material.Slate,
+		HandsMat = Enum.Material.Slate,
+		Bracer = Color3.fromRGB(110, 80, 60),
+	})
+	local hs = b.HeadS
+	ep(m, "Head", Vector3.new(hs * 0.9, hs, hs * 0.9), b.Head, rock, Enum.Material.Slate)
+	eyesPair(m, b.Head, hs * 0.2, hs * 0.12, hs * 0.46, hs * 0.13, Color3.fromRGB(80, 160, 255))
+	local function shard(cf: CFrame, w: number, h: number)
+		ep(m, "Ice", Vector3.new(w, h, w), cf * CFrame.Angles(0, math.rad(45), 0), ice, Enum.Material.Ice)
+	end
+	-- Barbe et couronne de glace
+	for i = -2, 2 do
+		shard(
+			b.Head * CFrame.new(i * hs * 0.17, -hs * 0.55, -hs * 0.35) * CFrame.Angles(0.3, 0, i * 0.15),
+			hs * 0.18,
+			hs * (0.9 - math.abs(i) * 0.15)
+		)
+		shard(
+			b.Head * CFrame.new(i * hs * 0.17, hs * 0.55, 0) * CFrame.Angles(0, 0, i * 0.25),
+			hs * 0.15,
+			hs * (0.7 - math.abs(i) * 0.1)
+		)
+	end
+	local core = glow(
+		m,
+		"Core",
+		Vector3.new(b.TorsoW * 0.26, b.TorsoW * 0.26, 0.3),
+		b.Chest * CFrame.new(0, b.TorsoH * 0.15, -0.15) * CFrame.Angles(0, 0, math.rad(45)),
+		Color3.fromRGB(40, 90, 255)
+	)
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(80, 140, 255)
+	light.Range = 20
+	light.Parent = core
+	local rand = rng(23)
+	for _, side in { -1, 1 } do
+		local sh = if side < 0 then b.ShoulderL else b.ShoulderR
+		for i = 0, 4 do
+			shard(
+				sh
+					* CFrame.new(side * (rand() * b.TorsoW * 0.3), rand() * b.TorsoW * 0.3, (rand() - 0.5) * b.TorsoD)
+					* CFrame.Angles(0, 0, -side * (0.3 + i * 0.15)),
+				b.TorsoW * 0.18,
+				b.TorsoW * (0.4 + rand() * 0.3)
+			)
+		end
+		glow(
+			m,
+			"ElbowGem",
+			Vector3.new(b.TorsoW * 0.15, b.TorsoW * 0.15, 0.1),
+			sh
+				* CFrame.new(side * b.TorsoW * 0.05, -b.TorsoH * 0.5, -b.TorsoW * 0.2)
+				* CFrame.Angles(0, 0, math.rad(45)),
+			Color3.fromRGB(60, 120, 255)
+		)
+	end
+	for i = 0, 5 do
+		shard(
+			b.Chest * CFrame.new((i - 2.5) * b.TorsoW * 0.18, -b.TorsoH * 0.55, -0.1) * CFrame.Angles(math.pi, 0, 0),
+			b.TorsoW * 0.14,
+			b.TorsoH * 0.35
+		)
+	end
+	-- Gourdin de glace
+	local club = b.HandR * CFrame.new(0, -b.H * 0.12, 0)
+	ep(
+		m,
+		"ClubHandle",
+		Vector3.new(b.TorsoW * 0.15, b.H * 0.25, b.TorsoW * 0.15),
+		club,
+		Color3.fromRGB(110, 80, 60),
+		Enum.Material.Wood
+	)
+	shard(club * CFrame.new(0, -b.H * 0.2, 0), b.TorsoW * 0.5, b.H * 0.25)
+	return b.H
+end
+
+-- Dragon de la fournaise (boss majeur) : écailles d'obsidienne veinées de lave, ailes orange,
+-- cornes, queue à masse de pierre.
+enemyBuilders.FurnaceDragon = function(m, base, k)
+	k *= 1.35 -- boss majeur : plus massif que l'hydre
+	local obsidian = Color3.fromRGB(55, 48, 60)
+	local s = {
+		L = 9 * k,
+		Hb = 4.6 * k,
+		W = 5 * k,
+		LegH = 3 * k,
+		Skin = obsidian,
+		SkinMat = Enum.Material.Slate,
+		Belly = Color3.fromRGB(185, 150, 100),
+		Eye = Color3.fromRGB(255, 160, 40),
+		Teeth = true,
+		Horns = Color3.fromRGB(200, 170, 120),
+		Open = 20,
+	}
+	local body = quad(m, base, s)
+	local lava = Color3.fromRGB(255, 120, 30)
+	local rand = rng(51)
+	for _ = 1, 16 do
+		local a = rand() * math.pi * 1.4 - math.pi * 0.7
+		glow(
+			m,
+			"LavaVein",
+			Vector3.new(0.12 * k, 0.12 * k, (0.8 + rand() * 1.4) * k),
+			body
+				* CFrame.new(math.sin(a) * 2.5 * k, math.cos(a) * 2.25 * k, (rand() - 0.5) * 7 * k)
+				* CFrame.Angles(rand(), 0, rand()),
+			lava
+		)
+	end
+	for i = 0, 6 do
+		ep(
+			m,
+			"Spike",
+			Vector3.new(0.5 * k, (1.3 - math.abs(i - 3) * 0.15) * k, 0.5 * k),
+			body * CFrame.new(0, 2.4 * k, (-3 + i) * k) * CFrame.Angles(0.4, math.rad(45), 0),
+			obsidian:Lerp(Color3.new(0, 0, 0), 0.3),
+			Enum.Material.Slate
+		)
+	end
+	local neck = body * CFrame.new(0, 1.8 * k, -4.0 * k) * CFrame.Angles(-0.7, 0, 0)
+	blob(
+		m,
+		"Neck",
+		Vector3.new(2.2 * k, 4.0 * k, 2.4 * k),
+		neck * CFrame.new(0, 1.6 * k, 0),
+		obsidian,
+		Enum.Material.Slate
+	)
+	beastHead(m, neck * CFrame.new(0, 3.6 * k, -0.6 * k) * CFrame.Angles(0.7, 0, 0), 2.6 * k, s)
+	batWingsBig(m, body * CFrame.new(0, 2.2 * k, -0.8 * k), 8 * k, Color3.fromRGB(230, 110, 40), obsidian)
+	for t = 0, 5 do
+		blob(
+			m,
+			"Tail",
+			Vector3.new(2.0 - t * 0.28, 1.7 - t * 0.22, 2.0) * k,
+			body * CFrame.new(0, (-0.4 - t * 0.25) * k, (4.5 + t * 1.5) * k),
+			obsidian,
+			Enum.Material.Slate
+		)
+	end
+	local club = body * CFrame.new(0, -1.9 * k, 13.8 * k)
+	ep(m, "TailClub", Vector3.new(2.0, 1.8, 2.2) * k, club, Color3.fromRGB(120, 105, 100), Enum.Material.Slate)
+	glow(
+		m,
+		"TailRune",
+		Vector3.new(0.8, 0.8, 0.1) * k,
+		club * CFrame.new(0, 0, -1.12 * k) * CFrame.Angles(0, 0, math.rad(45)),
+		lava
+	)
+	return 14 * k
+end
+
+-- Colosse du néant (boss final) : armure violet sombre bordée d'or, épaulières en croissant,
+-- noyau stellaire, pierres en lévitation, étoffe pourpre.
+enemyBuilders.VoidColossus = function(m, base, k)
+	local dark = Color3.fromRGB(55, 45, 70)
+	local gold = Color3.fromRGB(190, 150, 80)
+	local violet = Color3.fromRGB(190, 100, 255)
+	local b = biped(m, base, {
+		H = 20 * k,
+		Bulk = 1.75,
+		Head = 0.13,
+		Skin = dark,
+		Torso = dark,
+		Pants = dark,
+		Boots = dark:Lerp(Color3.new(0, 0, 0), 0.2),
+		TorsoMat = Enum.Material.Metal,
+		PantsMat = Enum.Material.Metal,
+		BootsMat = Enum.Material.Metal,
+		ArmsMat = Enum.Material.Metal,
+		HandsMat = Enum.Material.Metal,
+		Knee = gold,
+		Bracer = gold,
+	})
+	local hs = b.HeadS
+	ep(m, "Helm", Vector3.new(hs * 0.9, hs * 1.1, hs * 0.9), b.Head, dark, Enum.Material.Metal)
+	ep(
+		m,
+		"HelmSpike",
+		Vector3.new(hs * 0.3, hs * 0.6, hs * 0.3),
+		b.Head * CFrame.new(0, hs * 0.7, 0) * CFrame.Angles(0, math.rad(45), 0),
+		dark,
+		Enum.Material.Metal
+	)
+	eyesPair(m, b.Head, hs * 0.18, hs * 0.1, hs * 0.46, hs * 0.14, violet)
+	local core = glow(
+		m,
+		"StarCore",
+		Vector3.new(b.TorsoW * 0.3, b.TorsoW * 0.3, 0.3),
+		b.Chest * CFrame.new(0, b.TorsoH * 0.15, -0.15) * CFrame.Angles(0, 0, math.rad(45)),
+		violet
+	)
+	glow(
+		m,
+		"StarRayV",
+		Vector3.new(b.TorsoW * 0.06, b.TorsoW * 0.55, 0.32),
+		b.Chest * CFrame.new(0, b.TorsoH * 0.15, -0.16),
+		violet
+	)
+	glow(
+		m,
+		"StarRayH",
+		Vector3.new(b.TorsoW * 0.55, b.TorsoW * 0.06, 0.32),
+		b.Chest * CFrame.new(0, b.TorsoH * 0.15, -0.16),
+		violet
+	)
+	local light = Instance.new("PointLight")
+	light.Color = violet
+	light.Range = 24
+	light.Parent = core
+	ep(
+		m,
+		"ChestTrim",
+		Vector3.new(b.TorsoW * 1.04, b.TorsoH * 0.08, b.TorsoD * 1.05),
+		b.Chest * CFrame.new(0, b.TorsoH * 0.45, b.TorsoD / 2),
+		gold,
+		Enum.Material.Metal
+	)
+	for _, side in { -1, 1 } do
+		local sh = if side < 0 then b.ShoulderL else b.ShoulderR
+		blob(
+			m,
+			"Pauldron",
+			Vector3.new(b.TorsoW * 0.6, b.TorsoW * 0.45, b.TorsoD * 1.4),
+			sh * CFrame.new(side * b.TorsoW * 0.1, b.TorsoW * 0.1, 0),
+			dark,
+			Enum.Material.Metal
+		)
+		-- Croissant : arc de blocs dorés au-dessus de l'épaule
+		for i = 0, 6 do
+			local a = math.rad(-20 + i * 25)
+			ep(
+				m,
+				"Crescent",
+				Vector3.new(b.TorsoW * 0.12, b.TorsoW * 0.22, b.TorsoW * 0.12),
+				sh
+					* CFrame.new(
+						side * (b.TorsoW * 0.2 + math.cos(a) * b.TorsoW * 0.35),
+						b.TorsoW * 0.2 + math.sin(a) * b.TorsoW * 0.45,
+						0
+					)
+					* CFrame.Angles(0, 0, side * a),
+				if i % 3 == 0 then gold else dark,
+				Enum.Material.Metal
+			)
+		end
+		glow(
+			m,
+			"ShoulderRune",
+			Vector3.new(b.TorsoW * 0.14, b.TorsoW * 0.14, 0.06),
+			sh
+				* CFrame.new(side * b.TorsoW * 0.15, b.TorsoW * 0.1, -b.TorsoD * 0.72)
+				* CFrame.Angles(0, 0, math.rad(45)),
+			violet
+		)
+	end
+	ep(
+		m,
+		"Tabard",
+		Vector3.new(b.TorsoW * 0.45, b.LegH * 0.9, 0.12),
+		base * CFrame.new(0, b.LegH * 0.55, -b.TorsoD / 2 - 0.1),
+		Color3.fromRGB(110, 40, 140),
+		Enum.Material.Fabric
+	)
+	local rand = rng(77)
+	for i = 0, 7 do
+		local a = i / 8 * math.pi * 2
+		ep(
+			m,
+			"FloatingRock",
+			Vector3.new(hs * 0.35, hs * 0.25, hs * 0.3),
+			b.Head
+				* CFrame.new(math.cos(a) * hs * 1.3, hs * (0.6 + rand() * 0.5), math.sin(a) * hs * 1.0)
+				* CFrame.Angles(rand(), rand(), rand()),
+			dark:Lerp(Color3.new(0, 0, 0), 0.2),
+			Enum.Material.Slate
+		)
+	end
+	return b.H
+end
+
+-- Ennemi complet. `kind` : entrée de Config/Street (Kinds ou Bosses). `patron` grossit un
+-- ennemi ordinaire (chef de vague de la défense). Retourne le modèle et la pièce « Root » (au
+-- centre, hauteur = taille de l'ennemi).
 function Models.enemy(kind, base: CFrame, scale: number, patron: boolean): (Model, BasePart)
 	local m = newModel(kind.Id)
-	local c = Color3.fromRGB(kind.Color[1], kind.Color[2], kind.Color[3])
-	local k = scale * (if patron then 1.8 else 1)
-	local eye = if patron then Color3.fromRGB(255, 60, 60) else Color3.fromRGB(255, 220, 90)
-	local root = part(m, "Root", Vector3.new(2, 4, 2) * k, base * CFrame.new(0, 2 * k, 0), c, nil, {
+	local k = (scale or 1) * (if patron and not kind.Boss then 1.4 else 1)
+	local builder = enemyBuilders[kind.Id] or enemyBuilders.ScrapGoblin
+	local height = builder(m, base, k)
+	local width = math.max(2, height * 0.45)
+	local root = part(m, "Root", Vector3.new(width, height, width), base * CFrame.new(0, height / 2, 0), C.Stone, nil, {
 		Transparency = 1,
 		CanCollide = false,
 	})
 	root.CanQuery = false
-	if kind.Id == "ShadowWolf" then
-		part(m, "Body", Vector3.new(1.6, 1.4, 3) * k, base * CFrame.new(0, 1.6 * k, 0), c, Enum.Material.Fabric)
-		part(
+	if patron and not kind.Boss then
+		glow(
 			m,
-			"Head",
-			Vector3.new(1.3, 1.2, 1.4) * k,
-			base * CFrame.new(0, 2.2 * k, -1.9 * k),
-			c,
-			Enum.Material.Fabric
-		)
-		for _, x in { -0.35, 0.35 } do
-			part(
-				m,
-				"Ear",
-				Vector3.new(0.3, 0.6, 0.25) * k,
-				base * CFrame.new(x * k, 3 * k, -1.8 * k),
-				c,
-				Enum.Material.Fabric
-			)
-			part(
-				m,
-				"Eye",
-				Vector3.new(0.2, 0.2, 0.1) * k,
-				base * CFrame.new(x * k, 2.35 * k, -2.62 * k),
-				eye,
-				Enum.Material.Neon,
-				{ NoShadow = true }
-			)
-		end
-		for _, p in { { -0.55, -1 }, { 0.55, -1 }, { -0.55, 1 }, { 0.55, 1 } } do
-			part(
-				m,
-				"Leg",
-				Vector3.new(0.4, 1, 0.4) * k,
-				base * CFrame.new(p[1] * k, 0.5 * k, p[2] * k),
-				c:Lerp(Color3.new(0, 0, 0), 0.2),
-				Enum.Material.Fabric
-			)
-		end
-	else
-		local hunch = if kind.Id == "Ghoul" then CFrame.Angles(math.rad(-15), 0, 0) else CFrame.new()
-		for _, x in { -0.45, 0.45 } do
-			part(
-				m,
-				"Leg",
-				Vector3.new(0.6, 1.8, 0.6) * k,
-				base * CFrame.new(x * k, 0.9 * k, 0),
-				c:Lerp(Color3.new(0, 0, 0), 0.25),
-				Enum.Material.SmoothPlastic
-			)
-		end
-		local torso = part(
-			m,
-			"Torso",
-			Vector3.new(1.8, 1.8, 1) * k,
-			base * CFrame.new(0, 2.7 * k, 0) * hunch,
-			c,
-			Enum.Material.SmoothPlastic
-		)
-		for _, x in { -1.25, 1.25 } do
-			part(
-				m,
-				"Arm",
-				Vector3.new(0.5, 1.7, 0.5) * k,
-				torso.CFrame * CFrame.new(x * k, -0.2 * k, -0.2 * k) * CFrame.Angles(math.rad(-40), 0, 0),
-				c,
-				Enum.Material.SmoothPlastic
-			)
-		end
-		local head = part(
-			m,
-			"Head",
-			Vector3.new(1.2, 1.2, 1.2) * k,
-			torso.CFrame * CFrame.new(0, 1.55 * k, -0.1 * k),
-			c:Lerp(Color3.new(1, 1, 1), 0.1),
-			Enum.Material.SmoothPlastic
-		)
-		for _, x in { -0.25, 0.25 } do
-			part(
-				m,
-				"Eye",
-				Vector3.new(0.22, 0.22, 0.1) * k,
-				head.CFrame * CFrame.new(x * k, 0.1 * k, -0.62 * k),
-				eye,
-				Enum.Material.Neon,
-				{ NoShadow = true }
-			)
-		end
-		if kind.Id == "Goblin" then
-			for _, x in { -1, 1 } do
-				part(
-					m,
-					"Ear",
-					Vector3.new(0.8, 0.25, 0.2) * k,
-					head.CFrame * CFrame.new(x * 0.75 * k, 0.15 * k, 0) * CFrame.Angles(0, 0, math.rad(x * 20)),
-					c,
-					Enum.Material.SmoothPlastic
-				)
-			end
-			part(
-				m,
-				"Club",
-				Vector3.new(0.4, 2.2, 0.4) * k,
-				torso.CFrame * CFrame.new(1.4 * k, -0.6 * k, -1 * k) * CFrame.Angles(math.rad(-60), 0, 0),
-				C.WoodDark,
-				Enum.Material.Wood
-			)
-		elseif kind.Id == "Skeleton" then
-			for r = 1, 3 do
-				part(
-					m,
-					"Rib",
-					Vector3.new(1.9, 0.15, 1.05) * k,
-					torso.CFrame * CFrame.new(0, (0.6 - r * 0.4) * k, 0),
-					Color3.fromRGB(60, 55, 50),
-					Enum.Material.SmoothPlastic,
-					{
-						NoShadow = true,
-					}
-				)
-			end
-			part(
-				m,
-				"Sword",
-				Vector3.new(0.2, 2.6, 0.12) * k,
-				torso.CFrame * CFrame.new(1.4 * k, -0.4 * k, -1.1 * k) * CFrame.Angles(math.rad(-60), 0, 0),
-				C.Metal,
-				Enum.Material.Metal
-			)
-		elseif kind.Id == "Ghoul" then
-			part(
-				m,
-				"Hood",
-				Vector3.new(1.4, 0.8, 1.4) * k,
-				head.CFrame * CFrame.new(0, 0.55 * k, 0.1 * k),
-				Color3.fromRGB(70, 60, 80),
-				Enum.Material.Fabric
-			)
-		end
+			"ChiefAura",
+			Vector3.new(0.2, height * 0.9, height * 0.9),
+			base * CFrame.new(0, 0.1, 0) * CFrame.Angles(0, 0, math.rad(90)),
+			Color3.fromRGB(255, 70, 70),
+			Enum.PartType.Cylinder
+		).Transparency =
+			0.6
 	end
-	if patron then
-		for i = 1, 5 do
-			local a = (i / 5) * math.pi * 2
-			part(
-				m,
-				"Crown" .. i,
-				Vector3.new(0.35, 0.8, 0.35) * k,
-				base
-					* CFrame.new(
-						math.cos(a) * 0.5 * k,
-						(if kind.Id == "ShadowWolf" then 3.1 else 4.6) * k,
-						math.sin(a) * 0.5 * k
-					),
-				C.Rune,
-				Enum.Material.Neon,
-				{
-					NoShadow = true,
-				}
-			)
-		end
-	end
+	-- Une seule pièce ancrée (Root) ; le reste y est soudé : déplacement en un bloc.
 	m.PrimaryPart = root
+	for _, p in m:GetDescendants() do
+		if p:IsA("BasePart") and p ~= root then
+			p.CanCollide = false
+			p.CanQuery = false
+			local weld = Instance.new("WeldConstraint")
+			weld.Part0 = root
+			weld.Part1 = p
+			weld.Parent = p
+			p.Anchored = false
+			p.Massless = true
+		end
+	end
 	return m, root
 end
 

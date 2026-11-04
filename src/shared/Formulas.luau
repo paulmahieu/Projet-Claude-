@@ -557,6 +557,34 @@ function Formulas.streetEnemy(stage: number, cfg)
 	}
 end
 
+-- Région (1..#Regions) d'une étape ; les régions recommencent après la dernière.
+function Formulas.streetRegion(stage: number, cfg): number
+	return (math.ceil(stage / cfg.RegionLength) - 1) % #cfg.Regions + 1
+end
+
+-- Id de l'ennemi n° `index` de la vague de l'étape (patron : élite à l'étape 5, boss à 10).
+function Formulas.streetKindId(stage: number, index: number, cfg): string
+	local region = cfg.Regions[Formulas.streetRegion(stage, cfg)]
+	if Formulas.streetIsPatron(stage, cfg) then
+		local inRegion = (stage - 1) % cfg.RegionLength + 1
+		return region.Patrons[if inRegion == cfg.RegionLength then 2 else 1]
+	end
+	return region.Pool[(stage + index - 2) % #region.Pool + 1]
+end
+
+-- Statistiques d'un ennemi d'un type donné (multiplicateurs du type appliqués à l'étape).
+function Formulas.streetEnemyOf(stage: number, cfg, def)
+	local base = Formulas.streetEnemy(stage, cfg)
+	local reward = def.Reward or 1
+	return {
+		Health = math.max(1, math.floor(base.Health * (def.Health or 1))),
+		Damage = math.max(1, math.floor(base.Damage * (def.Damage or 1))),
+		Gold = math.floor(base.Gold * reward),
+		Xp = math.floor(base.Xp * reward),
+		Speed = cfg.Enemy.Speed * (def.Speed or 1),
+	}
+end
+
 -- Puissance conseillée : vaincre un ennemi normal en HitsToKill coups.
 function Formulas.streetRecommendedPower(stage: number, cfg): number
 	return math.max(1, math.ceil(cfg.Enemy.Health * cfg.HealthGrowth ^ (stage - 1) / cfg.HitsToKill))

@@ -53,7 +53,30 @@ end
 local scene = process.args[2] or "base"
 local function at(x, z) return roblox.CFrame.new(x, 0, z) end
 local V = roblox.Vector3.new
-if scene == "pets" then
+if scene == "enemies" then
+	-- Un groupe d'ennemis par image (argument 3) : petits, frontieres, elites, regionaux, majeurs.
+	local StreetCfg = loadData("/src/shared/Config/Street.luau", "Street")
+	local groups = {
+		petits = { "ThornJelly", "RuinSpider", "ScrapGoblin" },
+		frontieres = { "SkeletonSentinel", "BrambleWolf", "AshCultist" },
+		elites = { "ShieldbreakerOrc", "QuarryGolem", "ThornKnight" },
+		regionaux = { "GoblinKing", "RootGuardian", "MarshHydra" },
+		majeurs = { "FrostTitan", "FurnaceDragon", "VoidColossus" },
+	}
+	local byId = {}
+	for _, d in StreetCfg.Kinds do
+		byId[d.Id] = d
+	end
+	for _, d in StreetCfg.Bosses do
+		byId[d.Id] = d
+	end
+	local list = groups[process.args[3] or "petits"]
+	local spacing = ({ petits = 7, frontieres = 9, elites = 13, regionaux = 20, majeurs = 26 })[process.args[3] or "petits"]
+	for i, id in list do
+		local model = Models.enemy(byId[id], roblox.CFrame.new((i - 2) * spacing, 0, 0) * roblox.CFrame.Angles(0, math.rad(-25), 0), 1, false)
+		dump(model)
+	end
+elseif scene == "pets" then
 	-- Une rareté par image (argument 3) : 5 compagnons alignés, vus de trois quarts.
 	local rarity = process.args[3] or "Common"
 	local floor = roblox.Instance.new("Part")

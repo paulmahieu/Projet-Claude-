@@ -192,6 +192,15 @@ Le code vit dans `src/` (fichiers texte versionnés). **Rojo** le synchronise en
 | 67 | Un bosquet sur deux, côté château | Arbre ancestral (runes dorées) : 8 bois, repousse en 60 s. |
 | 68 | Deux bosquets seulement (opposés) | Saule arcanique violet qui brille : 6 bois **+ 1 cristal**, repousse en 2 min. |
 
+### Rue des boss : ennemis des planches
+
+| # | Action | Attendu |
+|---|---|---|
+| 69 | Étapes 1 à 4 | Gelées épineuses, araignées des ruines et gobelins ferrailleurs mélangés dans chaque vague. |
+| 70 | Étape 5 puis étape 10 | Patron « Orque brise-bouclier », puis boss « Roi gobelin » (zone d'impact plus large, nom au-dessus de la tête). |
+| 71 | Étapes 11 à 60 | Régions Frontières, Marches sauvages, Cimes gelées, Fournaise, Néant : nouveaux ennemis et boss (Gardien des racines, Hydre des marais, Titan du givre, Dragon de la fournaise, Colosse du néant à l'étape 60). |
+| 72 | Étape 61 | Retour aux ennemis de la première région, avec des statistiques plus élevées. |
+
 ### À plusieurs : *Test → Clients and Servers → 2 ou 3 joueurs → Start*
 
 | # | Action | Attendu |

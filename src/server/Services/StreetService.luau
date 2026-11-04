@@ -57,6 +57,8 @@ type Enemy = {
 	Patron: boolean,
 	LastAttack: number,
 	NextSlam: number,
+	Speed: number,
+	SlamRadius: number,
 }
 
 type Run = { Enemies: { Enemy }, Stage: number, LeftAt: number?, Clearing: boolean }
@@ -158,26 +160,33 @@ end
 
 -- Vagues --------------------------------------------------------------------------------
 
+-- Fiches d'ennemis (ordinaires et boss) par Id.
+local kindById = {}
+for _, def in Street.Kinds do
+	kindById[def.Id] = def
+end
+for _, def in Street.Bosses do
+	kindById[def.Id] = def
+end
+
 local function spawnWave(player: Player, stage: number, section: number)
 	local run = getRun(player)
 	run.Stage = stage
 	local patron = Formulas.streetIsPatron(stage, Street)
 	local count = Formulas.streetWaveSize(stage, Street)
-	local stats = Formulas.streetEnemy(stage, Street)
-	local kindIndex = if patron
-		then ((stage // Street.PatronEvery - 1) % #Street.Kinds) + 1
-		else ((stage - 1) % #Street.Kinds) + 1
-	local kind = Street.Kinds[kindIndex]
-	local name = if patron then Street.PatronNames[kindIndex] else kind.Name
+	local name = ""
 
 	for i = 1, count do
+		local kind = kindById[Formulas.streetKindId(stage, i, Street)] or Street.Kinds[1]
+		local stats = Formulas.streetEnemyOf(stage, Street, kind)
+		name = kind.Name
 		local z = -(section - 1) * Street.SectionLength - Street.SectionLength * 0.65 + rng:NextNumber(-5, 5)
 		local x = if count == 1 then 0 else (i - (count + 1) / 2) * (Street.Width - 8) / math.max(count - 1, 1)
 		local base = origin * CFrame.new(x, 0, z) * CFrame.Angles(0, math.pi, 0) -- face au joueur
 		local model, root = Models.enemy(kind, base, kind.Scale, patron)
 		model:SetAttribute("Owner", player.UserId)
 		model.Parent = enemiesFolder
-		local label = PlotService.makeBillboard(root, "", (if patron then 6 else 3.5), Vector2.new(8, 2))
+		local label = PlotService.makeBillboard(root, "", root.Size.Y / 2 + 1.5, Vector2.new(8, 2))
 		label.TextColor3 = if patron then Color3.fromRGB(255, 120, 120) else Color3.new(1, 1, 1)
 		local enemy: Enemy = {
 			Model = model,
@@ -192,6 +201,8 @@ local function spawnWave(player: Player, stage: number, section: number)
 			Patron = patron,
 			LastAttack = os.clock() + 1, -- court délai avant la première attaque
 			NextSlam = os.clock() + 3,
+			Speed = stats.Speed,
+			SlamRadius = kind.SlamRadius or Street.Patron.SlamRadius,
 		}
 		updateLabel(enemy)
 		if patron then
@@ -203,7 +214,8 @@ local function spawnWave(player: Player, stage: number, section: number)
 					else (petById[drop.Id] and petById[drop.Id].Name or drop.Id)
 				table.insert(lines, string.format("%s (%s %%)", dropName, tostring(drop.Chance * 100):gsub("%.", ",")))
 			end
-			local loot = PlotService.makeBillboard(root, table.concat(lines, "\n"), 10, Vector2.new(9, 4.5))
+			local loot =
+				PlotService.makeBillboard(root, table.concat(lines, "\n"), root.Size.Y / 2 + 6, Vector2.new(9, 4.5))
 			loot.TextColor3 = Color3.fromRGB(255, 220, 120)
 		end
 		table.insert(run.Enemies, enemy)
@@ -348,7 +360,7 @@ end
 
 local function patronSlam(player: Player, run: Run, enemy: Enemy, target: Vector3)
 	local spot = Vector3.new(target.X, origin.Position.Y + 0.15, target.Z)
-	local disc = Models.telegraph(enemiesFolder, spot, Street.Patron.SlamRadius)
+	local disc = Models.telegraph(enemiesFolder, spot, enemy.SlamRadius)
 	TweenService:Create(disc, TweenInfo.new(Street.Patron.SlamTelegraph), { Transparency = 0.15 }):Play()
 	task.delay(Street.Patron.SlamTelegraph, function()
 		disc:Destroy()
@@ -356,7 +368,7 @@ local function patronSlam(player: Player, run: Run, enemy: Enemy, target: Vector
 			return
 		end
 		local root = aliveRoot(player)
-		if root and flat(root.Position, spot) <= Street.Patron.SlamRadius then
+		if root and flat(root.Position, spot) <= enemy.SlamRadius then
 			enemyHits(player, enemy.Damage * 2)
 		end
 	end)
@@ -400,12 +412,13 @@ local function tickPlayer(player: Player, now: number, dt: number)
 	for _, enemy in table.clone(run.Enemies) do
 		local pos = enemy.Root.Position
 		local dist = flat(pos, root.Position)
-		local range = Street.Enemy.AttackRange * (if enemy.Patron then 1.8 else 1)
+		-- Portée : distance de contact + demi-largeur du modèle (les grands boss frappent de loin).
+		local range = Street.Enemy.AttackRange + enemy.Root.Size.X * 0.45
 		local groundY = origin.Position.Y
 		local from = Vector3.new(pos.X, groundY, pos.Z)
 		local to = Vector3.new(root.Position.X, groundY, root.Position.Z)
 		if dist > range then
-			local step = math.min(Street.Enemy.Speed * dt, dist - range)
+			local step = math.min(enemy.Speed * dt, dist - range)
 			from += (to - from).Unit * step
 		elseif now - enemy.LastAttack >= Street.Enemy.AttackCooldown then
 			enemy.LastAttack = now

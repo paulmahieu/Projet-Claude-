@@ -225,7 +225,7 @@ local function spawnWave(run: Run, present: number)
 		local base = run.Plot.CFrame * CFrame.new(x, 0, -HALF - 8 - math.random() * 4)
 		local model, root = Models.enemy(kind, base, kind.Scale, patron)
 		model.Parent = enemiesFolder
-		local label = PlotService.makeBillboard(root, "", if patron then 6 else 3.5, Vector2.new(8, 2), 60)
+		local label = PlotService.makeBillboard(root, "", root.Size.Y / 2 + 1.5, Vector2.new(8, 2), 60)
 		local enemy: Enemy = {
 			Model = model,
 			Root = root,
