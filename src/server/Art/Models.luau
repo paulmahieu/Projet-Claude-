@@ -1632,21 +1632,119 @@ end
 
 -- Socle de construction : colonne de pierre + gemme flottante (couleur = état).
 function Models.pedestal(base: CFrame): (Model, BasePart, BasePart)
+	-- Socle de construction : chantier balisé (piquets et rubans), stèle de pierre cerclée d'or,
+	-- gemme d'état tenue par quatre griffes dorées au-dessus d'un anneau runique, plan roulé
+	-- et maillet au pied. La couleur de la gemme indique l'état (prêt, manquant, verrouillé).
 	local m = newModel("Pedestal")
+	part(m, "Footing", Vector3.new(3.8, 0.4, 3.8), base * CFrame.new(0, 0.2, 0), C.StoneDark, Enum.Material.Cobblestone)
 	local plinth =
-		part(m, "Plinth", Vector3.new(2.4, 2, 2.4), base * CFrame.new(0, 1, 0), C.Stone, Enum.Material.Cobblestone)
-	part(m, "Cap", Vector3.new(2.8, 0.4, 2.8), base * CFrame.new(0, 2.2, 0), C.StoneLight, Enum.Material.Slate)
+		part(m, "Plinth", Vector3.new(2.4, 1.8, 2.4), base * CFrame.new(0, 1.3, 0), C.Stone, Enum.Material.Cobblestone)
+	part(m, "Band", Vector3.new(2.6, 0.22, 2.6), base * CFrame.new(0, 0.75, 0), GOLD, Enum.Material.Metal, {
+		NoShadow = true,
+	})
+	part(m, "Cap", Vector3.new(2.9, 0.36, 2.9), base * CFrame.new(0, 2.36, 0), C.StoneLight, Enum.Material.Slate)
+	part(
+		m,
+		"RunePlate",
+		Vector3.new(1.2, 0.8, 0.1),
+		base * CFrame.new(0, 1.45, -1.24),
+		C.Ether,
+		Enum.Material.Neon,
+		{ NoShadow = true, CanCollide = false, Transparency = 0.2 }
+	)
+	for _, sx in { -1, 1 } do
+		for _, sz in { -1, 1 } do
+			local p1 = (base * CFrame.new(sx * 0.75, 2.5, sz * 0.75)).Position
+			local p2 = (base * CFrame.new(sx * 0.42, 3.35, sz * 0.42)).Position
+			part(
+				m,
+				"Claw",
+				Vector3.new(0.14, 0.14, (p2 - p1).Magnitude),
+				CFrame.lookAt((p1 + p2) / 2, p2),
+				GOLD,
+				Enum.Material.Metal,
+				{ NoShadow = true, CanCollide = false }
+			)
+		end
+	end
+	local ringAt = base * CFrame.new(0, 2.85, 0)
+	for i = 0, 11 do
+		part(
+			m,
+			"RuneRing",
+			Vector3.new(0.5, 0.08, 0.12),
+			ringAt * CFrame.Angles(0, i * math.pi / 6, 0) * CFrame.new(0, 0, 0.95),
+			C.Ether,
+			Enum.Material.Neon,
+			{ NoShadow = true, CanCollide = false }
+		)
+	end
 	local gem = part(
 		m,
 		"Gem",
 		Vector3.new(1.1, 1.1, 1.1),
-		base * CFrame.new(0, 3.3, 0) * CFrame.Angles(math.rad(45), 0, math.rad(45)),
+		base * CFrame.new(0, 3.6, 0) * CFrame.Angles(math.rad(45), 0, math.rad(45)),
 		C.Ether,
 		Enum.Material.Neon,
-		{
-			CanCollide = false,
-			NoShadow = true,
-		}
+		{ CanCollide = false, NoShadow = true }
+	)
+	-- Chantier balisé : piquets d'angle et rubans rouges et blancs
+	local corners = { { -1, -1 }, { 1, -1 }, { 1, 1 }, { -1, 1 } }
+	for i, c in corners do
+		local at = base * CFrame.new(c[1] * 2.3, 0, c[2] * 2.3)
+		part(m, "Stake", Vector3.new(0.22, 1.4, 0.22), at * CFrame.new(0, 0.7, 0), C.WoodLight, Enum.Material.Wood)
+		part(
+			m,
+			"StakeTip",
+			Vector3.new(0.26, 0.2, 0.26),
+			at * CFrame.new(0, 1.5, 0),
+			C.Cloth,
+			Enum.Material.SmoothPlastic,
+			{ NoShadow = true }
+		)
+		local n = corners[i % 4 + 1]
+		local to = base * CFrame.new(n[1] * 2.3, 0, n[2] * 2.3)
+		for k, y in { 1.15, 0.85 } do
+			local p1 = (at * CFrame.new(0, y, 0)).Position
+			local p2 = (to * CFrame.new(0, y, 0)).Position
+			part(
+				m,
+				"Tape",
+				Vector3.new(0.04, 0.14, (p2 - p1).Magnitude - 0.24),
+				CFrame.lookAt((p1 + p2) / 2, p2),
+				if k == 1 then C.Cloth else Color3.fromRGB(240, 236, 228),
+				Enum.Material.Fabric,
+				{ NoShadow = true, CanCollide = false }
+			)
+		end
+	end
+	-- Plan roulé et maillet au pied de la stèle
+	part(
+		m,
+		"Blueprint",
+		Vector3.new(1.4, 0.32, 0.32),
+		base * CFrame.new(-0.6, 0.56, -1.6) * CFrame.Angles(0, math.rad(15), 0),
+		Color3.fromRGB(80, 130, 200),
+		Enum.Material.Fabric,
+		{ Shape = Enum.PartType.Cylinder, NoShadow = true, CanCollide = false }
+	)
+	part(
+		m,
+		"MalletHandle",
+		Vector3.new(0.12, 0.12, 1),
+		base * CFrame.new(0.9, 0.48, -1.55) * CFrame.Angles(0, math.rad(-30), 0),
+		C.WoodLight,
+		Enum.Material.Wood,
+		{ NoShadow = true, CanCollide = false }
+	)
+	part(
+		m,
+		"MalletHead",
+		Vector3.new(0.55, 0.36, 0.36),
+		base * CFrame.new(1.15, 0.6, -1.95) * CFrame.Angles(0, math.rad(-30), 0),
+		C.WoodDark,
+		Enum.Material.Wood,
+		{ NoShadow = true, CanCollide = false }
 	)
 	m.PrimaryPart = plinth
 	return m, plinth, gem
@@ -7419,72 +7517,234 @@ function Models.landBarrier(base: CFrame, x: number, z: number, along: string, w
 	return m
 end
 
--- Base commune des machines : socle en pierre, voyants de niveau, tapis roulant vers une
--- caisse. Retourne le modèle, l'ancre d'étiquette et le cadre de la machine.
+-- Outils des machines ---------------------------------------------------------------------------
+
+-- Poutre droite entre deux points (monde).
+local function beam(m, name: string, p1: Vector3, p2: Vector3, t: number, color: Color3, material, props)
+	local dir = p2 - p1
+	-- Axe de référence de secours pour une poutre verticale (lookAt dégénéré sinon).
+	local up = if math.abs(dir.Unit.Y) > 0.99 then Vector3.new(1, 0, 0) else Vector3.new(0, 1, 0)
+	return part(m, name, Vector3.new(t, t, dir.Magnitude), CFrame.lookAt((p1 + p2) / 2, p2, up), color, material, props)
+end
+
+-- Anneau segmenté autour de l'axe X du repère `cf` (rayon r, épaisseur radiale, largeur axiale).
+local function ringX(m, name: string, cf: CFrame, r: number, thick: number, width: number, color, material, n: number)
+	local len = 2 * math.pi * r / n * 1.08
+	for i = 0, n - 1 do
+		part(
+			m,
+			name,
+			Vector3.new(width, thick, len),
+			cf * CFrame.Angles(i * 2 * math.pi / n, 0, 0) * CFrame.new(0, r, 0),
+			color,
+			material,
+			{ NoShadow = true, CanCollide = false }
+		)
+	end
+end
+
+-- Engrenage d'axe X : disque, dents, moyeu doré.
+local function gear(m, name: string, cf: CFrame, d: number, thick: number, teeth: number, color: Color3)
+	part(m, name, Vector3.new(thick, d, d), cf, color, Enum.Material.Metal, { Shape = Enum.PartType.Cylinder })
+	for i = 0, teeth - 1 do
+		part(
+			m,
+			name .. "Tooth",
+			Vector3.new(thick * 0.9, d * 0.16, d * 0.13),
+			cf * CFrame.Angles(i * 2 * math.pi / teeth, 0, 0) * CFrame.new(0, d / 2 + d * 0.04, 0),
+			color,
+			Enum.Material.Metal,
+			{ NoShadow = true }
+		)
+	end
+	part(
+		m,
+		name .. "Hub",
+		Vector3.new(thick + 0.24, d * 0.3, d * 0.3),
+		cf,
+		GOLD,
+		Enum.Material.Metal,
+		{ Shape = Enum.PartType.Cylinder, NoShadow = true }
+	)
+end
+
+-- Roue à rayons d'axe X (volant, roue de charrette).
+local function spokedWheel(
+	m,
+	name: string,
+	cf: CFrame,
+	d: number,
+	width: number,
+	spokes: number,
+	color: Color3,
+	material
+)
+	ringX(m, name .. "Rim", cf, d / 2 - 0.12, 0.26, width, color, material, 10)
+	for i = 0, spokes - 1 do
+		part(
+			m,
+			name .. "Spoke",
+			Vector3.new(width * 0.6 + (i % 2) * 0.05, d - 0.3, 0.16),
+			cf * CFrame.Angles(i * math.pi / spokes, 0, 0),
+			color,
+			material,
+			{ NoShadow = true, CanCollide = false }
+		)
+	end
+	part(
+		m,
+		name .. "Hub",
+		Vector3.new(width + 0.2, d * 0.2, d * 0.2),
+		cf,
+		C.StoneDark,
+		Enum.Material.Metal,
+		{ Shape = Enum.PartType.Cylinder, NoShadow = true }
+	)
+end
+
+-- Lanterne suspendue (sans lumière : économie de calcul).
+local function hangingLantern(m, cf: CFrame, glowColor: Color3)
+	part(m, "LanternCage", Vector3.new(0.6, 0.7, 0.6), cf, C.StoneDark, Enum.Material.Metal, { CanCollide = false })
+	part(
+		m,
+		"LanternGlow",
+		Vector3.new(0.44, 0.5, 0.7),
+		cf,
+		glowColor,
+		Enum.Material.Neon,
+		{ CanCollide = false, NoShadow = true }
+	)
+	part(
+		m,
+		"LanternTop",
+		Vector3.new(0.3, 0.3, 0.3),
+		cf * CFrame.new(0, 0.45, 0) * CFrame.Angles(0, math.rad(45), 0),
+		C.StoneDark,
+		Enum.Material.Metal,
+		{ CanCollide = false, NoShadow = true }
+	)
+end
+
+local MACHINE_TOP = 1.2 -- dessus du socle des machines
+
+-- Base commune des machines : fondation en pierre à deux degrés, bornes d'angle dorées,
+-- plaque avant aux voyants de niveau, tapis roulant sur rouleaux vers un bac de collecte.
+-- Retourne le modèle et l'ancre d'étiquette.
 local function machineBase(base: CFrame, level: number, accent: Color3): (Model, BasePart)
 	local m = newModel("Machine")
-	part(m, "Plinth", Vector3.new(11, 0.8, 11), base * CFrame.new(0, 0.4, 0), C.StoneDark, Enum.Material.Cobblestone)
+	part(m, "Footing", Vector3.new(12, 0.5, 12), base * CFrame.new(0, 0.25, 0), C.StoneDark, Enum.Material.Cobblestone)
+	part(m, "Plinth", Vector3.new(11, 0.7, 11), base * CFrame.new(0, 0.85, 0), C.Stone, Enum.Material.Slate)
 	part(
 		m,
 		"PlinthTrim",
-		Vector3.new(11.4, 0.3, 11.4),
-		base * CFrame.new(0, 0.85, 0),
+		Vector3.new(11.3, 0.2, 11.3),
+		base * CFrame.new(0, 0.9, 0),
 		C.StoneLight,
 		Enum.Material.Slate,
 		{ NoShadow = true }
 	)
-	-- Voyants de niveau sur la face avant (un par niveau, dorés au maximum)
+	-- Bornes d'angle à chapeau doré
+	for _, sx in { -1, 1 } do
+		for _, sz in { -1, 1 } do
+			local at = base * CFrame.new(sx * 5.7, 0.5, sz * 5.7)
+			column(m, "Bollard", 1.5, 0.8, at, C.StoneDark, Enum.Material.Cobblestone)
+			ball(m, "BollardCap", 0.7, at * CFrame.new(0, 1.6, 0), GOLD, Enum.Material.Metal, { NoShadow = true })
+		end
+	end
+	-- Plaque avant : bandeau de la couleur de la machine et voyants de niveau (dorés au max)
+	part(
+		m,
+		"Plate",
+		Vector3.new(6.4, 0.8, 0.2),
+		base * CFrame.new(-1.4, 0.75, -5.62),
+		C.StoneDark:Lerp(accent, 0.25),
+		Enum.Material.Metal,
+		{ NoShadow = true }
+	)
+	part(
+		m,
+		"PlateBand",
+		Vector3.new(6.6, 0.14, 0.32),
+		base * CFrame.new(-1.4, 1.2, -5.62),
+		GOLD,
+		Enum.Material.Metal,
+		{ NoShadow = true }
+	)
 	for k = 1, level do
 		part(
 			m,
 			"LevelLight",
-			Vector3.new(0.7, 0.4, 0.2),
-			base * CFrame.new(-3 + (k - 1) * 1.5, 0.45, -5.6),
+			Vector3.new(0.7, 0.4, 0.14),
+			base * CFrame.new(-4 + (k - 1) * 1.3, 0.75, -5.76),
 			if level >= 5 then GOLD else accent,
 			Enum.Material.Neon,
 			{ CanCollide = false, NoShadow = true }
 		)
 	end
-	-- Tapis roulant (devant) et caisse de collecte
+	-- Tapis roulant sur rouleaux, montants métalliques et bac de collecte
 	local belt = part(
 		m,
 		"Belt",
-		Vector3.new(2.4, 0.5, 8),
-		base * CFrame.new(3.5, 0.95, -9.5),
-		Color3.fromRGB(55, 55, 60),
+		Vector3.new(2.2, 0.3, 8),
+		base * CFrame.new(3.5, 1.05, -9.6),
+		Color3.fromRGB(48, 46, 50),
 		Enum.Material.Rubber
 	)
+	for k = 0, 3 do
+		part(
+			m,
+			"BeltSlat",
+			Vector3.new(2.1, 0.06, 0.18),
+			belt.CFrame * CFrame.new(0, 0.17, -3 + k * 2),
+			Color3.fromRGB(70, 68, 72),
+			Enum.Material.Metal,
+			{ NoShadow = true, CanCollide = false }
+		)
+	end
 	for _, side in { -1, 1 } do
 		part(
 			m,
 			"BeltRail",
-			Vector3.new(0.3, 0.7, 8),
-			base * CFrame.new(3.5 + side * 1.35, 1, -9.5),
+			Vector3.new(0.3, 0.6, 8.4),
+			base * CFrame.new(3.5 + side * 1.3, 1.1, -9.6),
 			C.Metal,
 			Enum.Material.Metal
 		)
+		for k = 0, 2 do
+			part(
+				m,
+				"BeltLeg",
+				Vector3.new(0.2, 0.9, 0.2),
+				base * CFrame.new(3.5 + side * 1.3, 0.4, -6.4 - k * 3.2),
+				C.StoneDark,
+				Enum.Material.Metal
+			)
+		end
 	end
-	for k = 0, 3 do
-		column(
+	for _, z in { -5.7, -13.5 } do
+		part(
 			m,
-			"BeltLeg",
-			0.8,
-			0.35,
-			base * CFrame.new(3.5 + (k % 2 == 0 and -1 or 1), 0, -6.5 - (k // 2) * 6),
-			C.Metal,
-			Enum.Material.Metal
+			"BeltRoller",
+			Vector3.new(2.5, 0.5, 0.5),
+			base * CFrame.new(3.5, 1.05, z),
+			C.StoneDark,
+			Enum.Material.Metal,
+			{ Shape = Enum.PartType.Cylinder, NoShadow = true }
 		)
 	end
-	part(m, "Crate", Vector3.new(3.4, 2.6, 3.4), base * CFrame.new(3.5, 1.3, -15), C.Wood, Enum.Material.WoodPlanks)
-	part(
-		m,
-		"CrateBand",
-		Vector3.new(3.6, 0.35, 3.6),
-		base * CFrame.new(3.5, 1.9, -15),
-		C.WoodDark,
-		Enum.Material.Wood,
-		{ NoShadow = true }
-	)
+	local bin = base * CFrame.new(3.5, 0, -15.6)
+	Models.crate(m, bin, 3.2)
+	for k = 0, 2 do
+		part(
+			m,
+			"Heap",
+			Vector3.new(1, 0.7, 1),
+			bin * CFrame.new(-0.7 + k * 0.7, 3.45 + (k % 2) * 0.2, (k - 1) * 0.4) * CFrame.Angles(0, k * 0.7, 0.2),
+			accent,
+			Enum.Material.SmoothPlastic,
+			{ NoShadow = true }
+		)
+	end
 	-- Points de départ et d'arrivée des blocs animés côté client (MachineFx).
 	local beltStart =
 		part(m, "BeltStart", Vector3.new(0.2, 0.2, 0.2), belt.CFrame * CFrame.new(0, 0.6, 3.6), accent, nil, {
@@ -7498,7 +7758,7 @@ local function machineBase(base: CFrame, level: number, accent: Color3): (Model,
 			CanCollide = false,
 		})
 	beltEnd.CanQuery = false
-	local anchor = part(m, "LabelAnchor", Vector3.new(0.2, 0.2, 0.2), base * CFrame.new(0, 11, 0), accent, nil, {
+	local anchor = part(m, "LabelAnchor", Vector3.new(0.2, 0.2, 0.2), base * CFrame.new(0, 13, 0), accent, nil, {
 		Transparency = 1,
 		CanCollide = false,
 	})
@@ -7509,239 +7769,901 @@ end
 
 local machineBuilders = {}
 
--- Scierie automatique : charpente, lame circulaire, rondin sur la table, toit en bardeaux.
+-- Scierie : moulin à colombages, roue à aubes dans un bief, scie circulaire dentée, rondin,
+-- piles de planches et de grumes, billot avec sa hache.
 machineBuilders.LumberMill = function(m: Model, base: CFrame, level: number)
-	local top = base * CFrame.new(0, 0.95, 0)
-	for _, cx in { -1, 1 } do
-		for _, cz in { -1, 1 } do
+	local top = base * CFrame.new(0, MACHINE_TOP, 0)
+	-- Charpente : sablières, poteaux, liens en diagonale
+	for _, sz in { -1, 1 } do
+		part(
+			m,
+			"Sill",
+			Vector3.new(8.9, 0.5, 0.56),
+			top * CFrame.new(0, 0.25, sz * 3.6),
+			C.WoodDark,
+			Enum.Material.Wood
+		)
+		part(
+			m,
+			"TopBeam",
+			Vector3.new(9.2, 0.6, 0.84),
+			top * CFrame.new(0, 6.2, sz * 3.6),
+			C.WoodDark,
+			Enum.Material.Wood
+		)
+		for _, sx in { -1, 1 } do
 			part(
 				m,
 				"Post",
-				Vector3.new(0.8, 6.5, 0.8),
-				top * CFrame.new(cx * 4.2, 3.25, cz * 4.2),
+				Vector3.new(0.7, 6, 0.7),
+				top * CFrame.new(sx * 4.1, 3.2, sz * 3.6),
+				C.Wood,
+				Enum.Material.Wood
+			)
+			beam(
+				m,
+				"Brace",
+				(top * CFrame.new(sx * 4.1, 4.6, sz * 3.6)).Position,
+				(top * CFrame.new(sx * 2.7, 6, sz * 3.6)).Position,
+				0.35,
 				C.WoodDark,
 				Enum.Material.Wood
 			)
 		end
 	end
-	gableRoof(m, 10.5, 10.5, 2.6, top * CFrame.new(0, 6.5, 0), C.Roof)
-	part(m, "Table", Vector3.new(7, 0.6, 2.4), top * CFrame.new(0, 2, -1.5), C.WoodLight, Enum.Material.WoodPlanks)
-	part(m, "Log", Vector3.new(6, 1.4, 1.4), top * CFrame.new(-0.5, 3, -1.5), C.Bark, Enum.Material.Wood, {
+	-- Mur arrière en planches verticales
+	part(
+		m,
+		"BackWall",
+		Vector3.new(7.5, 5.5, 0.3),
+		top * CFrame.new(0, 3.2, 3.85),
+		C.WoodLight,
+		Enum.Material.WoodPlanks
+	)
+	for k = -3, 3 do
+		part(
+			m,
+			"Batten",
+			Vector3.new(0.2, 5.5, 0.12),
+			top * CFrame.new(k * 1.1, 3.2, 3.64),
+			C.WoodDark,
+			Enum.Material.Wood,
+			{ NoShadow = true }
+		)
+	end
+	-- Toit en bardeaux, faîtage et épis
+	gableRoof(m, 10.8, 9.2, 2.8, top * CFrame.new(0, 6.5, 0), C.Roof)
+	part(m, "Ridge", Vector3.new(11.2, 0.4, 0.5), top * CFrame.new(0, 9.35, 0), C.RoofDark, Enum.Material.Wood)
+	for _, sx in { -1, 1 } do
+		ball(m, "Finial", 0.6, top * CFrame.new(sx * 5.5, 9.6, 0), GOLD, Enum.Material.Metal, { NoShadow = true })
+	end
+	hangingLantern(m, top * CFrame.new(-4.1, 5.2, -4.1), C.Rune)
+	-- Établi et scie circulaire
+	for _, sx in { -1, 1 } do
+		for _, sz in { -1, 1 } do
+			part(
+				m,
+				"TableLeg",
+				Vector3.new(0.35, 2, 0.35),
+				top * CFrame.new(sx * 2.8, 1.1, -1.2 + sz * 0.8),
+				C.WoodDark,
+				Enum.Material.Wood
+			)
+		end
+	end
+	part(m, "Table", Vector3.new(6.6, 0.4, 2.2), top * CFrame.new(0, 2.2, -1.2), C.WoodLight, Enum.Material.WoodPlanks)
+	part(m, "Log", Vector3.new(4.6, 1.3, 1.3), top * CFrame.new(-0.9, 3.05, -1.2), C.Bark, Enum.Material.Wood, {
 		Shape = Enum.PartType.Cylinder,
 	})
 	part(
 		m,
-		"Blade",
-		Vector3.new(0.25, 3.4, 3.4),
-		top * CFrame.new(2.6, 2.6, -1.5) * CFrame.Angles(0, math.rad(90), 0),
-		C.Metal,
-		Enum.Material.Metal,
-		{
-			Shape = Enum.PartType.Cylinder,
-		}
+		"LogEnd",
+		Vector3.new(0.1, 1.1, 1.1),
+		top * CFrame.new(-3.24, 3.05, -1.2),
+		C.WoodLight,
+		Enum.Material.Wood,
+		{ Shape = Enum.PartType.Cylinder, NoShadow = true }
 	)
+	local blade = top * CFrame.new(2.2, 2.9, -1.2)
 	part(
 		m,
-		"Hub",
-		Vector3.new(0.4, 0.8, 0.8),
-		top * CFrame.new(2.6, 2.6, -1.5) * CFrame.Angles(0, math.rad(90), 0),
+		"Blade",
+		Vector3.new(0.12, 2.8, 2.8),
+		blade * CFrame.Angles(0, math.rad(90), 0),
+		C.Metal,
+		Enum.Material.Metal,
+		{ Shape = Enum.PartType.Cylinder }
+	)
+	for i = 0, 9 do
+		part(
+			m,
+			"BladeTooth",
+			Vector3.new(0.26, 0.26, 0.1),
+			blade * CFrame.Angles(0, 0, i * math.pi / 5) * CFrame.new(0, 1.42, 0) * CFrame.Angles(0, 0, math.rad(45)),
+			C.Metal:Lerp(C.StoneLight, 0.4),
+			Enum.Material.Metal,
+			{ NoShadow = true, CanCollide = false }
+		)
+	end
+	part(
+		m,
+		"BladeHub",
+		Vector3.new(0.4, 0.7, 0.7),
+		blade * CFrame.Angles(0, math.rad(90), 0),
 		GOLD,
 		Enum.Material.Metal,
-		{
-			Shape = Enum.PartType.Cylinder,
-			NoShadow = true,
-		}
+		{ Shape = Enum.PartType.Cylinder, NoShadow = true }
 	)
-	for k = 0, 2 + level do
+	part(m, "BladeGuard", Vector3.new(0.5, 0.3, 1.8), blade * CFrame.new(0, 1.65, 0), C.StoneDark, Enum.Material.Metal)
+	-- Roue à aubes dans son bief (côté droit), axe vers la charpente
+	local trough = top * CFrame.new(6.4, -0.65, 0.4)
+	part(m, "Trough", Vector3.new(2.2, 1.1, 7), trough, C.WoodDark, Enum.Material.WoodPlanks)
+	part(
+		m,
+		"Water",
+		Vector3.new(1.6, 0.2, 6.6),
+		trough * CFrame.new(0, 0.5, 0),
+		Color3.fromRGB(70, 140, 200),
+		Enum.Material.Glass,
+		{ Transparency = 0.25, NoShadow = true, CanCollide = false }
+	)
+	local wheel = top * CFrame.new(6.4, 2.1, 0.4)
+	ringX(m, "WheelRim", wheel, 2.5, 0.3, 1.1, C.WoodDark, Enum.Material.Wood, 12)
+	for i = 0, 3 do
+		part(
+			m,
+			"WheelSpoke",
+			Vector3.new(0.6, 5, 0.25),
+			wheel * CFrame.Angles(i * math.pi / 4, 0, 0),
+			C.Wood,
+			Enum.Material.Wood,
+			{ CanCollide = false }
+		)
+	end
+	for i = 0, 7 do
+		part(
+			m,
+			"Paddle",
+			Vector3.new(1.3, 0.9, 0.14),
+			wheel * CFrame.Angles(i * math.pi / 4 + 0.13, 0, 0) * CFrame.new(0, 2.85, 0),
+			C.WoodLight,
+			Enum.Material.WoodPlanks,
+			{ NoShadow = true, CanCollide = false }
+		)
+	end
+	part(
+		m,
+		"Axle",
+		Vector3.new(2.8, 0.45, 0.45),
+		top * CFrame.new(5.2, 2.1, 0.4),
+		C.StoneDark,
+		Enum.Material.Metal,
+		{ Shape = Enum.PartType.Cylinder }
+	)
+	-- Pile de planches (plus haute à chaque niveau) et grumes
+	for _, x in { -3.8, -1.4 } do
+		part(m, "Bearer", Vector3.new(0.4, 0.3, 2), top * CFrame.new(x, 0.15, 2.3), C.WoodDark, Enum.Material.Wood)
+	end
+	for k = 0, 1 + level do
 		part(
 			m,
 			"Plank",
-			Vector3.new(4, 0.35, 1),
-			top * CFrame.new(-2.2, 0.2 + k * 0.38, 3),
-			C.WoodLight:Lerp(C.Wood, (k % 2) * 0.3),
+			Vector3.new(3.4, 0.3, 1.6),
+			top * CFrame.new(-2.6 + (k % 2) * 0.1, 0.45 + k * 0.32, 2.3),
+			C.WoodLight:Lerp(C.Wood, (k % 2) * 0.35),
 			Enum.Material.WoodPlanks
 		)
 	end
-end
-
--- Concasseur : trémie en pierre, deux rouleaux métalliques, cadre riveté.
-machineBuilders.StoneCrusher = function(m: Model, base: CFrame, level: number)
-	local top = base * CFrame.new(0, 0.95, 0)
+	for k, p in { { 1.6, 0.55, 2.4 }, { 2.8, 0.55, 2.4 }, { 2.2, 1.4, 2.4 } } do
+		part(
+			m,
+			"Lumber" .. k,
+			Vector3.new(3, 1.1, 1.1),
+			top * CFrame.new(p[1], p[2], p[3]) * CFrame.Angles(0, math.rad(90), 0),
+			C.Bark,
+			Enum.Material.Wood,
+			{ Shape = Enum.PartType.Cylinder }
+		)
+	end
+	-- Billot et hache
+	local stump = top * CFrame.new(-3.4, 0, -4)
+	column(m, "Stump", 1.2, 1.5, stump, C.Bark, Enum.Material.Wood)
+	column(
+		m,
+		"StumpTop",
+		0.06,
+		1.3,
+		stump * CFrame.new(0, 1.2, 0),
+		C.WoodLight,
+		Enum.Material.Wood,
+		{ NoShadow = true }
+	)
 	part(
 		m,
-		"Body",
-		Vector3.new(8, 4, 7),
-		top * CFrame.new(0, 2, 0.5),
-		C.Metal:Lerp(C.StoneDark, 0.4),
-		Enum.Material.DiamondPlate
+		"AxeHandle",
+		Vector3.new(0.18, 1.8, 0.18),
+		stump * CFrame.new(0.2, 1.9, 0) * CFrame.Angles(0, 0, math.rad(-20)),
+		C.WoodLight,
+		Enum.Material.Wood,
+		{ CanCollide = false }
 	)
-	-- Trémie en entonnoir : quatre plaques inclinées vers l'extérieur, cadre doré en haut.
-	local hop = top * CFrame.new(0, 5.6, 0.5)
+	part(
+		m,
+		"AxeHead",
+		Vector3.new(0.7, 0.5, 0.12),
+		stump * CFrame.new(-0.05, 1.35, 0) * CFrame.Angles(0, 0, math.rad(-20)),
+		C.Metal,
+		Enum.Material.Metal,
+		{ CanCollide = false, NoShadow = true }
+	)
+end
+
+-- Concasseur : socle de pierre cerclé de fer, carter riveté, trémie dorée, engrenages en prise,
+-- volant d'inertie, cheminée à vapeur, manomètre, tas de pierres.
+machineBuilders.StoneCrusher = function(m: Model, base: CFrame, level: number)
+	local top = base * CFrame.new(0, MACHINE_TOP, 0)
+	part(m, "Body", Vector3.new(7, 3, 6), top * CFrame.new(0, 1.5, 0.4), C.StoneDark, Enum.Material.Cobblestone)
+	for _, y in { 0.5, 2.5 } do
+		part(
+			m,
+			"IronBand",
+			Vector3.new(7.24, 0.32, 6.24),
+			top * CFrame.new(0, y, 0.4),
+			C.Metal:Lerp(C.StoneDark, 0.5),
+			Enum.Material.Metal,
+			{ NoShadow = true }
+		)
+	end
+	local housing = top * CFrame.new(0, 4.1, 0.4)
+	part(m, "Housing", Vector3.new(6.2, 2.2, 5.2), housing, C.Metal:Lerp(C.StoneDark, 0.3), Enum.Material.DiamondPlate)
+	-- Rivets sur la face avant du carter
+	for i = 0, 3 do
+		for _, y in { -0.75, 0.75 } do
+			ball(
+				m,
+				"Rivet",
+				0.22,
+				housing * CFrame.new(-2.4 + i * 1.6, y, -2.62),
+				C.StoneDark,
+				Enum.Material.Metal,
+				{ NoShadow = true }
+			)
+		end
+	end
+	-- Trémie en entonnoir : quatre plaques inclinées, cadre doré
+	local hop = top * CFrame.new(0, 6.3, 0.4)
 	for k = 0, 3 do
-		local dir = CFrame.Angles(0, math.rad(k * 90), 0)
-		local width = if k % 2 == 0 then 8 else 7
+		local width = if k % 2 == 0 then 6.6 else 5.6
 		part(
 			m,
 			"Hopper",
-			Vector3.new(width, 3, 0.4),
-			hop * dir * CFrame.new(0, 0, (if k % 2 == 0 then 3.5 else 4) - 0.6) * CFrame.Angles(math.rad(-25), 0, 0),
-			C.StoneDark:Lerp(C.Metal, 0.3),
+			Vector3.new(width, 2.4, 0.3),
+			hop
+				* CFrame.Angles(0, math.rad(k * 90), 0)
+				* CFrame.new(0, 0, (if k % 2 == 0 then 2.6 else 3.1) - 0.45)
+				* CFrame.Angles(math.rad(-25), 0, 0),
+			C.StoneDark:Lerp(C.Metal, 0.35),
 			Enum.Material.DiamondPlate
 		)
 	end
 	for k = 0, 3 do
-		local width = if k % 2 == 0 then 9.2 else 8.6
+		local width = if k % 2 == 0 then 7.4 else 6.6
 		part(
 			m,
 			"HopperRim",
-			Vector3.new(width, 0.4, 0.5),
-			hop * CFrame.Angles(0, math.rad(k * 90), 0) * CFrame.new(0, 1.4, if k % 2 == 0 then 4.3 else 4.6),
+			Vector3.new(width, 0.35, 0.45),
+			hop * CFrame.Angles(0, math.rad(k * 90), 0) * CFrame.new(0, 1.15, if k % 2 == 0 then 3.15 else 3.6),
 			GOLD,
 			Enum.Material.Metal,
 			{ NoShadow = true }
 		)
 	end
-	for _, x in { -1.4, 1.4 } do
-		part(m, "Roller", Vector3.new(6.6, 1.6, 1.6), top * CFrame.new(0, 4.1, 0.5 + x), C.Metal, Enum.Material.Metal, {
-			Shape = Enum.PartType.Cylinder,
-		})
+	for k = 1, level + 1 do
+		part(
+			m,
+			"Rock",
+			Vector3.new(0.9, 0.7, 0.8),
+			hop * CFrame.new(-2.2 + k * 0.75, 0.4 + (k % 2) * 0.2, (k % 3 - 1) * 0.7) * CFrame.Angles(k, k * 0.6, 0),
+			C.Stone,
+			Enum.Material.Rock
+		)
 	end
-	for k = 1, level do
-		part(m, "Rock", Vector3.new(1, 0.8, 0.9), top * CFrame.new(-3 + k, 6.4, 0.5), C.Stone, Enum.Material.Rock)
+	-- Rouleaux broyeurs visibles par la gueule avant
+	part(
+		m,
+		"Mouth",
+		Vector3.new(4, 0.9, 0.2),
+		top * CFrame.new(0, 1.85, -2.66),
+		Color3.fromRGB(30, 28, 30),
+		Enum.Material.SmoothPlastic,
+		{ NoShadow = true }
+	)
+	for _, y in { 1.6, 2.1 } do
+		part(
+			m,
+			"Roller",
+			Vector3.new(3.8, 0.6, 0.6),
+			top * CFrame.new(0, y, -2.62),
+			C.Metal,
+			Enum.Material.Metal,
+			{ Shape = Enum.PartType.Cylinder, NoShadow = true }
+		)
 	end
+	-- Goulotte vers le tapis
 	part(
 		m,
 		"Chute",
-		Vector3.new(2.4, 0.4, 3),
-		top * CFrame.new(3.5, 1.1, -3.5) * CFrame.Angles(math.rad(-18), 0, 0),
+		Vector3.new(2.2, 0.25, 2.6),
+		top * CFrame.new(3.5, 0.75, -3.6) * CFrame.Angles(math.rad(-20), 0, 0),
 		C.Metal,
 		Enum.Material.Metal
 	)
-end
-
--- Foreuse : derrick en treillis, foret, wagonnet de minerai.
-machineBuilders.OreDrill = function(m: Model, base: CFrame, level: number)
-	local top = base * CFrame.new(0, 0.95, 0)
-	local h = 8 + level
-	for k, a in { 0, 120, 240 } do
-		local dir = CFrame.Angles(0, math.rad(a), 0)
+	-- Engrenages en prise (côté droit) et volant (côté gauche)
+	local big = top * CFrame.new(3.75, 3.3, 0.4)
+	gear(m, "GearBig", big, 3.6, 0.4, 10, C.Metal:Lerp(C.StoneDark, 0.2))
+	gear(m, "GearSmall", big * CFrame.new(0.05, 2.05, 2.05), 2.2, 0.4, 7, C.Metal)
+	spokedWheel(m, "Flywheel", top * CFrame.new(-3.9, 3.2, 0.4), 4, 0.5, 3, C.StoneDark, Enum.Material.Metal)
+	-- Cheminée à vapeur cerclée et manomètre
+	local stack = top * CFrame.new(-2.2, 5.2, 2.4)
+	column(m, "Stack", 4 + level * 0.4, 1, stack, C.StoneDark, Enum.Material.Metal)
+	for k = 0, 2 do
+		column(m, "StackBand", 0.2, 1.16, stack * CFrame.new(0, 0.8 + k * 1.3, 0), GOLD, Enum.Material.Metal, {
+			NoShadow = true,
+		})
+	end
+	column(m, "StackCap", 0.4, 1.5, stack * CFrame.new(0, 4 + level * 0.4, 0), C.StoneDark, Enum.Material.Metal)
+	local gauge = housing * CFrame.new(1.9, 0.2, -2.72)
+	part(m, "Gauge", Vector3.new(0.14, 1, 1), gauge * CFrame.Angles(0, math.rad(90), 0), GOLD, Enum.Material.Metal, {
+		Shape = Enum.PartType.Cylinder,
+		NoShadow = true,
+	})
+	part(
+		m,
+		"GaugeFace",
+		Vector3.new(0.06, 0.8, 0.8),
+		gauge * CFrame.new(0, 0, -0.06) * CFrame.Angles(0, math.rad(90), 0),
+		Color3.fromRGB(240, 235, 220),
+		Enum.Material.SmoothPlastic,
+		{ Shape = Enum.PartType.Cylinder, NoShadow = true }
+	)
+	part(
+		m,
+		"GaugeNeedle",
+		Vector3.new(0.05, 0.34, 0.04),
+		gauge * CFrame.new(0, 0.1, -0.1) * CFrame.Angles(0, 0, math.rad(-35)),
+		Color3.fromRGB(180, 40, 40),
+		Enum.Material.SmoothPlastic,
+		{ NoShadow = true, CanCollide = false }
+	)
+	-- Tas de pierres à concasser
+	local pile = top * CFrame.new(-3.6, 0, -4)
+	for k, p in { { 0, 0.4, 0, 1.2 }, { 0.7, 0.35, 0.4, 1 }, { -0.5, 0.3, 0.6, 0.9 }, { 0.2, 1, 0.2, 0.9 } } do
 		part(
 			m,
-			"Leg" .. k,
-			Vector3.new(0.7, h, 0.7),
-			top * dir * CFrame.new(0, h / 2, 3.2) * CFrame.Angles(math.rad(-20), 0, 0),
+			"PileRock",
+			Vector3.new(p[4], p[4] * 0.75, p[4] * 0.9),
+			pile * CFrame.new(p[1], p[2], p[3]) * CFrame.Angles(k * 0.5, k * 1.1, k * 0.3),
+			C.Stone:Lerp(C.StoneDark, (k % 2) * 0.4),
+			Enum.Material.Rock
+		)
+	end
+end
+
+-- Foreuse : derrick en treillis à poulie, vis sans fin dans un puits, chaudière à volant,
+-- wagonnet de minerai sur rails, lanterne.
+machineBuilders.OreDrill = function(m: Model, base: CFrame, level: number)
+	local top = base * CFrame.new(0, MACHINE_TOP, 0)
+	local h = 9 + level
+	local function leg(sx, sz, y)
+		local f = y / h
+		local r = 3.2 * (1 - f) + 0.9 * f
+		return (top * CFrame.new(sx * r, y, sz * r)).Position
+	end
+	for _, sx in { -1, 1 } do
+		for _, sz in { -1, 1 } do
+			beam(m, "Leg", leg(sx, sz, 0), leg(sx, sz, h), 0.55, C.WoodDark, Enum.Material.Wood)
+			column(
+				m,
+				"Footing",
+				0.5,
+				1,
+				top * CFrame.new(sx * 3.2, 0, sz * 3.2),
+				C.StoneDark,
+				Enum.Material.Cobblestone
+			)
+		end
+	end
+	-- Entretoises en croix sur les 4 faces, à deux étages
+	for _, y in { { 0.6, h * 0.45 }, { h * 0.45, h * 0.85 } } do
+		for face = 0, 3 do
+			local a = { { -1, -1 }, { 1, -1 }, { 1, 1 }, { -1, 1 } }
+			local p, q = a[face + 1], a[(face + 1) % 4 + 1]
+			beam(m, "Brace", leg(p[1], p[2], y[1]), leg(q[1], q[2], y[2]), 0.25, C.Wood, Enum.Material.Wood, {
+				NoShadow = true,
+				CanCollide = false,
+			})
+			beam(m, "Brace", leg(q[1], q[2], y[1]), leg(p[1], p[2], y[2]), 0.25, C.Wood, Enum.Material.Wood, {
+				NoShadow = true,
+				CanCollide = false,
+			})
+			beam(m, "Girt", leg(p[1], p[2], y[2]), leg(q[1], q[2], y[2]), 0.3, C.WoodDark, Enum.Material.Wood)
+		end
+	end
+	-- Plate-forme et poulie au sommet, câble
+	part(m, "Crown", Vector3.new(2.6, 0.4, 2.6), top * CFrame.new(0, h + 0.2, 0), C.WoodDark, Enum.Material.Wood)
+	spokedWheel(m, "Pulley", top * CFrame.new(0, h + 1.2, 0), 1.8, 0.3, 2, C.Metal, Enum.Material.Metal)
+	part(
+		m,
+		"Cable",
+		Vector3.new(0.08, h - 2.6, 0.08),
+		top * CFrame.new(0, (h + 3.8) / 2, -0.85),
+		Color3.fromRGB(40, 38, 40),
+		Enum.Material.Metal,
+		{ NoShadow = true, CanCollide = false }
+	)
+	-- Puits et vis sans fin
+	column(m, "WellRim", 0.4, 3.2, top, C.StoneDark, Enum.Material.Cobblestone)
+	column(
+		m,
+		"WellHole",
+		0.06,
+		2.4,
+		top * CFrame.new(0, 0.4, 0),
+		Color3.fromRGB(25, 20, 18),
+		Enum.Material.SmoothPlastic,
+		{ NoShadow = true }
+	)
+	column(m, "Shaft", 4, 0.5, top * CFrame.new(0, 0.4, 0), C.Metal, Enum.Material.Metal)
+	for k = 0, 7 do
+		part(
+			m,
+			"Flight",
+			Vector3.new(1.7, 0.16, 0.5),
+			top * CFrame.new(0, 0.6 + k * 0.4, 0) * CFrame.Angles(0, k * math.rad(45), math.rad(12)),
+			GOLD,
+			Enum.Material.Metal,
+			{ NoShadow = true }
+		)
+	end
+	part(m, "DrillHead", Vector3.new(1.4, 1.3, 1.4), top * CFrame.new(0, 4.9, 0), C.StoneDark, Enum.Material.Metal)
+	-- Chaudière (cylindre couché), cheminée, volant, courroie vers la tête
+	local boiler = top * CFrame.new(-2.6, 1.4, 4.2)
+	part(m, "Boiler", Vector3.new(3.4, 2, 2), boiler, Color3.fromRGB(150, 70, 50), Enum.Material.Metal, {
+		Shape = Enum.PartType.Cylinder,
+	})
+	for _, x in { -1.2, 0, 1.2 } do
+		part(
+			m,
+			"BoilerBand",
+			Vector3.new(0.2, 2.14, 2.14),
+			boiler * CFrame.new(x, 0, 0),
+			GOLD,
+			Enum.Material.Metal,
+			{ Shape = Enum.PartType.Cylinder, NoShadow = true }
+		)
+	end
+	for _, x in { -1.2, 1.2 } do
+		part(m, "Cradle", Vector3.new(0.5, 0.6, 2.2), boiler * CFrame.new(x, -1, 0), C.StoneDark, Enum.Material.Metal)
+	end
+	column(m, "Smokestack", 3.4, 0.6, boiler * CFrame.new(-0.9, 0.9, 0), C.StoneDark, Enum.Material.Metal)
+	spokedWheel(m, "Flywheel", boiler * CFrame.new(1.95, 0.2, 0), 2.4, 0.3, 3, C.StoneDark, Enum.Material.Metal)
+	beam(
+		m,
+		"DriveBelt",
+		(boiler * CFrame.new(2.1, 1.3, 0)).Position,
+		(top * CFrame.new(0, 4.9, 0.6)).Position,
+		0.12,
+		Color3.fromRGB(70, 50, 35),
+		Enum.Material.Fabric,
+		{ NoShadow = true, CanCollide = false }
+	)
+	-- Rails et wagonnet de minerai
+	local rails = top * CFrame.new(4.2, 0, -1)
+	for k = -2, 2 do
+		part(
+			m,
+			"Sleeper",
+			Vector3.new(1.8, 0.16, 0.4),
+			rails * CFrame.new(0, 0.08, k * 1.3),
 			C.WoodDark,
 			Enum.Material.Wood
 		)
 	end
-	part(m, "Head", Vector3.new(2.4, 1.6, 2.4), top * CFrame.new(0, h - 0.6, 0), C.Metal, Enum.Material.Metal)
-	column(m, "Shaft", h - 1.5, 0.6, top, C.Metal, Enum.Material.Metal)
-	ball(m, "Bit", 1.4, top * CFrame.new(0, 0.6, 0), GOLD, Enum.Material.Metal)
-	part(
-		m,
-		"Engine",
-		Vector3.new(3, 2.4, 2.4),
-		top * CFrame.new(-3, 1.2, 2.5),
-		Color3.fromRGB(150, 70, 50),
-		Enum.Material.Metal
-	)
-	column(m, "Exhaust", 3, 0.6, top * CFrame.new(-3.8, 2.4, 3.2), C.StoneDark, Enum.Material.Metal)
-	part(m, "Cart", Vector3.new(2.6, 1.4, 2), top * CFrame.new(3, 1.1, 2.5), C.Wood, Enum.Material.WoodPlanks)
-	for k = 1, 3 do
-		ball(m, "Ore", 0.9, top * CFrame.new(2.4 + k * 0.4, 2, 2.5), Color3.fromRGB(190, 120, 80), Enum.Material.Rock)
+	for _, x in { -0.55, 0.55 } do
+		part(m, "Rail", Vector3.new(0.14, 0.14, 6.6), rails * CFrame.new(x, 0.23, 0), C.Metal, Enum.Material.Metal)
 	end
-end
-
--- Condenseur d'Éther : base de marbre, cristal lumineux dans une cage, anneaux dorés.
-machineBuilders.EtherCondenser = function(m: Model, base: CFrame, level: number)
-	local top = base * CFrame.new(0, 0.95, 0)
-	column(m, "Base", 1.4, 7, top, MARBLE, Enum.Material.Marble)
-	column(m, "BaseTrim", 0.3, 7.4, top * CFrame.new(0, 1.4, 0), GOLD, Enum.Material.Metal, { NoShadow = true })
-	for k = 0, 3 do
-		local a = math.rad(k * 90 + 45)
-		part(
-			m,
-			"Pillar",
-			Vector3.new(0.6, 6, 0.6),
-			top * CFrame.new(math.cos(a) * 2.6, 4.4, math.sin(a) * 2.6),
-			MARBLE_SHADE,
-			Enum.Material.Marble
-		)
-	end
+	local cart = rails * CFrame.new(0, 0, 0.4)
+	part(m, "Cart", Vector3.new(1.7, 1, 2.2), cart * CFrame.new(0, 1.05, 0), C.Wood, Enum.Material.WoodPlanks)
 	part(
 		m,
-		"Crystal",
-		Vector3.new(1.6, 3.6, 1.6),
-		top * CFrame.new(0, 4.4, 0) * CFrame.Angles(0, math.rad(45), 0),
-		C.RuneBlue:Lerp(C.Ether, 0.5),
-		Enum.Material.Neon,
-		{ NoShadow = true }
-	)
-	for k = 1, math.min(level, 3) do
-		part(
-			m,
-			"Ring" .. k,
-			Vector3.new(0.25, 4.4 + k * 0.5, 4.4 + k * 0.5),
-			top
-				* CFrame.new(0, 2.6 + k * 1.3, 0)
-				* CFrame.Angles(0, 0, math.rad(90))
-				* CFrame.Angles(math.rad(k * 25), 0, 0),
-			GOLD,
-			Enum.Material.Metal,
-			{
-				Shape = Enum.PartType.Cylinder,
-				CanCollide = false,
-				NoShadow = true,
-			}
-		)
-	end
-	part(m, "Cap", Vector3.new(6.4, 0.6, 6.4), top * CFrame.new(0, 7.6, 0), MARBLE, Enum.Material.Marble)
-	ball(m, "Orb", 1.2, top * CFrame.new(0, 8.5, 0), C.Ether, Enum.Material.Neon, { NoShadow = true })
-end
-
--- Forge royale : four en brique, gueule incandescente, cheminée, enclume et dorures.
-machineBuilders.RoyalForge = function(m: Model, base: CFrame, level: number)
-	local top = base * CFrame.new(0, 0.95, 0)
-	part(
-		m,
-		"Furnace",
-		Vector3.new(8, 6, 7),
-		top * CFrame.new(0, 3, 1),
-		Color3.fromRGB(150, 70, 55),
-		Enum.Material.Brick
-	)
-	part(
-		m,
-		"Mouth",
-		Vector3.new(3.4, 2.4, 0.4),
-		top * CFrame.new(0, 2, -2.55),
-		Color3.fromRGB(255, 140, 50),
-		Enum.Material.Neon,
-		{ NoShadow = true }
-	)
-	part(m, "Lintel", Vector3.new(4.4, 0.6, 0.6), top * CFrame.new(0, 3.5, -2.6), GOLD, Enum.Material.Metal)
-	column(m, "Chimney", 6 + level, 2.2, top * CFrame.new(2.4, 6, 2.4), C.StoneDark, Enum.Material.Brick)
-	column(
-		m,
-		"ChimneyCap",
-		0.5,
-		2.8,
-		top * CFrame.new(2.4, 12 + level, 2.4),
-		GOLD,
+		"CartRim",
+		Vector3.new(1.86, 0.18, 2.36),
+		cart * CFrame.new(0, 1.52, 0),
+		C.StoneDark,
 		Enum.Material.Metal,
 		{ NoShadow = true }
 	)
-	part(m, "Roof", Vector3.new(8.6, 0.6, 7.6), top * CFrame.new(0, 6.3, 1), C.RoofDark, Enum.Material.Slate)
-	part(m, "Anvil", Vector3.new(2.2, 1, 1), top * CFrame.new(-3, 1.6, -3.2), C.StoneDark, Enum.Material.Metal)
-	part(m, "AnvilFoot", Vector3.new(1, 1.1, 0.8), top * CFrame.new(-3, 0.55, -3.2), C.WoodDark, Enum.Material.Wood)
-	for k = 1, level do
+	for _, x in { -0.8, 0.8 } do
+		for _, z in { -0.7, 0.7 } do
+			part(
+				m,
+				"CartWheel",
+				Vector3.new(0.18, 0.5, 0.5),
+				cart * CFrame.new(x, 0.55, z),
+				C.StoneDark,
+				Enum.Material.Metal,
+				{
+					Shape = Enum.PartType.Cylinder,
+					NoShadow = true,
+				}
+			)
+		end
+	end
+	for k = 0, 2 + math.min(level, 3) do
+		local ore = k % 3 == 0
 		part(
 			m,
-			"Ingot",
-			Vector3.new(1.2, 0.4, 0.6),
-			top * CFrame.new(-4 + k * 0.1, 0.2 + k * 0.42, -0.5),
+			"OreLump",
+			Vector3.new(0.6, 0.5, 0.6),
+			cart
+				* CFrame.new(-0.45 + (k % 3) * 0.45, 1.65 + math.floor(k / 3) * 0.2, -0.6 + (k % 2) * 0.9)
+				* CFrame.Angles(k, k * 0.7, 0),
+			if ore then Color3.fromRGB(230, 150, 90) else Color3.fromRGB(190, 120, 80),
+			if ore then Enum.Material.Neon else Enum.Material.Rock,
+			{ NoShadow = true }
+		)
+	end
+	local lr = 3.2 * 0.45 + 0.9 * 0.55
+	hangingLantern(m, top * CFrame.new(-lr - 0.1, h * 0.55 - 0.7, -lr - 0.5), C.Rune)
+end
+
+-- Condenseur d'Éther : dais de marbre à degrés, obélisques runiques, grappe de cristaux
+-- flottante dans des anneaux armillaires, réservoir de verre relié par des tuyaux de cuivre.
+machineBuilders.EtherCondenser = function(m: Model, base: CFrame, level: number)
+	local top = base * CFrame.new(0, MACHINE_TOP, 0)
+	local rune = C.RuneBlue:Lerp(C.Ether, 0.5)
+	column(m, "Dais", 0.6, 9, top, MARBLE, Enum.Material.Marble)
+	column(m, "DaisTrim", 0.2, 9.3, top * CFrame.new(0, 0.2, 0), GOLD, Enum.Material.Metal, { NoShadow = true })
+	column(m, "DaisStep", 0.6, 6.6, top * CFrame.new(0, 0.6, 0), MARBLE_SHADE, Enum.Material.Marble)
+	column(
+		m,
+		"DaisRune",
+		0.04,
+		5.6,
+		top * CFrame.new(0, 1.2, 0),
+		rune,
+		Enum.Material.Neon,
+		{ NoShadow = true, Transparency = 0.3 }
+	)
+	column(
+		m,
+		"DaisInlay",
+		0.06,
+		5,
+		top * CFrame.new(0, 1.2, 0),
+		MARBLE_SHADE,
+		Enum.Material.Marble,
+		{ NoShadow = true }
+	)
+	-- Six obélisques à rune et pointe de cristal
+	for i = 0, 5 do
+		local a = math.rad(i * 60 + 30)
+		local at = top * CFrame.new(math.cos(a) * 3.9, 0.6, math.sin(a) * 3.9) * CFrame.Angles(0, -a - math.pi / 2, 0)
+		part(m, "ObeliskBase", Vector3.new(1, 0.6, 1), at * CFrame.new(0, 0.3, 0), MARBLE_SHADE, Enum.Material.Marble)
+		part(
+			m,
+			"Obelisk",
+			Vector3.new(0.65, 3.6 + level * 0.3, 0.65),
+			at * CFrame.new(0, 2.4 + level * 0.15, 0),
+			MARBLE,
+			Enum.Material.Marble
+		)
+		part(
+			m,
+			"ObeliskRune",
+			Vector3.new(0.16, 2.6, 0.06),
+			at * CFrame.new(0, 2.4, 0.34),
+			rune,
+			Enum.Material.Neon,
+			{ NoShadow = true, CanCollide = false }
+		)
+		part(
+			m,
+			"ObeliskTip",
+			Vector3.new(0.5, 0.5, 0.5),
+			at * CFrame.new(0, 4.6 + level * 0.3, 0) * CFrame.Angles(math.rad(45), 0, math.rad(45)),
+			rune,
+			Enum.Material.Neon,
+			{ NoShadow = true, CanCollide = false }
+		)
+	end
+	-- Coupe dorée sur colonnette, grappe de cristaux flottante
+	column(m, "Stem", 1.6, 1.1, top * CFrame.new(0, 1.2, 0), MARBLE_SHADE, Enum.Material.Marble)
+	column(m, "Bowl", 0.5, 2.6, top * CFrame.new(0, 2.8, 0), GOLD, Enum.Material.Metal)
+	local core = top * CFrame.new(0, 5.2, 0)
+	part(
+		m,
+		"Crystal",
+		Vector3.new(1.3, 3.4, 1.3),
+		core * CFrame.Angles(0, math.rad(45), 0),
+		rune,
+		Enum.Material.Neon,
+		{ NoShadow = true }
+	)
+	for i = 0, 3 do
+		part(
+			m,
+			"Shard",
+			Vector3.new(0.6, 1.6, 0.6),
+			core
+				* CFrame.Angles(0, i * math.pi / 2, 0)
+				* CFrame.new(0, -0.7, -0.75)
+				* CFrame.Angles(math.rad(-25), math.rad(45), 0),
+			C.Ether,
+			Enum.Material.Neon,
+			{ NoShadow = true, CanCollide = false }
+		)
+	end
+	-- Anneaux armillaires (un de plus par niveau, jusqu'à 3)
+	for k = 1, math.min(level, 3) do
+		ringX(
+			m,
+			"Ring" .. k,
+			core * CFrame.Angles(0, k * math.rad(60), math.rad(90)) * CFrame.Angles(math.rad(k * 30), 0, 0),
+			1.9 + k * 0.45,
+			0.14,
+			0.2,
 			GOLD,
-			Enum.Material.Metal
+			Enum.Material.Metal,
+			12
+		)
+	end
+	ball(m, "Orb", 0.9, top * CFrame.new(0, 8.6, 0), C.Ether, Enum.Material.Neon, { NoShadow = true })
+	-- Réservoir de verre et tuyaux de cuivre
+	local tank = top * CFrame.new(-4.4, 0, 3.4)
+	column(m, "TankBase", 0.5, 2, tank, GOLD, Enum.Material.Metal)
+	column(m, "Tank", 2.8, 1.7, tank * CFrame.new(0, 0.5, 0), Color3.fromRGB(200, 230, 255), Enum.Material.Glass, {
+		Transparency = 0.55,
+	})
+	column(m, "TankFluid", 2 + level * 0.15, 1.3, tank * CFrame.new(0, 0.55, 0), rune, Enum.Material.Neon, {
+		NoShadow = true,
+		CanCollide = false,
+	})
+	column(m, "TankLid", 0.4, 2, tank * CFrame.new(0, 3.3, 0), GOLD, Enum.Material.Metal)
+	local copper = Color3.fromRGB(190, 110, 70)
+	local p1 = (tank * CFrame.new(0, 3.9, 0)).Position
+	local p2 = (tank * CFrame.new(0, 4.6, 0)).Position
+	local p3 = (top * CFrame.new(-1.2, 4.6, 1)).Position
+	beam(m, "Pipe", p1, p2, 0.3, copper, Enum.Material.Metal)
+	beam(m, "Pipe", p2, p3, 0.3, copper, Enum.Material.Metal)
+	ball(m, "PipeJoint", 0.42, CFrame.new(p2), copper, Enum.Material.Metal, { NoShadow = true })
+end
+
+-- Forge royale : forge en brique sur soubassement de pierre, gueule voûtée incandescente,
+-- cheminée cerclée crachant des étincelles, soufflet, enclume et marteau, bac de trempe,
+-- lingots, bannière royale à couronne.
+machineBuilders.RoyalForge = function(m: Model, base: CFrame, level: number)
+	local top = base * CFrame.new(0, MACHINE_TOP, 0)
+	part(m, "Socle", Vector3.new(8.4, 1, 7), top * CFrame.new(0, 0.5, 1.4), C.StoneDark, Enum.Material.Cobblestone)
+	local body = top * CFrame.new(0, 3.5, 1.4)
+	part(m, "Furnace", Vector3.new(7.6, 5, 6.4), body, Color3.fromRGB(150, 70, 55), Enum.Material.Brick)
+	-- Chaînage d'angle en pierre (harpes alternées)
+	for _, sx in { -1, 1 } do
+		for k = 0, 4 do
+			local long = k % 2 == 0
+			part(
+				m,
+				"Quoin",
+				Vector3.new(if long then 1.3 else 0.8, 0.9, 0.3),
+				body * CFrame.new(sx * (3.8 - (if long then 0.6 else 0.35)), -2 + k, -3.25),
+				C.StoneLight,
+				Enum.Material.Slate,
+				{ NoShadow = true }
+			)
+		end
+	end
+	-- Gueule voûtée : foyer, claveaux, clé dorée
+	local mouth = body * CFrame.new(0, -1.2, -3.22)
+	part(m, "Mouth", Vector3.new(3, 2.2, 0.2), mouth, Color3.fromRGB(255, 140, 50), Enum.Material.Neon, {
+		NoShadow = true,
+	})
+	part(
+		m,
+		"Embers",
+		Vector3.new(2.6, 0.5, 0.3),
+		mouth * CFrame.new(0, -0.8, -0.03),
+		Color3.fromRGB(255, 80, 30),
+		Enum.Material.Neon,
+		{ NoShadow = true }
+	)
+	for i = 0, 6 do
+		local a = math.rad(180 - i * 30)
+		part(
+			m,
+			"Voussoir",
+			Vector3.new(0.7, 0.55, 0.4),
+			mouth
+				* CFrame.new(math.cos(a) * 1.75, 1.1 + math.sin(a) * 1.2, -0.08 - (i % 2) * 0.03)
+				* CFrame.Angles(0, 0, a - math.pi / 2),
+			if i == 3 then GOLD else C.StoneLight,
+			if i == 3 then Enum.Material.Metal else Enum.Material.Slate,
+			{ NoShadow = true }
+		)
+	end
+	-- Toit d'ardoise, faîtage, cheminée cerclée et étincelles
+	gableRoof(m, 8.4, 7.2, 2.4, top * CFrame.new(0, 6, 1.4), C.RoofDark)
+	part(m, "Ridge", Vector3.new(8.8, 0.35, 0.45), top * CFrame.new(0, 8.45, 1.4), C.StoneDark, Enum.Material.Slate)
+	local chimneyH = 5 + level
+	local chimney = top * CFrame.new(2.4, 6 + chimneyH / 2, 2.8)
+	part(m, "Chimney", Vector3.new(1.8, chimneyH, 1.8), chimney, C.StoneDark, Enum.Material.Brick)
+	for k = 0, 1 do
+		part(
+			m,
+			"ChimneyBand",
+			Vector3.new(1.96, 0.25, 1.96),
+			chimney * CFrame.new(0, -chimneyH / 2 + 2 + k * 2.2, 0),
+			GOLD,
+			Enum.Material.Metal,
+			{ NoShadow = true }
+		)
+	end
+	part(
+		m,
+		"ChimneyCap",
+		Vector3.new(2.3, 0.4, 2.3),
+		chimney * CFrame.new(0, chimneyH / 2 + 0.2, 0),
+		C.StoneDark,
+		Enum.Material.Slate
+	)
+	for k = 0, 3 do
+		part(
+			m,
+			"Spark",
+			Vector3.new(0.2, 0.2, 0.2),
+			chimney * CFrame.new(-0.4 + k * 0.3, chimneyH / 2 + 0.8 + (k % 2) * 0.7, (k % 3 - 1) * 0.3),
+			Color3.fromRGB(255, 170, 60),
+			Enum.Material.Neon,
+			{ NoShadow = true, CanCollide = false }
+		)
+	end
+	-- Soufflet en cuir (côté gauche)
+	local bellows = top * CFrame.new(-4.9, 1.5, 1.4)
+	part(
+		m,
+		"BellowsBoard",
+		Vector3.new(1.4, 0.15, 2.6),
+		bellows * CFrame.new(0, 0.5, 0) * CFrame.Angles(math.rad(-8), 0, 0),
+		C.Wood,
+		Enum.Material.Wood
+	)
+	part(m, "BellowsBoard", Vector3.new(1.4, 0.15, 2.6), bellows * CFrame.new(0, -0.5, 0), C.Wood, Enum.Material.Wood)
+	part(m, "BellowsLeather", Vector3.new(1.2, 0.8, 2.2), bellows, Color3.fromRGB(105, 70, 45), Enum.Material.Leather)
+	part(
+		m,
+		"BellowsHandle",
+		Vector3.new(0.2, 0.2, 1.4),
+		bellows * CFrame.new(0, 0.6, 1.8),
+		C.WoodDark,
+		Enum.Material.Wood
+	)
+	part(
+		m,
+		"BellowsSupport",
+		Vector3.new(0.6, 0.9, 0.6),
+		top * CFrame.new(-4.9, 0.5, 1.4),
+		C.StoneDark,
+		Enum.Material.Cobblestone
+	)
+	-- Enclume sur billot et marteau
+	local anvil = top * CFrame.new(-2.4, 0, -3.6)
+	column(m, "AnvilBlock", 1, 1.5, anvil, C.Bark, Enum.Material.Wood)
+	part(m, "AnvilFoot", Vector3.new(1.4, 0.35, 0.9), anvil * CFrame.new(0, 1.18, 0), C.StoneDark, Enum.Material.Metal)
+	part(m, "AnvilWaist", Vector3.new(0.8, 0.5, 0.6), anvil * CFrame.new(0, 1.6, 0), C.StoneDark, Enum.Material.Metal)
+	part(
+		m,
+		"AnvilFace",
+		Vector3.new(1.8, 0.45, 0.85),
+		anvil * CFrame.new(-0.1, 2.07, 0),
+		C.Metal:Lerp(C.StoneDark, 0.4),
+		Enum.Material.Metal
+	)
+	part(
+		m,
+		"AnvilHorn",
+		Vector3.new(0.85, 0.45, 0.8),
+		anvil * CFrame.new(1.22, 2.07, 0) * CFrame.Angles(0, math.rad(-90), 0),
+		C.Metal:Lerp(C.StoneDark, 0.4),
+		Enum.Material.Metal,
+		{ Class = "WedgePart" }
+	)
+	part(
+		m,
+		"HammerHandle",
+		Vector3.new(0.14, 0.14, 1.3),
+		anvil * CFrame.new(-0.4, 2.4, -0.3) * CFrame.Angles(0, math.rad(30), 0),
+		C.WoodLight,
+		Enum.Material.Wood,
+		{ CanCollide = false }
+	)
+	part(
+		m,
+		"HammerHead",
+		Vector3.new(0.6, 0.32, 0.32),
+		anvil * CFrame.new(-0.05, 2.45, 0.28) * CFrame.Angles(0, math.rad(30), 0),
+		C.StoneDark,
+		Enum.Material.Metal,
+		{ CanCollide = false }
+	)
+	-- Bac de trempe
+	local quench = top * CFrame.new(-4.4, 0, -3.4)
+	Models.barrel(m, quench)
+	column(
+		m,
+		"QuenchWater",
+		0.06,
+		1.6,
+		quench * CFrame.new(0, 2.2, 0),
+		Color3.fromRGB(70, 120, 170),
+		Enum.Material.Glass,
+		{
+			Transparency = 0.2,
+			NoShadow = true,
+		}
+	)
+	-- Lingots d'or en pyramide (plus nombreux avec le niveau)
+	local ingots = top * CFrame.new(0.4, 0, -3.8)
+	local n = 0
+	for row = 0, 2 do
+		for k = 0, 2 - row do
+			n += 1
+			if n > 1 + level then
+				break
+			end
+			part(
+				m,
+				"Ingot",
+				Vector3.new(1.1, 0.4, 0.55),
+				ingots * CFrame.new((k - (2 - row) / 2) * 1.15, 0.2 + row * 0.42, 0),
+				GOLD,
+				Enum.Material.Metal,
+				{ NoShadow = true }
+			)
+		end
+	end
+	-- Bannière royale à couronne
+	local pole = top * CFrame.new(4.6, 0, -2.6)
+	column(m, "BannerPole", 7, 0.3, pole, C.WoodDark, Enum.Material.Wood)
+	ball(m, "BannerFinial", 0.5, pole * CFrame.new(0, 7.1, 0), GOLD, Enum.Material.Metal, { NoShadow = true })
+	part(m, "BannerBar", Vector3.new(0.18, 0.18, 2.2), pole * CFrame.new(0, 6.6, -1), C.WoodDark, Enum.Material.Wood)
+	local cloth = pole * CFrame.new(0, 5, -1.1)
+	part(m, "Banner", Vector3.new(0.1, 3, 1.8), cloth, C.Cloth, Enum.Material.Fabric, { CanCollide = false })
+	part(
+		m,
+		"BannerTrim",
+		Vector3.new(0.16, 0.2, 1.8),
+		cloth * CFrame.new(0, -1.3, 0),
+		GOLD,
+		Enum.Material.Fabric,
+		{ NoShadow = true, CanCollide = false }
+	)
+	part(
+		m,
+		"Crown",
+		Vector3.new(0.2, 0.35, 0.9),
+		cloth * CFrame.new(0, 0.3, 0),
+		GOLD,
+		Enum.Material.Metal,
+		{ NoShadow = true, CanCollide = false }
+	)
+	for k = -1, 1 do
+		part(
+			m,
+			"CrownPoint",
+			Vector3.new(0.18, 0.3, 0.2),
+			cloth * CFrame.new(0, 0.6, k * 0.33),
+			GOLD,
+			Enum.Material.Metal,
+			{ NoShadow = true, CanCollide = false }
 		)
 	end
 end

@@ -32,6 +32,7 @@ local PlotService = require(script.Parent.PlotService)
 local ProfileService = require(script.Parent.ProfileService)
 local Notifier = require(script.Parent.Notifier)
 local Models = require(script.Parent.Parent.Art.Models)
+local CostPanel = require(script.Parent.Parent.Art.CostPanel)
 
 local LandService = {}
 
@@ -62,8 +63,8 @@ type LandState = {
 	Floors: { [string]: { Floor: BasePart, Fallow: Folder, Paving: Folder? } },
 	Barriers: { [number]: Model },
 	SlotsFolder: Folder,
-	Slots: { [string]: { Model: Model, Level: number, Label: TextLabel, Prompt: ProximityPrompt, Gem: BasePart? } },
-	Sign: { Model: Model, Gem: BasePart, Label: TextLabel, AreaId: string }?,
+	Slots: { [string]: { Model: Model, Level: number, Label: any, Prompt: ProximityPrompt, Gem: BasePart? } },
+	Sign: { Model: Model, Gem: BasePart, Label: any, AreaId: string }?,
 }
 
 local states: { [any]: LandState } = {} -- par parcelle
@@ -84,10 +85,6 @@ local function signCFrame(plot, areaId: string): CFrame
 		x -= 5 * math.sign(x)
 	end
 	return plot.CFrame * CFrame.new(x + (if opening.Along == "X" then 7 else 0), 0, z)
-end
-
-local function costLine(cost): string
-	return Formulas.formatCost(Materials, cost)
 end
 
 local function rateLine(def, level: number): string
@@ -223,7 +220,7 @@ local function renderSlot(plot, state: LandState, slot, level: number, materials
 		end
 		model.Name = slot.Id
 		model.Parent = state.SlotsFolder
-		local label = PlotService.makeBillboard(anchor, "", if level > 0 then 1 else 4, Vector2.new(14, 3.4))
+		local label = CostPanel.new(anchor, if level > 0 then 0.5 else 1.2, 70)
 		local prompt = makePrompt(
 			if level > 0 then anchor else gem :: BasePart,
 			if level > 0 then "Améliorer" else "Construire",
@@ -237,15 +234,35 @@ local function renderSlot(plot, state: LandState, slot, level: number, materials
 	end
 	local entry = current :: any
 	if level <= 0 then
-		entry.Label.Text = string.format("%s\n%s\n%s", def.Name, costLine(def.Cost), rateLine(def, 1))
-		entry.Gem.Color = if Formulas.canAfford(materials, def.Cost) then READY else MISSING
+		local affordable = Formulas.canAfford(materials, def.Cost)
+		CostPanel.set(entry.Label, {
+			Title = def.Name,
+			Cost = def.Cost,
+			Have = materials,
+			Lines = { rateLine(def, 1) },
+			Status = if affordable then "Maintenir E pour construire" else "Il manque des ressources",
+			Kind = if affordable then "ok" else "missing",
+		})
+		entry.Gem.Color = if affordable then READY else MISSING
 	elseif level >= Machines.MaxLevel then
-		entry.Label.Text = string.format("%s · niv. %d (max)\n%s", def.Name, level, rateLine(def, level))
+		CostPanel.set(entry.Label, {
+			Title = string.format("%s · niv. %d", def.Name, level),
+			Lines = { rateLine(def, level) },
+			Status = "Niveau maximum atteint",
+			Kind = "info",
+		})
 		entry.Prompt.Enabled = false
 	else
 		local cost = Formulas.machineUpgradeCost(Machines, def, level)
-		entry.Label.Text =
-			string.format("%s · niv. %d\n%s\nAméliorer : %s", def.Name, level, rateLine(def, level), costLine(cost))
+		local affordable = Formulas.canAfford(materials, cost)
+		CostPanel.set(entry.Label, {
+			Title = string.format("%s · niv. %d → %d", def.Name, level, level + 1),
+			Cost = cost,
+			Have = materials,
+			Lines = { rateLine(def, level) },
+			Status = if affordable then "Maintenir E pour améliorer" else "Il manque des ressources",
+			Kind = if affordable then "ok" else "missing",
+		})
 		entry.Prompt.Enabled = true
 	end
 end
@@ -295,7 +312,7 @@ local function render(plot, data)
 		local model, part, gem = Models.pedestal(signCFrame(plot, nextArea.Id))
 		model.Name = "LandSign"
 		model.Parent = state.Folder
-		local label = PlotService.makeBillboard(gem, "", 4, Vector2.new(14, 4))
+		local label = CostPanel.new(gem, 1.2, 80)
 		makePrompt(part, "Agrandir", nextArea.Name, function(player)
 			LandService.buyArea(player)
 		end)
@@ -303,15 +320,16 @@ local function render(plot, data)
 	end
 	if nextArea and state.Sign then
 		local slots = #nextArea.Slots
-		state.Sign.Label.Text = string.format(
-			"🏗 Agrandir : %s (%d/%d)\n%s\n+%d emplacement(s) de machine",
-			nextArea.Name,
-			level + 1,
-			#Land.Areas,
-			costLine(nextArea.Cost),
-			slots
-		)
-		state.Sign.Gem.Color = if Formulas.canAfford(data.Materials, nextArea.Cost) then READY else MISSING
+		local affordable = Formulas.canAfford(data.Materials, nextArea.Cost)
+		CostPanel.set(state.Sign.Label, {
+			Title = string.format("Agrandir : %s (%d/%d)", nextArea.Name, level + 1, #Land.Areas),
+			Cost = nextArea.Cost,
+			Have = data.Materials,
+			Lines = { string.format("+%d emplacement(s) de machine", slots) },
+			Status = if affordable then "Maintenir E pour agrandir" else "Il manque des ressources",
+			Kind = if affordable then "ok" else "missing",
+		})
+		state.Sign.Gem.Color = if affordable then READY else MISSING
 	end
 end
 

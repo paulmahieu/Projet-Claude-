@@ -72,7 +72,14 @@ local function at(x, z)
 	return roblox.CFrame.new(x, 0, z)
 end
 local V = roblox.Vector3.new
-if scene == "etalon" then
+if scene == "machines" then
+	-- Les 5 machines (niveau 3, puis 5 pour la dernière) et un socle de construction.
+	local lvl = tonumber(process.args[3]) or 3
+	for i, kind in { "LumberMill", "StoneCrusher", "OreDrill", "EtherCondenser", "RoyalForge" } do
+		dump((Models.machine(kind, at((i - 3) * 16, 0), lvl)))
+	end
+	dump((Models.pedestal(at(48, -6))))
+elseif scene == "etalon" then
 	-- Étalon de luxe : face, trois quarts, profil.
 	local holder = roblox.Instance.new("Model")
 	local def

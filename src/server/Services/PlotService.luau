@@ -14,10 +14,10 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Game = require(Shared.Config.Game)
 local Structures = require(Shared.Config.Structures)
 local Decors = require(Shared.Config.Decors)
-local Materials = require(Shared.Config.Materials)
 local Formulas = require(Shared.Formulas)
 
 local Models = require(script.Parent.Parent.Art.Models)
+local CostPanel = require(script.Parent.Parent.Art.CostPanel)
 
 local Lighting = game:GetService("Lighting")
 
@@ -43,7 +43,7 @@ export type Plot = {
 	PedestalsFolder: Folder,
 	StationsFolder: Folder,
 	Core: Model,
-	Pedestals: { [string]: { Part: BasePart, Gem: BasePart, Prompt: ProximityPrompt, Label: TextLabel } },
+	Pedestals: { [string]: { Part: BasePart, Gem: BasePart, Prompt: ProximityPrompt, Label: any } },
 	Doors: { any },
 	DoorsOpen: boolean,
 	DoorPrompt: ProximityPrompt?,
@@ -386,7 +386,7 @@ local function createPedestal(plot: Plot, def)
 	model.Name = "Pedestal_" .. def.Id
 	model.Parent = plot.PedestalsFolder
 	gem.Color = COLORS.Locked
-	local label = makeBillboard(gem, "", 4, Vector2.new(12, 4))
+	local label = CostPanel.new(gem, 1.2, 60)
 
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Construire"
@@ -427,11 +427,17 @@ function PlotService.refresh(groupId: string, groupData)
 			end
 			local locked = def.Requires ~= nil and not owned[def.Requires]
 			local affordable = Formulas.canAfford(groupData.Materials, def.Cost)
-			local lines = { def.Name, Formulas.formatCost(Materials, def.Cost), def.Effect }
-			if locked then
-				table.insert(lines, "Requiert : " .. structureById[def.Requires].Name)
-			end
-			pedestal.Label.Text = table.concat(lines, "\n")
+			CostPanel.set(pedestal.Label, {
+				Title = def.Name,
+				Cost = def.Cost,
+				Have = groupData.Materials,
+				Lines = { def.Effect },
+				Status = if locked
+					then "Requiert : " .. structureById[def.Requires].Name
+					elseif affordable then "Maintenir E pour construire"
+					else "Il manque des ressources",
+				Kind = if locked then "locked" elseif affordable then "ok" else "missing",
+			})
 			pedestal.Gem.Color = if locked then COLORS.Locked elseif affordable then COLORS.Ready else COLORS.Missing
 			pedestal.Prompt.Enabled = not locked
 		end

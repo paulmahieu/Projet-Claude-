@@ -224,6 +224,8 @@ Le code vit dans `src/` (fichiers texte versionnés). **Rojo** le synchronise en
 | 82 | Bosquets 1, 4, 5, 8 | Minerai de cristal : maintenir E → +2 Cristal, +1 Pierre ; les cristaux repoussent en 90 s. |
 | 83 | Après import du pack dans ServerStorage > Assets | Caisses, tonneaux, rochers, buissons, torches, portail, palissade, murets et pavés des extensions remplacés par les modèles Blender, à la bonne taille. |
 | 84 | Ouvrir des Œufs de l'éther (ou commande admin) jusqu'à obtenir l'Étalon de luxe, l'équiper | Cheval debout en costume violet (épaules bouffantes, col rouge à pois, chaîne dorée avec « A », montre), lunettes d'aviateur dorées, bouche rieuse ; il marche au sol à côté du joueur, bonus +580 %. |
+| 85 | Construire puis améliorer chaque machine (Scierie, Concasseur, Foreuse, Condenseur, Forge) | Nouveaux modèles détaillés (roue à aubes, engrenages, derrick, autel arcanique, forge voûtée) ; voyants de niveau sur la plaque avant ; blocs qui avancent sur le tapis jusqu'au bac ; aucun scintillement. |
+| 86 | S'approcher d'un socle de construction, d'un emplacement de machine et du panneau d'agrandissement | Panneau sombre lisible : titre, une ligne par ressource « stock / coût » (vert si assez, rouge sinon), effet, état (« Maintenir E pour construire » / « Il manque des ressources » / « Requiert : … »), bordure de la couleur de l'état ; il ne cache pas la gemme. |
 
 ### À plusieurs : *Test → Clients and Servers → 2 ou 3 joueurs → Start*
 
