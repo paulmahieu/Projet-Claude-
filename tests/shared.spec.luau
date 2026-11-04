@@ -23,6 +23,7 @@ local Rebirth = require("../src/shared/Config/Rebirth")
 local Pets = require("../src/shared/Config/Pets")
 local Bosses = require("../src/shared/Config/Bosses")
 local Combat = require("../src/shared/Config/Combat")
+local Street = require("../src/shared/Config/Street")
 
 local passed, failed = 0, 0
 
@@ -588,6 +589,67 @@ test("arènes : hors des parcelles, portails au hub, attaques valides", function
 		for _, attack in boss.Attacks do
 			assert(attack.Telegraph >= 1, boss.Id .. " : attaque non annoncée assez tôt")
 		end
+	end
+end)
+
+----------------------------------------------------------------------------------------
+print("Rue des boss")
+
+test("sections en boucle et patron toutes les 5 étapes", function()
+	eq(Formulas.streetSection(1, Street), 1)
+	eq(Formulas.streetSection(Street.Sections, Street), Street.Sections)
+	eq(Formulas.streetSection(Street.Sections + 1, Street), 1, "retour au début")
+	assert(not Formulas.streetIsPatron(4, Street), "étape 4 normale")
+	assert(Formulas.streetIsPatron(5, Street), "étape 5 = patron")
+	eq(Formulas.streetWaveSize(5, Street), 1, "le patron est seul")
+	eq(Formulas.streetWaveSize(1, Street), Street.WaveBase)
+	eq(Formulas.streetWaveSize(1001, Street), Street.WaveMax)
+end)
+
+test("difficulté et récompenses croissantes, patron plus fort", function()
+	local a, b = Formulas.streetEnemy(1, Street), Formulas.streetEnemy(4, Street)
+	assert(b.Health > a.Health and b.Damage >= a.Damage and b.Gold >= a.Gold, "croissance")
+	local p = Formulas.streetEnemy(5, Street)
+	local n = Formulas.streetEnemy(6, Street)
+	assert(p.Health > n.Health, "le patron a plus de PV que l'étape suivante")
+	eq(Formulas.streetRecommendedPower(1, Street), math.ceil(Street.Enemy.Health / Street.HitsToKill))
+	assert(Formulas.streetRecommendedPower(1, Street) <= Training.PowerBase, "étape 1 faisable dès le départ")
+end)
+
+test("position -> section", function()
+	eq(Formulas.streetSectionAt(-5, 0, Street), 0, "parvis")
+	eq(Formulas.streetSectionAt(1, 0, Street), 1)
+	eq(Formulas.streetSectionAt(Street.SectionLength + 1, 0, Street), 2)
+	eq(Formulas.streetSectionAt(1, Street.Width, Street), 0, "hors des murs")
+	eq(Formulas.streetSectionAt(Street.Sections * Street.SectionLength + 1, 0, Street), 0, "après la fin")
+end)
+
+test("butin du patron : chances respectées", function()
+	local got = Formulas.rollDrops(Street.PatronDrops, { 0.99, 0.2, 0.9, 0.9 })
+	eq(#got, 2, "cristal garanti + minerai (0,2 < 0,5)")
+	eq(#Formulas.rollDrops(Street.PatronDrops, { 0.5, 0.9, 0.9, 0.9 }), 1)
+	local ids = {}
+	for _, def in Pets.List do
+		ids[def.Id] = true
+	end
+	for _, drop in Street.PatronDrops do
+		assert(drop.Chance > 0 and drop.Chance <= 1, "chance invalide")
+		if drop.Kind == "Pet" then
+			assert(ids[drop.Id], "compagnon inconnu " .. drop.Id)
+		end
+	end
+end)
+
+test("rue : dans le ciel, au-dessus des arènes et de la carte", function()
+	assert(Street.Origin[2] > 200, "rue suspendue")
+	for _, boss in Bosses do
+		assert(Street.Origin[2] - 0 > 60, "hors de la hauteur des arènes " .. boss.Id)
+	end
+	local portal = math.sqrt(Street.Portal[1] ^ 2 + Street.Portal[2] ^ 2)
+	assert(portal < 28, "portail de la rue dans le hub")
+	for _, boss in Bosses do
+		local dx, dz = Street.Portal[1] - boss.Portal[1], Street.Portal[2] - boss.Portal[2]
+		assert(math.sqrt(dx * dx + dz * dz) >= 10, "portails trop proches")
 	end
 end)
 

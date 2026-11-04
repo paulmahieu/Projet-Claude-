@@ -120,6 +120,25 @@ function PetService.hatch(player: Player, eggId: string)
 	}
 end
 
+-- Donne un compagnon gratuitement (butin de patron). Retourne false si l'inventaire est plein.
+function PetService.grant(player: Player, petId: string): boolean
+	local profile = ProfileService.get(player)
+	if not profile or not ProfileService.canMutate(player) or not petById[petId] then
+		return false
+	end
+	if #profile.Pets >= Pets.InventorySize then
+		return false
+	end
+	local uid = profile.NextPetUid
+	profile.NextPetUid += 1
+	table.insert(profile.Pets, { Uid = uid, PetId = petId })
+	if #profile.EquippedPets < Formulas.petSlots(profile.Rebirths, Rebirth) then
+		table.insert(profile.EquippedPets, uid)
+	end
+	push(player)
+	return true
+end
+
 function PetService.toggleEquip(player: Player, uid: number)
 	local profile, err = guard(player)
 	if not profile then

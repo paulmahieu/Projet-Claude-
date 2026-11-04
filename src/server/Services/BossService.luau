@@ -61,6 +61,7 @@ type Arena = {
 }
 
 local arenas: { Arena } = {}
+local strikeFallback: ((Player, number, number) -> boolean)? = nil
 local lastAuto: { [Player]: number } = {}
 local skillReady: { [Player]: { [string]: number } } = {}
 local invulnerableUntil: { [Player]: number } = {}
@@ -109,7 +110,11 @@ local function arenaOf(player: Player): Arena?
 		return nil
 	end
 	for _, arena in arenas do
-		if flatDistance(root.Position, arena.Center) <= arena.Def.ArenaRadius + 4 then
+		-- Hauteur vérifiée : la Rue des boss passe dans le ciel au-dessus d'une arène.
+		if
+			flatDistance(root.Position, arena.Center) <= arena.Def.ArenaRadius + 4
+			and math.abs(root.Position.Y - arena.Center.Y) < 60
+		then
 			return arena
 		end
 	end
@@ -447,9 +452,16 @@ function BossService.useSkill(player: Player, skillId: string)
 		return { ok = true, cooldown = skill.Cooldown }
 	end
 
-	-- Frappe runique : seulement en combat, à portée du boss.
+	-- Frappe runique : en arène sur le boss, sinon sur un ennemi de la Rue des boss.
 	local arena = arenaOf(player)
 	local root = aliveRoot(player)
+	if not arena and strikeFallback then
+		if strikeFallback(player, skill.DamageMult, skill.Range) then
+			ready[skillId] = now + skill.Cooldown
+			return { ok = true, cooldown = skill.Cooldown }
+		end
+		return { ok = false, msg = "Aucun ennemi à portée." }
+	end
 	if not arena or arena.State ~= "Fighting" or not arena.Root or not root then
 		return { ok = false, msg = "Aucun boss à portée." }
 	end
@@ -459,6 +471,14 @@ function BossService.useSkill(player: Player, skillId: string)
 	ready[skillId] = now + skill.Cooldown
 	applyDamage(arena, player, Formulas.hitDamage(ProfileService.power(player), skill.DamageMult, petMult(player)))
 	return { ok = true, cooldown = skill.Cooldown }
+end
+
+function BossService.isInvulnerable(player: Player): boolean
+	return (invulnerableUntil[player] or 0) > os.clock()
+end
+
+function BossService.setStrikeFallback(fn: (Player, number, number) -> boolean)
+	strikeFallback = fn
 end
 
 -- Construction des arènes et portails -------------------------------------------------------

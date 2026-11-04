@@ -919,6 +919,9 @@ end
 function Models.hubDecor(parent: Instance, radius: number)
 	for i = 1, 6 do
 		local angle = (i / 6) * math.pi * 2 + math.pi / 6
+		if i == 1 then
+			continue -- 90° : emplacement du portail de la Rue des boss
+		end
 		local pos = CFrame.new(math.cos(angle) * (radius - 3), 1, math.sin(angle) * (radius - 3))
 		Models.lantern(CFrame.lookAt(pos.Position, Vector3.new(0, 1, 0)), parent, i % 2 == 0)
 	end
@@ -1320,6 +1323,326 @@ function Models.telegraph(parent: Instance, position: Vector3, radius: number): 
 			NoShadow = true,
 		}
 	)
+end
+
+-- Rue des boss ---------------------------------------------------------------------------
+
+--[[
+	Construit la rue suspendue. `origin` : CFrame au sol du début de la rue, -Z local = sens
+	de la marche. Retourne la liste des CFrames de porte (fin de chaque section, au sol).
+]]
+function Models.street(origin: CFrame, cfg, parent: Instance)
+	local length = cfg.Sections * cfg.SectionLength
+	local w = cfg.Width
+	local gates = {}
+	-- Parvis de départ (avant la section 1)
+	part(
+		parent,
+		"StartPlaza",
+		Vector3.new(w + 10, 2, 24),
+		origin * CFrame.new(0, -1, 12),
+		C.StoneLight,
+		Enum.Material.Slate
+	)
+	for i = 1, cfg.Sections do
+		local z0 = -(i - 1) * cfg.SectionLength
+		local center = origin * CFrame.new(0, 0, z0 - cfg.SectionLength / 2)
+		-- Pavage en damier doux (deux teintes de pierre par section)
+		part(
+			parent,
+			"Road" .. i,
+			Vector3.new(w, 2, cfg.SectionLength),
+			center * CFrame.new(0, -1, 0),
+			if i % 2 == 0 then C.Stone else C.StoneDark:Lerp(C.Stone, 0.4),
+			Enum.Material.Cobblestone
+		)
+		part(
+			parent,
+			"Carpet" .. i,
+			Vector3.new(6, 0.1, cfg.SectionLength - 2),
+			center * CFrame.new(0, 0.05, 0),
+			C.Cloth:Lerp(C.RoofDark, 0.4),
+			Enum.Material.Fabric,
+			{
+				CanCollide = false,
+				NoShadow = true,
+			}
+		)
+		for _, side in { -1, 1 } do
+			-- Murs latéraux avec créneaux (empêchent de tomber)
+			part(
+				parent,
+				"Wall",
+				Vector3.new(2, 6, cfg.SectionLength),
+				center * CFrame.new(side * (w / 2 + 1), 3, 0),
+				C.StoneDark,
+				Enum.Material.Cobblestone
+			)
+			for k = 0, 3 do
+				part(
+					parent,
+					"Merlon",
+					Vector3.new(2.2, 1.6, 3),
+					center * CFrame.new(side * (w / 2 + 1), 6.8, -cfg.SectionLength / 2 + 5 + k * 10),
+					C.Stone,
+					Enum.Material.Cobblestone
+				)
+			end
+			-- Torche au milieu de la section
+			local torch = center * CFrame.new(side * (w / 2 - 0.4), 3.5, 0)
+			part(parent, "Sconce", Vector3.new(0.6, 1.4, 0.6), torch, C.WoodDark, Enum.Material.Wood)
+			local flame = part(
+				parent,
+				"Flame",
+				Vector3.new(0.8, 1, 0.8),
+				torch * CFrame.new(0, 1.1, 0),
+				Color3.fromRGB(255, 150, 60),
+				Enum.Material.Neon,
+				{
+					CanCollide = false,
+					NoShadow = true,
+				}
+			)
+			if i % 2 == 1 then
+				local light = Instance.new("PointLight")
+				light.Color = Color3.fromRGB(255, 170, 90)
+				light.Range = 14
+				light.Parent = flame
+			end
+			-- Bannière
+			part(
+				parent,
+				"Banner",
+				Vector3.new(0.1, 3.2, 2),
+				center
+					* CFrame.new(side * (w / 2 - 0.05), 3.6, -cfg.SectionLength / 4)
+					* CFrame.Angles(0, math.rad(90), 0),
+				if i % 2 == 0 then C.ClothBlue else C.Cloth,
+				Enum.Material.Fabric,
+				{
+					CanCollide = false,
+				}
+			)
+		end
+		-- Arche de fin de section
+		local gate = origin * CFrame.new(0, 0, z0 - cfg.SectionLength)
+		for _, side in { -1, 1 } do
+			part(
+				parent,
+				"ArchPillar",
+				Vector3.new(2.4, 12, 2.4),
+				gate * CFrame.new(side * (w / 2 - 0.2), 6, 0),
+				C.StoneLight,
+				Enum.Material.Slate
+			)
+		end
+		part(
+			parent,
+			"ArchTop",
+			Vector3.new(w + 2, 2, 2.8),
+			gate * CFrame.new(0, 12.5, 0),
+			C.StoneLight,
+			Enum.Material.Slate
+		)
+		part(
+			parent,
+			"ArchGem",
+			Vector3.new(1.6, 1.6, 1.6),
+			gate * CFrame.new(0, 12.5, -1.3) * CFrame.Angles(0, 0, math.rad(45)),
+			C.Ether,
+			Enum.Material.Neon,
+			{
+				NoShadow = true,
+			}
+		)
+		table.insert(gates, gate)
+	end
+	-- Mur de fin
+	part(
+		parent,
+		"EndWall",
+		Vector3.new(w + 4, 12, 2),
+		origin * CFrame.new(0, 6, -length - 2),
+		C.StoneDark,
+		Enum.Material.Cobblestone
+	)
+	return gates
+end
+
+-- Ennemi de la rue. Retourne model, Root (invisible, référence de position et de portée).
+function Models.enemy(kind, base: CFrame, scale: number, patron: boolean): (Model, BasePart)
+	local m = newModel(kind.Id)
+	local c = Color3.fromRGB(kind.Color[1], kind.Color[2], kind.Color[3])
+	local k = scale * (if patron then 1.8 else 1)
+	local eye = if patron then Color3.fromRGB(255, 60, 60) else Color3.fromRGB(255, 220, 90)
+	local root = part(m, "Root", Vector3.new(2, 4, 2) * k, base * CFrame.new(0, 2 * k, 0), c, nil, {
+		Transparency = 1,
+		CanCollide = false,
+	})
+	root.CanQuery = false
+	if kind.Id == "ShadowWolf" then
+		part(m, "Body", Vector3.new(1.6, 1.4, 3) * k, base * CFrame.new(0, 1.6 * k, 0), c, Enum.Material.Fabric)
+		part(
+			m,
+			"Head",
+			Vector3.new(1.3, 1.2, 1.4) * k,
+			base * CFrame.new(0, 2.2 * k, -1.9 * k),
+			c,
+			Enum.Material.Fabric
+		)
+		for _, x in { -0.35, 0.35 } do
+			part(
+				m,
+				"Ear",
+				Vector3.new(0.3, 0.6, 0.25) * k,
+				base * CFrame.new(x * k, 3 * k, -1.8 * k),
+				c,
+				Enum.Material.Fabric
+			)
+			part(
+				m,
+				"Eye",
+				Vector3.new(0.2, 0.2, 0.1) * k,
+				base * CFrame.new(x * k, 2.35 * k, -2.62 * k),
+				eye,
+				Enum.Material.Neon,
+				{ NoShadow = true }
+			)
+		end
+		for _, p in { { -0.55, -1 }, { 0.55, -1 }, { -0.55, 1 }, { 0.55, 1 } } do
+			part(
+				m,
+				"Leg",
+				Vector3.new(0.4, 1, 0.4) * k,
+				base * CFrame.new(p[1] * k, 0.5 * k, p[2] * k),
+				c:Lerp(Color3.new(0, 0, 0), 0.2),
+				Enum.Material.Fabric
+			)
+		end
+	else
+		local hunch = if kind.Id == "Ghoul" then CFrame.Angles(math.rad(-15), 0, 0) else CFrame.new()
+		for _, x in { -0.45, 0.45 } do
+			part(
+				m,
+				"Leg",
+				Vector3.new(0.6, 1.8, 0.6) * k,
+				base * CFrame.new(x * k, 0.9 * k, 0),
+				c:Lerp(Color3.new(0, 0, 0), 0.25),
+				Enum.Material.SmoothPlastic
+			)
+		end
+		local torso = part(
+			m,
+			"Torso",
+			Vector3.new(1.8, 1.8, 1) * k,
+			base * CFrame.new(0, 2.7 * k, 0) * hunch,
+			c,
+			Enum.Material.SmoothPlastic
+		)
+		for _, x in { -1.25, 1.25 } do
+			part(
+				m,
+				"Arm",
+				Vector3.new(0.5, 1.7, 0.5) * k,
+				torso.CFrame * CFrame.new(x * k, -0.2 * k, -0.2 * k) * CFrame.Angles(math.rad(-40), 0, 0),
+				c,
+				Enum.Material.SmoothPlastic
+			)
+		end
+		local head = part(
+			m,
+			"Head",
+			Vector3.new(1.2, 1.2, 1.2) * k,
+			torso.CFrame * CFrame.new(0, 1.55 * k, -0.1 * k),
+			c:Lerp(Color3.new(1, 1, 1), 0.1),
+			Enum.Material.SmoothPlastic
+		)
+		for _, x in { -0.25, 0.25 } do
+			part(
+				m,
+				"Eye",
+				Vector3.new(0.22, 0.22, 0.1) * k,
+				head.CFrame * CFrame.new(x * k, 0.1 * k, -0.62 * k),
+				eye,
+				Enum.Material.Neon,
+				{ NoShadow = true }
+			)
+		end
+		if kind.Id == "Goblin" then
+			for _, x in { -1, 1 } do
+				part(
+					m,
+					"Ear",
+					Vector3.new(0.8, 0.25, 0.2) * k,
+					head.CFrame * CFrame.new(x * 0.75 * k, 0.15 * k, 0) * CFrame.Angles(0, 0, math.rad(x * 20)),
+					c,
+					Enum.Material.SmoothPlastic
+				)
+			end
+			part(
+				m,
+				"Club",
+				Vector3.new(0.4, 2.2, 0.4) * k,
+				torso.CFrame * CFrame.new(1.4 * k, -0.6 * k, -1 * k) * CFrame.Angles(math.rad(-60), 0, 0),
+				C.WoodDark,
+				Enum.Material.Wood
+			)
+		elseif kind.Id == "Skeleton" then
+			for r = 1, 3 do
+				part(
+					m,
+					"Rib",
+					Vector3.new(1.9, 0.15, 1.05) * k,
+					torso.CFrame * CFrame.new(0, (0.6 - r * 0.4) * k, 0),
+					Color3.fromRGB(60, 55, 50),
+					Enum.Material.SmoothPlastic,
+					{
+						NoShadow = true,
+					}
+				)
+			end
+			part(
+				m,
+				"Sword",
+				Vector3.new(0.2, 2.6, 0.12) * k,
+				torso.CFrame * CFrame.new(1.4 * k, -0.4 * k, -1.1 * k) * CFrame.Angles(math.rad(-60), 0, 0),
+				C.Metal,
+				Enum.Material.Metal
+			)
+		elseif kind.Id == "Ghoul" then
+			part(
+				m,
+				"Hood",
+				Vector3.new(1.4, 0.8, 1.4) * k,
+				head.CFrame * CFrame.new(0, 0.55 * k, 0.1 * k),
+				Color3.fromRGB(70, 60, 80),
+				Enum.Material.Fabric
+			)
+		end
+	end
+	if patron then
+		for i = 1, 5 do
+			local a = (i / 5) * math.pi * 2
+			part(
+				m,
+				"Crown" .. i,
+				Vector3.new(0.35, 0.8, 0.35) * k,
+				base
+					* CFrame.new(
+						math.cos(a) * 0.5 * k,
+						(if kind.Id == "ShadowWolf" then 3.1 else 4.6) * k,
+						math.sin(a) * 0.5 * k
+					),
+				C.Rune,
+				Enum.Material.Neon,
+				{
+					NoShadow = true,
+				}
+			)
+		end
+	end
+	m.PrimaryPart = root
+	return m, root
 end
 
 return Models

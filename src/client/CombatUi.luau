@@ -167,17 +167,33 @@ function CombatUi.start(gui: ScreenGui, toast: (string, string?) -> ())
 	end
 
 	local inArena = false
-	player:GetAttributeChangedSignal("InArena"):Connect(function()
-		local now = arenaFolder() ~= nil
-		if now ~= inArena then
-			inArena = now
-			bossFrame.Visible = now
-			skillFrame.Visible = now
-			bind(now)
+	local skillsShown = false
+	local function refreshMode()
+		inArena = arenaFolder() ~= nil
+		bossFrame.Visible = inArena
+		-- Compétences visibles en arène ET dans la Rue des boss.
+		local show = inArena or player:GetAttribute("InStreet") == true
+		if show ~= skillsShown then
+			skillsShown = show
+			skillFrame.Visible = show
+			bind(show)
 		end
-	end)
+	end
+	player:GetAttributeChangedSignal("InArena"):Connect(refreshMode)
+	player:GetAttributeChangedSignal("InStreet"):Connect(refreshMode)
 
 	RunService.Heartbeat:Connect(function()
+		if not skillsShown then
+			return
+		end
+		local now = os.clock()
+		for id, button in buttons do
+			local remaining = readyAt[id] - now
+			local label = Combat.Skills[id].Name
+			local key = if id == "Strike" then hint("[F]", "(R1)") else hint("[Q]", "(L1)")
+			button.Text = if remaining > 0 then string.format("%s\n%.1f s", label, remaining) else label .. "\n" .. key
+			button.BackgroundTransparency = if remaining > 0 then 0.5 else 0
+		end
 		if not inArena then
 			return
 		end
@@ -202,18 +218,14 @@ function CombatUi.start(gui: ScreenGui, toast: (string, string?) -> ())
 			barFill.Size = UDim2.fromScale(math.clamp(hp / maxHp, 0, 1), 1)
 			barText.Text = Formulas.formatNumber(hp) .. " / " .. Formulas.formatNumber(maxHp)
 		end
-		local now = os.clock()
-		for id, button in buttons do
-			local remaining = readyAt[id] - now
-			local label = Combat.Skills[id].Name
-			local key = if id == "Strike" then hint("[F]", "(R1)") else hint("[Q]", "(L1)")
-			button.Text = if remaining > 0 then string.format("%s\n%.1f s", label, remaining) else label .. "\n" .. key
-			button.BackgroundTransparency = if remaining > 0 then 0.5 else 0
-		end
 	end)
 
-	CombatFx.OnClientEvent:Connect(function(position: Vector3, amount: number)
-		Effects.floatAt(position, "-" .. Formulas.formatNumber(amount), Color3.fromRGB(255, 90, 70))
+	CombatFx.OnClientEvent:Connect(function(position: Vector3, amount: number, label: string?)
+		if label then
+			Effects.floatAt(position, label, Color3.fromRGB(255, 212, 70))
+		else
+			Effects.floatAt(position, "-" .. Formulas.formatNumber(amount), Color3.fromRGB(255, 90, 70))
+		end
 	end)
 end
 

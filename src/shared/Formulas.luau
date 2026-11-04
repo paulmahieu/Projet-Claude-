@@ -308,6 +308,66 @@ function Formulas.harvestBonus(structureDefs, owned, materialId: string): number
 	return bonus
 end
 
+-- Rue des boss ------------------------------------------------------------------------
+
+function Formulas.streetIsPatron(stage: number, cfg): boolean
+	return stage % cfg.PatronEvery == 0
+end
+
+-- Section (1..Sections) où se joue une étape.
+function Formulas.streetSection(stage: number, cfg): number
+	return ((stage - 1) % cfg.Sections) + 1
+end
+
+function Formulas.streetWaveSize(stage: number, cfg): number
+	if Formulas.streetIsPatron(stage, cfg) then
+		return 1
+	end
+	return math.min(cfg.WaveBase + math.floor(stage / cfg.WaveExtraPerStages), cfg.WaveMax)
+end
+
+-- Statistiques d'un ennemi de l'étape : { Health, Damage, Gold, Xp }.
+function Formulas.streetEnemy(stage: number, cfg)
+	local patron = Formulas.streetIsPatron(stage, cfg)
+	local hp = cfg.Enemy.Health * cfg.HealthGrowth ^ (stage - 1)
+	local dmg = cfg.Enemy.Damage * cfg.DamageGrowth ^ (stage - 1)
+	local rewardScale = cfg.RewardGrowth ^ (stage - 1)
+	local hpMult = if patron then cfg.Patron.HealthMult else 1
+	local dmgMult = if patron then cfg.Patron.DamageMult else 1
+	local rewardMult = if patron then cfg.Patron.RewardMult else 1
+	return {
+		Health = math.floor(hp * hpMult),
+		Damage = math.floor(dmg * dmgMult),
+		Gold = math.floor(cfg.Reward.Gold * rewardScale * rewardMult),
+		Xp = math.floor(cfg.Reward.Xp * rewardScale * rewardMult),
+	}
+end
+
+-- Puissance conseillée : vaincre un ennemi normal en HitsToKill coups.
+function Formulas.streetRecommendedPower(stage: number, cfg): number
+	return math.max(1, math.ceil(cfg.Enemy.Health * cfg.HealthGrowth ^ (stage - 1) / cfg.HitsToKill))
+end
+
+-- Section occupée par une position (distance le long de la rue depuis l'origine) ; 0 = hors rue.
+function Formulas.streetSectionAt(distance: number, lateral: number, cfg): number
+	if distance < 0 or math.abs(lateral) > cfg.Width / 2 + 2 then
+		return 0
+	end
+	local index = math.floor(distance / cfg.SectionLength) + 1
+	return if index <= cfg.Sections then index else 0
+end
+
+-- Tirage du butin d'un Patron : liste des entrées obtenues pour des tirages r[i] dans [0, 1[.
+function Formulas.rollDrops(drops, rolls: { number })
+	local got = {}
+	for i, drop in drops do
+		if (rolls[i] or 1) < drop.Chance then
+			table.insert(got, drop)
+		end
+	end
+	return got
+end
+
 -- Utilitaires --------------------------------------------------------------------------
 
 function Formulas.clamp(value: number, cap: number): number

@@ -52,7 +52,28 @@ end
 local scene = process.args[2] or "base"
 local function at(x, z) return roblox.CFrame.new(x, 0, z) end
 local V = roblox.Vector3.new
-if scene == "base" then
+if scene == "street" then
+	local StreetCfg = loadData("/src/shared/Config/Street.luau", "Street")
+	local cfg = table.clone(StreetCfg)
+	cfg.Sections = 3
+	local origin = roblox.CFrame.lookAt(V(0, 0, 0), V(0, 0, -1)) -- la rue part vers -Z
+	local holder = roblox.Instance.new("Model")
+	Models.street(origin, cfg, holder)
+	dump(holder)
+	for i, kind in StreetCfg.Kinds do
+		dump((Models.enemy(kind, origin * roblox.CFrame.new(-9 + i * 4, 0, -24) * roblox.CFrame.Angles(0, math.pi, 0), kind.Scale, false)))
+	end
+	dump((Models.enemy(StreetCfg.Kinds[2], origin * roblox.CFrame.new(0, 0, -40) * roblox.CFrame.Angles(0, math.pi, 0), 1, true)))
+	-- Porte locale (rendue côté client dans le jeu)
+	local gate = roblox.Instance.new("Part")
+	gate.Size = V(cfg.Width - 2, 12, 1)
+	gate.CFrame = origin * roblox.CFrame.new(0, 6, -cfg.SectionLength * 2)
+	gate.Color = roblox.Color3.fromRGB(255, 70, 70)
+	gate.Transparency = 0.5
+	local g = roblox.Instance.new("Model")
+	gate.Parent = g
+	dump(g)
+elseif scene == "base" then
 	dump(Models.tree(at(-30, -40), 1, 1))
 	dump(Models.tree(at(-20, -40), 2, 2))
 	dump(Models.tree(at(-10, -40), 3, 3))

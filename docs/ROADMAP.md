@@ -26,6 +26,8 @@ Légende : ✅ implémenté · 🧪 testé automatiquement (Lune) · 🔍 à vé
 - ✅🧪🔍 2 arènes de boss avec portails, 2 phases, attaques annoncées, compétences, esquive,
   participation validée, butin personnel et butin de groupe
 - ✅🔍 Terrain Roblox, éclairage, remplacement par modèles de la boutique (`docs/ASSETS.md`)
+- ✅🧪🔍 Rue des boss : étapes à Puissance conseillée croissante, vagues propres à chaque joueur,
+  portes locales, patron toutes les 5 étapes avec butin affiché, progression sauvegardée
 
 ## Étape 2 — Persistance et construction complètes
 - ⏳ Annuaire MemoryStore groupe -> serveur, téléportation vers le bastion (décision R2)

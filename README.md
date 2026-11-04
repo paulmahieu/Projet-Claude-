@@ -48,7 +48,7 @@ Le code vit dans `src/` (fichiers texte versionnés). **Rojo** le synchronise en
 | Commande | Rôle |
 |---|---|
 | `rojo build -o build/BastionsDEther.rbxl` | Régénère la place |
-| `lune run tests/shared.spec` | 44 tests automatiques (formules, verrous, groupes, hors ligne, configuration) |
+| `lune run tests/shared.spec` | 49 tests automatiques (formules, verrous, groupes, hors ligne, configuration) |
 | `selene src tests` | Analyse statique (variables non définies, erreurs courantes) |
 | `stylua src tests` | Formatage |
 
@@ -85,6 +85,17 @@ Le code vit dans `src/` (fichiers texte versionnés). **Rojo** le synchronise en
 | 21 | Le vaincre | « Victoire ! +400 or, +600 XP » et « Butin du bastion : +80 Bois, +6 Cristal ». Le boss réapparaît 90 s plus tard. |
 | 22 | Mourir dans l'arène | Réapparition dans ton bastion, rien n'est perdu. |
 
+### Rue des boss
+
+| # | Action | Attendu |
+|---|---|---|
+| 23 | Au point d'accueil, portail **rouge** « Rue des boss » (entre les deux portails d'arène) → E | Téléportation dans une rue suspendue ; panneau « Étape 1 · Puissance conseillée 10 · la tienne 10 ». |
+| 24 | Avancer dans la section | 3 ennemis apparaissent et foncent sur toi ; ton personnage frappe automatiquement (chiffres rouges, « +5 or » jaune). |
+| 25 | Les éliminer | « Étape 1 terminée ! » : la porte rouge de la section s'efface, l'étape 2 commence dans la section suivante. |
+| 26 | Étape 5 | Un **PATRON** couronné avec son butin affiché (chances en %) et un coup de zone annoncé : esquive avec Q. |
+| 27 | Après la section 10 | Retour au début de la rue, la numérotation continue (étape 11, ennemis plus forts). |
+| 28 | Mourir, ou ressortir par le portail bleu du parvis | Retour au bastion ; l'étape atteinte est conservée. |
+
 ### À plusieurs : *Test → Clients and Servers → 2 ou 3 joueurs → Start*
 
 | # | Action | Attendu |
@@ -106,7 +117,7 @@ Le code vit dans `src/` (fichiers texte versionnés). **Rojo** le synchronise en
 
 | Élément | Statut |
 |---|---|
-| Formules, hors ligne (5 min / 8 h / 48 h, reconnexion immédiate), verrou à deux serveurs, appartenance, achats concurrents, validation des entrées, cohérence de la configuration | **Testé** (Lune, 44 tests, dont renaissance, tirages d'œufs, compagnons, boss) — simulation hors Roblox |
+| Formules, hors ligne (5 min / 8 h / 48 h, reconnexion immédiate), verrou à deux serveurs, appartenance, achats concurrents, validation des entrées, cohérence de la configuration | **Testé** (Lune, 49 tests, dont renaissance, tirages d'œufs, compagnons, boss, Rue des boss) — simulation hors Roblox |
 | Syntaxe, variables non définies, structure de la place | **Vérifié** (StyLua, Selene, `rojo build`) |
 | Comportement en jeu : monde, groupes, récolte, constructions, tapis, interface, manette, tactile | **À vérifier dans Studio** (scénario ci-dessus) |
 | DataStores réels, achats Robux, prix régionaux, téléportations | **À vérifier** dans une expérience de test publiée |

@@ -27,6 +27,7 @@ function ProfileSchema.template()
 		EquippedPets = {}, -- liste d'Uid équipés
 		NextPetUid = 1,
 		BossKills = {}, -- { [BossId] = nombre de victoires validées }
+		Street = { Stage = 1, Best = 0, Kills = 0 }, -- Rue des boss : étape en cours, meilleure, ennemis vaincus
 		Stats = { FirstJoin = 0, PlaySeconds = 0, Harvests = 0 },
 	}
 end
