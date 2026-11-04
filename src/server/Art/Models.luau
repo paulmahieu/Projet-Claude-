@@ -1853,7 +1853,7 @@ local function eggMeridian(m, center, a, b, phiOf, t0, t1, width, thick, color, 
 		part(
 			m,
 			"EggStrip",
-			Vector3.new(width, len, thick),
+			Vector3.new(width + (k % 2) * 0.08, len, thick + (k % 2) * 0.1),
 			cf * CFrame.Angles(0, 0, math.atan(across / math.max(0.05, along))),
 			color,
 			material,
@@ -2366,7 +2366,7 @@ eggDesigns.Ether = function(m, center, a, b)
 		part(
 			m,
 			"Moon",
-			Vector3.new(0.2, w, 0.16),
+			Vector3.new(0.2 + (k % 2) * 0.08, w, 0.16 + (k % 2) * 0.1),
 			top * CFrame.new(math.cos(ang) * 0.42, math.sin(ang) * 0.42, 0) * CFrame.Angles(0, 0, ang),
 			GOLD,
 			Enum.Material.Metal,
@@ -2475,7 +2475,16 @@ local function arch(
 			* CFrame.Angles(0, 0, theta + math.pi / 2)
 		table.insert(
 			blocks,
-			part(parent, "Voussoir" .. k, Vector3.new(length, thickness, depth), cf, color, material, props)
+			-- Profondeur alternée : les recouvrements entre claveaux ne scintillent pas.
+			part(
+				parent,
+				"Voussoir" .. k,
+				Vector3.new(length, thickness, depth + (k % 2) * 0.14),
+				cf,
+				color,
+				material,
+				props
+			)
 		)
 	end
 	return blocks
@@ -2495,8 +2504,8 @@ function Models.portal(base: CFrame, color: Color3): (Model, BasePart)
 	part(
 		m,
 		"StepTrim",
-		Vector3.new(11.1, 0.12, 4.5),
-		base * CFrame.new(0, 1.04, 0),
+		Vector3.new(11.16, 0.12, 4.56),
+		base * CFrame.new(0, 1.05, 0),
 		GOLD,
 		Enum.Material.Metal,
 		{ NoShadow = true }
@@ -2553,11 +2562,11 @@ function Models.portal(base: CFrame, color: Color3): (Model, BasePart)
 	local archCenter = base * CFrame.new(0, spring, 0)
 	arch(m, archCenter, half, 1.6, 2, 15, MARBLE, Enum.Material.Marble)
 	-- Bandeau d'extrados : filet de marbre plus sombre qui adoucit le contour de l'arc
-	arch(m, archCenter, half + 0.95, 0.3, 2.1, 21, MARBLE_SHADE, Enum.Material.Marble)
+	arch(m, archCenter, half + 0.95, 0.3, 2.45, 21, MARBLE_SHADE, Enum.Material.Marble)
 	arch(
 		m,
-		archCenter * CFrame.new(0, 0, -1.02),
-		half - 0.72,
+		archCenter * CFrame.new(0, 0, -1.13),
+		half - 0.9,
 		0.18,
 		0.12,
 		15,
@@ -2567,8 +2576,8 @@ function Models.portal(base: CFrame, color: Color3): (Model, BasePart)
 	)
 	arch(
 		m,
-		archCenter * CFrame.new(0, 0, 1.02),
-		half - 0.72,
+		archCenter * CFrame.new(0, 0, 1.13),
+		half - 0.9,
 		0.18,
 		0.12,
 		15,
@@ -5355,29 +5364,53 @@ local function stoneFace(
 	faceZ: number,
 	dir: number,
 	seed: number,
-	density: number?
+	density: number?,
+	bands: { number }?
 )
+	-- Pierres disposées en rangées SANS chevauchement (sinon leurs faces scintillent), avec une
+	-- profondeur légèrement différente d'une pierre à l'autre ; les rangées qui croisent un
+	-- bandeau (cordon, bague de tour) sont sautées.
 	local rand = rng(seed)
-	local count = math.floor(length * (y1 - y0) / 10 * (density or 1))
-	for _ = 1, count do
-		local w = 1.2 + rand() * 1.6
-		local h = 0.7 + rand() * 0.5
-		local x = -length / 2 + w / 2 + 0.3 + rand() * math.max(0, length - w - 0.6)
-		local y = y0 + h / 2 + 0.2 + rand() * math.max(0, y1 - y0 - h - 0.4)
-		local tint = rand()
-		local color = if tint < 0.3
-			then WALL_STONE:Lerp(WALL_DARK, 0.15 + rand() * 0.25)
-			elseif tint < 0.85 then WALL_STONE:Lerp(WALL_LIGHT, 0.3 + rand() * 0.6)
-			else WALL_STONE:Lerp(Color3.fromRGB(176, 160, 132), 0.5)
-		part(
-			parent,
-			"Stone",
-			Vector3.new(w, h, 0.3),
-			frame * CFrame.new(x, y, faceZ + dir * 0.1),
-			color,
-			if rand() < 0.5 then Enum.Material.Cobblestone else Enum.Material.Slate,
-			{ CanCollide = false, NoShadow = true }
-		)
+	local rowH, gap = 0.95, 0.14
+	local y = y0 + 0.25
+	local index = 0
+	while y + rowH <= y1 - 0.2 do
+		local blocked = false
+		for _, band in bands or {} do
+			if math.abs(y + rowH / 2 - band) < rowH / 2 + 0.45 then
+				blocked = true
+			end
+		end
+		if not blocked then
+			local x = -length / 2 + 0.3 + rand() * 0.8
+			while x < length / 2 - 0.5 do
+				local w = 1.1 + rand() * 1.3
+				if x + w > length / 2 - 0.3 then
+					break
+				end
+				if rand() < 0.42 * (density or 1) then
+					index += 1
+					local h = rowH * (0.75 + rand() * 0.2)
+					local tint = rand()
+					local color = if tint < 0.3
+						then WALL_STONE:Lerp(WALL_DARK, 0.15 + rand() * 0.25)
+						elseif tint < 0.85 then WALL_STONE:Lerp(WALL_LIGHT, 0.3 + rand() * 0.6)
+						else WALL_STONE:Lerp(Color3.fromRGB(176, 160, 132), 0.5)
+					local depth = 0.2 + (index % 3) * 0.04
+					part(
+						parent,
+						"Stone",
+						Vector3.new(w, h, depth),
+						frame * CFrame.new(x + w / 2, y + rowH / 2, faceZ + dir * (depth / 2 - 0.04)),
+						color,
+						if rand() < 0.5 then Enum.Material.Cobblestone else Enum.Material.Slate,
+						{ CanCollide = false, NoShadow = true }
+					)
+				end
+				x += w + gap
+			end
+		end
+		y += rowH + gap
 	end
 end
 Models.stoneFace = stoneFace
@@ -5399,8 +5432,8 @@ local function corbels(parent, frame: CFrame, length: number, y: number, faceZ: 
 		part(
 			parent,
 			"CorbelTip",
-			Vector3.new(0.8, 0.5, 0.5),
-			frame * CFrame.new(x, y - 1.3, faceZ + dir * 0.2),
+			Vector3.new(0.6, 0.5, 0.5),
+			frame * CFrame.new(x, y - 1.3, faceZ + dir * 0.3),
 			WALL_DARK,
 			Enum.Material.Slate,
 			{ NoShadow = true }
@@ -5438,17 +5471,22 @@ end
 Models.ivy = ivy
 
 -- Bande de mousse et touffes d'herbe au pied d'un mur.
-local function wallFoot(parent, frame: CFrame, length: number, faceZ: number, dir: number, seed: number)
+local function wallFoot(parent, frame: CFrame, length: number, faceZ: number, dir: number, seed: number, baseY: number?)
+	local y0 = baseY or 0
 	local rand = rng(seed)
-	local count = math.floor(length / 5)
-	for _ = 1, count do
-		local w = 1.5 + rand() * 3
-		local x = -length / 2 + w / 2 + rand() * math.max(0, length - w)
+	-- Plaques de mousse côte à côte sans chevauchement (sinon scintillement).
+	local cursor = -length / 2 + 0.3
+	local n = 0
+	while cursor < length / 2 - 1.8 do
+		n += 1
+		local w = math.min(1.5 + rand() * 2.5, length / 2 - 0.3 - cursor)
+		local x = cursor + w / 2
+		cursor += w + 1 + rand() * 4
 		part(
 			parent,
 			"Moss",
 			Vector3.new(w, 0.5 + rand() * 0.6, 0.25),
-			frame * CFrame.new(x, 0.4, faceZ + dir * 0.12),
+			frame * CFrame.new(x, y0 + 0.4, faceZ + dir * (0.12 + (n % 4) * 0.07)),
 			MOSS:Lerp(LEAF_IVY[1], rand() * 0.5),
 			Enum.Material.Grass,
 			{ CanCollide = false, NoShadow = true }
@@ -5460,7 +5498,7 @@ local function wallFoot(parent, frame: CFrame, length: number, faceZ: number, di
 					"Tuft",
 					Vector3.new(0.18, 0.7 + rand() * 0.5, 0.18),
 					frame
-						* CFrame.new(x + (rand() - 0.5) * 1.5, 0.35, faceZ + dir * (0.6 + rand() * 0.5))
+						* CFrame.new(x + (rand() - 0.5) * 1.5, y0 + 0.35, faceZ + dir * (0.6 + rand() * 0.5))
 						* CFrame.Angles(math.rad((rand() - 0.5) * 30), j * 2, math.rad((rand() - 0.5) * 30)),
 					LEAF_IVY[j % 3 + 1]:Lerp(C.Leaf3, 0.3),
 					Enum.Material.Grass,
@@ -5510,6 +5548,7 @@ function Models.barrel(parent, base: CFrame, color: Color3?)
 end
 
 function Models.crate(parent, base: CFrame, size: number)
+	-- Arêtes et cerclages légèrement en saillie (aucune face au même niveau que la caisse).
 	part(
 		parent,
 		"Crate",
@@ -5523,19 +5562,19 @@ function Models.crate(parent, base: CFrame, size: number)
 			part(
 				parent,
 				"CrateEdge",
-				Vector3.new(0.25, size + 0.02, 0.25),
-				base * CFrame.new(sx * (size / 2 - 0.1), size / 2, sz * (size / 2 - 0.1)),
+				Vector3.new(0.3, size + 0.08, 0.3),
+				base * CFrame.new(sx * (size / 2 - 0.08), size / 2, sz * (size / 2 - 0.08)),
 				C.WoodDark,
 				Enum.Material.Wood,
 				{ NoShadow = true }
 			)
 		end
 	end
-	for _, y in { 0.12, size - 0.12 } do
+	for _, y in { 0.25, size - 0.25 } do
 		part(
 			parent,
 			"CrateBand",
-			Vector3.new(size + 0.04, 0.24, size + 0.04),
+			Vector3.new(size + 0.26, 0.2, size + 0.26),
 			base * CFrame.new(0, y, 0),
 			C.WoodDark,
 			Enum.Material.Wood,
@@ -5546,7 +5585,7 @@ function Models.crate(parent, base: CFrame, size: number)
 		parent,
 		"CrateBrace",
 		Vector3.new(0.22, size * 1.3, 0.1),
-		base * CFrame.new(0, size / 2, -size / 2 - 0.03) * CFrame.Angles(0, 0, math.rad(45)),
+		base * CFrame.new(0, size / 2, -size / 2 - 0.2) * CFrame.Angles(0, 0, math.rad(45)),
 		C.WoodDark,
 		Enum.Material.Wood,
 		{ NoShadow = true }
@@ -5759,12 +5798,17 @@ end
 
 -- Dalles de couleurs variées posées sur un sol (casse l'aspect uniforme).
 local function pavingPatches(parent, center: CFrame, radius: number, count: number, avoid, seed: number)
+	-- Dalles sans chevauchement (sinon scintillement), hors des allées et du cercle central,
+	-- à trois hauteurs légèrement différentes.
 	local rand = rng(seed)
+	local placed = {}
+	local index = 0
 	for _ = 1, count do
-		local r = math.sqrt(rand()) * radius
+		local r = 12 + math.sqrt(rand()) * (radius - 12)
 		local a = rand() * math.pi * 2
 		local x, z = math.cos(a) * r, math.sin(a) * r
-		local blocked = false
+		local w, d = 1.4 + rand() * 1.4, 1.2 + rand() * 1.0
+		local blocked = math.abs(x) < 5.2 or math.abs(z) < 5.2 -- allées en croix
 		for _, zone in avoid do
 			if (x - zone[1]) ^ 2 + (z - zone[2]) ^ 2 < zone[3] ^ 2 then
 				blocked = true
@@ -5772,13 +5816,22 @@ local function pavingPatches(parent, center: CFrame, radius: number, count: numb
 			end
 		end
 		if not blocked then
-			local w = 1.4 + rand() * 1.6
+			for _, q in placed do
+				if (x - q[1]) ^ 2 + (z - q[2]) ^ 2 < (q[3] + math.max(w, d) / 2 + 0.3) ^ 2 then
+					blocked = true
+					break
+				end
+			end
+		end
+		if not blocked then
+			index += 1
+			table.insert(placed, { x, z, math.max(w, d) / 2 })
 			part(
 				parent,
 				"Slab",
-				Vector3.new(w, 0.06, 1.2 + rand() * 1.2),
+				Vector3.new(w, 0.06 + (index % 3) * 0.02, d),
 				center
-					* CFrame.new(x, 0.03, z)
+					* CFrame.new(x, 0.03 + (index % 3) * 0.01, z)
 					* CFrame.Angles(0, math.floor(rand() * 4) * math.pi / 2 + (rand() - 0.5) * 0.2, 0),
 				PAVING:Lerp(if rand() < 0.3 then WALL_DARK else WALL_LIGHT, 0.15 + rand() * 0.35),
 				Enum.Material.Slate,
@@ -5798,16 +5851,43 @@ local function roundTower(parent, base: CFrame, d: number, h: number, flag: bool
 	-- Relief : pierres saillantes réparties sur le fût, couronne de corbeaux sous le chemin
 	-- de ronde, mousse au pied.
 	local rand = rng(math.floor(base.Position.X * 5.7 + base.Position.Z * 3.3))
-	for _ = 1, math.floor(d * h / 9) do
+	-- Pierres en rangées autour du fût, sans chevauchement, hors de la bague centrale.
+	local perimeter = math.pi * d
+	local rowY = 1.9
+	local stoneIndex = 0
+	while rowY + 0.9 < h - 1.4 do
+		if math.abs(rowY + 0.45 - h * 0.55) > 1.0 then
+			local around = rand() * 1.5
+			while around < perimeter - 1.6 do
+				local w = 1.0 + rand() * 0.9
+				if rand() < 0.38 then
+					stoneIndex += 1
+					local a = (around + w / 2) / perimeter * math.pi * 2
+					local depth = 0.22 + (stoneIndex % 3) * 0.04
+					part(
+						parent,
+						"TowerStone",
+						Vector3.new(w, 0.75 + rand() * 0.15, depth),
+						base * CFrame.Angles(0, -a, 0) * CFrame.new(0, rowY + 0.45, d / 2 + depth / 2 - 0.08),
+						WALL_STONE:Lerp(if rand() < 0.3 then WALL_DARK else WALL_LIGHT, 0.2 + rand() * 0.4),
+						Enum.Material.Cobblestone,
+						{ CanCollide = false, NoShadow = true }
+					)
+				end
+				around += w + 0.25
+			end
+		end
+		rowY += 1.05
+	end
+	for n = 1, 6 do
 		local a = rand() * math.pi * 2
-		local y = 1.8 + rand() * (h - 2.8)
 		part(
 			parent,
-			"TowerStone",
-			Vector3.new(1.2 + rand() * 1.2, 0.7 + rand() * 0.45, 0.3),
-			base * CFrame.Angles(0, -a, 0) * CFrame.new(0, y, d / 2 + 0.05),
-			WALL_STONE:Lerp(if rand() < 0.3 then WALL_DARK else WALL_LIGHT, 0.2 + rand() * 0.4),
-			Enum.Material.Cobblestone,
+			"TowerMoss",
+			Vector3.new(1.5 + rand() * 2, 0.6 + rand() * 0.6, 0.3),
+			base * CFrame.Angles(0, -a, 0) * CFrame.new(0, 1.6 + n * 0.02, d / 2 + 0.7 + (n % 3) * 0.05),
+			MOSS,
+			Enum.Material.Grass,
 			{ CanCollide = false, NoShadow = true }
 		)
 	end
@@ -5823,25 +5903,13 @@ local function roundTower(parent, base: CFrame, d: number, h: number, flag: bool
 			{ NoShadow = true }
 		)
 	end
-	for _ = 1, 6 do
-		local a = rand() * math.pi * 2
-		part(
-			parent,
-			"TowerMoss",
-			Vector3.new(1.5 + rand() * 2, 0.6 + rand() * 0.6, 0.3),
-			base * CFrame.Angles(0, -a, 0) * CFrame.new(0, 1.7, d / 2 + 0.1),
-			MOSS,
-			Enum.Material.Grass,
-			{ CanCollide = false, NoShadow = true }
-		)
-	end
 	local merlons = 10
 	for k = 1, merlons do
 		local a = (k / merlons) * math.pi * 2
 		part(
 			parent,
 			"TowerMerlon",
-			Vector3.new(1.6, 1.6, 1.2),
+			Vector3.new(math.min(1.6, math.pi * (d + 0.8) / merlons * 0.55), 1.6 + (k % 2) * 0.12, 1.2),
 			base
 				* CFrame.new(math.cos(a) * (d / 2 + 0.4), h + 2, math.sin(a) * (d / 2 + 0.4))
 				* CFrame.Angles(0, -a + math.pi / 2, 0),
@@ -5911,7 +5979,7 @@ local function wallSegment(parent, frame: CFrame, length: number, cfg, decorate:
 	part(
 		parent,
 		"WallFooting",
-		Vector3.new(length, 1.2, t + 1.2),
+		Vector3.new(length + 0.4, 1.2, t + 1.2),
 		frame * CFrame.new(0, 0.6, 0),
 		WALL_DARK,
 		Enum.Material.Cobblestone
@@ -5927,7 +5995,7 @@ local function wallSegment(parent, frame: CFrame, length: number, cfg, decorate:
 	part(
 		parent,
 		"WallCap",
-		Vector3.new(length, 0.6, t + 0.6),
+		Vector3.new(length + 0.2, 0.6, t + 0.6),
 		frame * CFrame.new(0, h + 0.3, 0),
 		WALL_LIGHT,
 		Enum.Material.Slate
@@ -5935,7 +6003,7 @@ local function wallSegment(parent, frame: CFrame, length: number, cfg, decorate:
 	part(
 		parent,
 		"StringCourse",
-		Vector3.new(length, 0.5, t + 0.4),
+		Vector3.new(length - 0.3, 0.5, t + 0.4),
 		frame * CFrame.new(0, h * 0.6, 0),
 		WALL_LIGHT,
 		Enum.Material.Slate
@@ -5943,11 +6011,13 @@ local function wallSegment(parent, frame: CFrame, length: number, cfg, decorate:
 	-- Relief : pierres saillantes sur les deux faces, corbeaux sous le parapet extérieur,
 	-- mousse et herbes au pied, lierre sur certains pans côté cour.
 	local seed = math.floor(frame.Position.X * 3.1 + frame.Position.Z * 7.3 + length)
-	stoneFace(parent, frame, length, 1.2, h - 0.2, -t / 2, -1, seed, 1)
-	stoneFace(parent, frame, length, 1.2, h - 0.2, t / 2, 1, seed + 17, 0.8)
+	stoneFace(parent, frame, length, 1.2, h - 0.2, -t / 2, -1, seed, 1, { h * 0.6 })
+	-- Côté extérieur : pas de pierres sous les corbeaux.
+	stoneFace(parent, frame, length, 1.2, h - 1.4, t / 2, 1, seed + 17, 0.8, { h * 0.6 })
 	corbels(parent, frame, length, h + 0.05, t / 2, 1)
-	wallFoot(parent, frame, length, -t / 2, -1, seed + 3)
-	wallFoot(parent, frame, length, t / 2, 1, seed + 5)
+	-- Mousse posée sur le débord du soubassement (sinon cachée dedans).
+	wallFoot(parent, frame, length, -t / 2 - 0.6, -1, seed + 3, 1.2)
+	wallFoot(parent, frame, length, t / 2 + 0.6, 1, seed + 5, 1.2)
 	if seed % 3 == 0 then
 		ivy(parent, frame, length * 0.35, -t / 2, -1, h * 0.8, seed + 9)
 	end
@@ -5986,7 +6056,7 @@ local function wallSegment(parent, frame: CFrame, length: number, cfg, decorate:
 		light.Color = Color3.fromRGB(255, 170, 90)
 		light.Range = 14
 		light.Parent = flame
-		local banner = frame * CFrame.new(length * 0.2, h * 0.58, -t / 2 - 0.15)
+		local banner = frame * CFrame.new(length * 0.2, h * 0.58, -t / 2 - 0.45)
 		part(
 			parent,
 			"BannerRod",
@@ -6055,7 +6125,7 @@ local function gatehouse(parent, frame: CFrame, cfg)
 			Enum.Material.Slate
 		)
 		-- Vantail en bois ouvert vers la cour
-		local hinge = frame * CFrame.new(side * w / 2, 0, -depth / 2)
+		local hinge = frame * CFrame.new(side * (w / 2 - 0.4), 0, -depth / 2 - 0.35) -- hors du pilier
 		part(
 			parent,
 			"GateDoor",
@@ -6137,7 +6207,7 @@ local function gatehouse(parent, frame: CFrame, cfg)
 		parent,
 		"PortcullisBar",
 		Vector3.new(w, 0.3, 0.3),
-		frame * CFrame.new(0, h - 3.2, 0),
+		frame * CFrame.new(0, h - 3.2, 0.25),
 		Color3.fromRGB(60, 60, 66),
 		Enum.Material.Metal,
 		{ NoShadow = true }
@@ -6234,8 +6304,8 @@ local function royalKeep(parent, base: CFrame)
 			part(
 				parent,
 				"KeepWindowFrame",
-				Vector3.new(2.4, 3.6, 0.15),
-				win * CFrame.new(0, 0, 0.1),
+				Vector3.new(2.4, 3.6, 0.34),
+				win * CFrame.new(0, 0, 0.12),
 				WALL_LIGHT,
 				Enum.Material.Slate
 			)
@@ -6445,8 +6515,9 @@ function Models.castle(parent: Instance, cfg)
 		part(
 			parent,
 			"RingRoad",
-			Vector3.new(len, 0.6, W),
-			CFrame.new(math.cos(a) * R, 0.3, math.sin(a) * R) * CFrame.Angles(0, -a + math.pi / 2, 0),
+			-- Hauteurs alternées : les recouvrements entre segments ne scintillent pas.
+			Vector3.new(len, 0.6 + (k % 2) * 0.1, W - (k % 2) * 0.16),
+			CFrame.new(math.cos(a) * R, 0.3 + (k % 2) * 0.05, math.sin(a) * R) * CFrame.Angles(0, -a + math.pi / 2, 0),
 			PAVING,
 			Enum.Material.Cobblestone
 		)
@@ -6458,8 +6529,8 @@ function Models.castle(parent: Instance, cfg)
 		part(
 			parent,
 			"GateRoad",
-			Vector3.new(to - from + 1, 0.6, cfg.GateWidth),
-			CFrame.new(math.cos(a) * mid, 0.3, math.sin(a) * mid) * CFrame.Angles(0, -a, 0),
+			Vector3.new(to - from + 1, 0.76, cfg.GateWidth),
+			CFrame.new(math.cos(a) * mid, 0.38, math.sin(a) * mid) * CFrame.Angles(0, -a, 0),
 			PAVING,
 			Enum.Material.Cobblestone
 		)
@@ -6490,8 +6561,8 @@ function Models.plotDecor(base: CFrame, plotSize: number, parent: Instance)
 			Enum.Material.Slate
 		)
 		local seed = math.floor(cf.Position.X * 2.3 + cf.Position.Z * 4.1 + length)
-		stoneFace(parent, cf, length, 0.2, h - 0.2, -t / 2, -1, seed, 0.9)
-		stoneFace(parent, cf, length, 0.2, h - 0.2, t / 2, 1, seed + 7, 0.9)
+		stoneFace(parent, cf, length, 1.0, h - 0.2, -t / 2, -1, seed, 0.9)
+		stoneFace(parent, cf, length, 1.0, h - 0.2, t / 2, 1, seed + 7, 0.9)
 		wallFoot(parent, cf, length, -t / 2, -1, seed + 1)
 		wallFoot(parent, cf, length, t / 2, 1, seed + 2)
 		local count = math.max(1, math.floor(length / 4))
@@ -6682,7 +6753,10 @@ end
 
 -- Muret d'une extension entre deux points locaux (même style que l'enceinte du bastion).
 function Models.landWall(base: CFrame, x1: number, z1: number, x2: number, z2: number, parent: Instance)
-	local h, t = 3.6, 1.4
+	-- Hauteur et épaisseur légèrement différentes selon le pan : aux angles, les murs qui se
+	-- croisent n'ont aucune face au même niveau (pas de scintillement).
+	local variant = math.floor(math.abs(x1 * 3 + z1 * 7 + x2 + z2 * 5)) % 3
+	local h, t = 3.6 + variant * 0.08, 1.4 + variant * 0.08
 	local length = math.max(math.abs(x2 - x1), math.abs(z2 - z1))
 	local mid = base * CFrame.new((x1 + x2) / 2, 0, (z1 + z2) / 2)
 	local cf = if math.abs(x2 - x1) >= math.abs(z2 - z1) then mid else mid * CFrame.Angles(0, math.rad(90), 0)

@@ -40,6 +40,7 @@ local function dump(model)
 					r = { rx, ry, rz },
 					c = { p.Color.R, p.Color.G, p.Color.B },
 					shape = shape,
+					name = p.Name,
 					neon = p.Material.Name == "Neon",
 					mat = p.Material.Name,
 					t = p.Transparency,
