@@ -95,7 +95,7 @@ function PetService.hatch(player: Player, eggId: string)
 		return { ok = false, msg = Texts.TooFar }
 	end
 	if egg.Product or not egg.Cost then
-		return { ok = false, msg = "Œuf royal : s'achète en Robux ou s'obtient en récompense." }
+		return { ok = false, msg = "Cet œuf s'achète en Robux ou s'obtient en récompense." }
 	end
 	if #profile.Pets >= Pets.InventorySize then
 		return { ok = false, msg = "Inventaire plein : libère de la place dans Compagnons." }
@@ -241,14 +241,19 @@ function PetService.init()
 	for _, egg in Pets.Eggs do
 		local pos = Vector3.new(egg.Position[1], 1, egg.Position[2])
 		local base = CFrame.lookAt(pos, Vector3.new(0, 1, 0)) -- face au centre du hub
-		local model, plinth = Models.eggStand(base, toColor(egg.Color), egg.Product ~= nil)
+		local model, plinth = Models.eggStand(base, toColor(egg.Color), egg.Product ~= nil, egg.Design)
 		model.Name = egg.Id
 		model.Parent = folder
 		PlotService.makeBillboard(
 			plinth,
 			if egg.Cost
-				then string.format("%s\n%s or", egg.Name, Formulas.formatNumber(egg.Cost))
-				else egg.Name .. "\n👑 Robux · offert après 1 h de jeu",
+				then string.format("%s · %s\n%s or", egg.Name, egg.Tier or "", Formulas.formatNumber(egg.Cost))
+				elseif egg.Id == "RoyalEgg" then string.format(
+					"%s · %s\n👑 Robux · offert après 1 h de jeu",
+					egg.Name,
+					egg.Tier or ""
+				)
+				else string.format("%s · %s\n👑 Robux", egg.Name, egg.Tier or ""),
 			7,
 			Vector2.new(9, 2.4)
 		)

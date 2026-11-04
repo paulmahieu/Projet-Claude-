@@ -53,7 +53,19 @@ end
 local scene = process.args[2] or "base"
 local function at(x, z) return roblox.CFrame.new(x, 0, z) end
 local V = roblox.Vector3.new
-if scene == "trees" then
+if scene == "eggs" then
+	local floor = roblox.Instance.new("Part")
+	floor.Size = V(60, 1, 20)
+	floor.CFrame = roblox.CFrame.new(0, -0.5, 0)
+	floor.Color = roblox.Color3.fromRGB(150, 142, 128)
+	floor.Material = roblox.Enum.Material.Slate
+	dump(floor)
+	for i, egg in PetsCfg.Eggs do
+		local c = egg.Color
+		local base = roblox.CFrame.new(-21 + (i - 1) * 8.4, 0, 0) * roblox.CFrame.Angles(0, math.pi, 0)
+		dump((Models.eggStand(base, roblox.Color3.fromRGB(c[1], c[2], c[3]), egg.Product ~= nil, egg.Design)))
+	end
+elseif scene == "trees" then
 	local floor = roblox.Instance.new("Part")
 	floor.Size = V(60, 1, 30)
 	floor.CFrame = roblox.CFrame.new(0, -0.5, 0)
@@ -164,7 +176,7 @@ elseif scene == "castle" then
 	dump((Models.portal(lookCenter(FarmCfg.Portal), roblox.Color3.fromRGB(110, 210, 255))))
 	for _, egg in PetsCfg.Eggs do
 		local c = egg.Color
-		dump((Models.eggStand(lookCenter(egg.Position), roblox.Color3.fromRGB(c[1], c[2], c[3]), egg.Product ~= nil)))
+		dump((Models.eggStand(lookCenter(egg.Position), roblox.Color3.fromRGB(c[1], c[2], c[3]), egg.Product ~= nil, egg.Design)))
 	end
 elseif scene == "hub" then
 	local holder = roblox.Instance.new("Model")

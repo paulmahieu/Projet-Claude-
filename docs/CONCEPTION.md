@@ -72,7 +72,7 @@ Exemples côté joueur :
 
 | Sujet | Décision | Mise en œuvre |
 |---|---|---|
-| Œufs | Certains payants, aussi offerts après 1 h de jeu ; les gratuits vont du Commun au Légendaire. | Œuf royal (99 R$) et œuf céleste (249 R$), raretés Mythique et Céleste ; palier « 60 min » du temps de jeu = un œuf royal par jour ; garde-fous dans `docs/BOUTIQUE.md`. |
+| Œufs | Certains payants, aussi offerts après 1 h de jeu ; les gratuits vont du Commun au Légendaire. | Œuf draconique (99 R$) et œuf de l'éther (249 R$), raretés Mythique et Céleste ; palier « 60 min » du temps de jeu = un œuf draconique par jour ; designs des 6 œufs fournis par le créateur (clairières, sylvestre, givre, arcanique, draconique, éther) ; garde-fous dans `docs/BOUTIQUE.md`. |
 | Pass | La piste payante doit être bien plus forte que la gratuite (ex. tapis de ferme x500 au dernier palier). | Parcours du champion : 30 paliers, XP gagnée en jouant ; piste premium avec œufs royaux/célestes, tapis x100 (palier 15) et **x500 (palier 30)** sur le Champ des champions. Zone royale x50 : pass séparé, validé. |
 | Téléportation (R2) | Les amis doivent pouvoir se rejoindre au bastion ; la Rue des boss et les œufs restent communs. | Rejoindre un ami ou le serveur où le bastion du groupe est ouvert (voir ROADMAP). |
 | Agrandissement du terrain | Payé avec les matériaux du groupe ; machines à acheter dessus. | 6 extensions achetées dans l'ordre (Arrière I, ailes, Arrière II à IV), 15 emplacements de machines ; arènes déplacées à 490 studs et collines au-delà pour laisser la place. |

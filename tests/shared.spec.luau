@@ -779,7 +779,12 @@ test("migration v2 -> v3 : anciennes améliorations converties en nœuds", funct
 end)
 
 test("chance : favorise Rare et plus, probabilités toujours = 100 %", function()
-	local egg = Pets.Eggs[1]
+	local egg
+	for _, e in Pets.Eggs do
+		if e.Id == "ForestEgg" then
+			egg = e
+		end
+	end
 	local base, lucky = Formulas.eggOdds(egg), Formulas.eggOdds(Formulas.luckyEgg(egg, Pets, 0.5))
 	local function chanceOf(list, id)
 		for _, e in list do

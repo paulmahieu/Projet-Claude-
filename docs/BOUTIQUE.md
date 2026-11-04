@@ -11,8 +11,8 @@ implémentée. Aucun identifiant n'a été inventé.
 | GoldPouchS | Developer Product | 9 R$ | +300 or | ✅ Implémentée |
 | GoldPouchM | Developer Product | 19 R$ | +800 or | ✅ Implémentée |
 | GoldPouchL | Developer Product | 49 R$ | +2 500 or | ✅ Implémentée |
-| RoyalEgg | Developer Product | 99 R$ | Œuf royal : compagnon Légendaire à Céleste (probabilités affichées) | ✅ Implémentée · masquée si `ArePaidRandomItemsRestricted` · aussi offert après 1 h de jeu |
-| CelestialEgg | Developer Product | 249 R$ | Œuf céleste : compagnon Mythique ou Céleste | ✅ Implémentée · mêmes garde-fous |
+| RoyalEgg | Developer Product | 99 R$ | Œuf draconique : compagnon Légendaire à Céleste (probabilités affichées) | ✅ Implémentée · masquée si `ArePaidRandomItemsRestricted` · aussi offert après 1 h de jeu |
+| CelestialEgg | Developer Product | 249 R$ | Œuf de l'éther : compagnon Mythique ou Céleste | ✅ Implémentée · mêmes garde-fous |
 | XpBoost15 | Developer Product | 9 R$ | XP x2, 15 min en ligne | ⏳ Inventaire de bonus (étape 4) |
 | XpBoost45 | Developer Product | 19 R$ | XP x2, 45 min en ligne | ⏳ Étape 4 |
 | GoldBoost15 | Developer Product | 9 R$ | Or x2, 15 min en ligne | ⏳ Étape 4 |

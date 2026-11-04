@@ -125,6 +125,16 @@ local function jitter(seed: number, amount: number): number
 	return (math.noise(seed * 0.37, 1.3, 2.7)) * amount * 2
 end
 
+-- Générateur pseudo-aléatoire déterministe (même rendu à chaque génération).
+local function rng(seed: number)
+	local state = math.floor(math.abs(seed) * 7919 + 12345) % 2147483646 + 1
+	return function(): number
+		state = (state * 16807) % 2147483647
+		return (state - 1) / 2147483646
+	end
+end
+Models.rng = rng
+
 -- Ressources ---------------------------------------------------------------------------
 
 -- Feuillage « en touffes » (style des captures) : surfaces lisses, sans texture bruitée ;
@@ -1510,7 +1520,618 @@ end
 -- Œufs, portails, arènes, boss ----------------------------------------------------------------
 
 -- Présentoir d'œuf : socle, œuf (ellipsoïde), anneau lumineux. Retourne model, socle.
-function Models.eggStand(base: CFrame, color: Color3, royal: boolean?): (Model, BasePart)
+-- Œufs détaillés (designs du créateur) ---------------------------------------------------
+-- Un œuf = ellipsoïde (SpecialMesh) + éléments posés sur sa surface : plaques, bandes,
+-- écailles, cristaux, feuilles, filigranes. Face avant = -Z du présentoir (vers le hub).
+
+local EGG_FRONT = -math.pi / 2 -- angle phi de la face avant
+
+-- Repère posé sur la surface d'un ellipsoïde (demi-axes a, b, a), -Z vers l'extérieur,
+-- Y le long du méridien (vers la pointe). theta : 0 = pointe, pi = base.
+local function eggPoint(center: CFrame, a: number, b: number, theta: number, phi: number, lift: number?): CFrame
+	local s, c = math.sin(theta), math.cos(theta)
+	local x, y, z = a * s * math.cos(phi), b * c, a * s * math.sin(phi)
+	local n = Vector3.new(x / (a * a), y / (b * b), z / (a * a)).Unit
+	local p = Vector3.new(x, y, z) + n * (lift or 0)
+	local up = if math.abs(n.Y) > 0.97 then Vector3.new(-math.cos(phi), 0, -math.sin(phi)) else Vector3.new(0, 1, 0)
+	return center * CFrame.lookAt(p, p + n, up)
+end
+
+local function eggBody(m, center: CFrame, a: number, b: number, color: Color3, material, name: string?)
+	local body =
+		part(m, name or "Egg", Vector3.new(2 * a, 2 * b, 2 * a), center, color, material or Enum.Material.SmoothPlastic)
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Sphere
+	mesh.Parent = body
+	return body
+end
+
+-- Bas d'une autre teinte sans bourrelet : même ellipsoïde, à peine plus large, abaissé de
+-- `shift` (la limite des couleurs se place vers y = -shift / 2).
+local function eggLowerShift(m, center: CFrame, a: number, b: number, shift: number, color: Color3, material)
+	eggBody(m, center * CFrame.new(0, -shift, 0), a * 1.01, b * 1.01, color, material, "EggLower")
+end
+
+-- Bas de l'œuf d'une autre teinte : second ellipsoïde légèrement plus large, posé au fond.
+local function eggLower(m, center: CFrame, a: number, b: number, frac: number, color: Color3, material)
+	local h = b * frac
+	eggBody(m, center * CFrame.new(0, -b + h, 0), a * 1.008, h, color, material, "EggLower")
+end
+
+local function thetaAt(b: number, y: number): number
+	return math.acos(math.clamp(y / b, -0.999, 0.999))
+end
+
+-- Bande autour de l'œuf à la hauteur y (ondulée si wave > 0).
+local function eggRing(m, center, a, b, y, width, thick, color, material, count, wave, waveK, phase)
+	for k = 0, count - 1 do
+		local phi = (k + 0.5) / count * math.pi * 2
+		local yy = y + (wave or 0) * math.sin(phi * (waveK or 3) + (phase or 0))
+		local theta = thetaAt(b, yy)
+		local radius = a * math.sin(theta)
+		local seg = 2 * math.pi * radius / count * 1.12
+		-- Pente de l'ondulation : chaque segment suit la vague (pas d'effet d'escalier).
+		local slope = (wave or 0) * (waveK or 3) * math.cos(phi * (waveK or 3) + (phase or 0)) / math.max(0.2, radius)
+		part(
+			m,
+			"EggBand",
+			Vector3.new(seg, width, thick),
+			eggPoint(center, a, b, theta, phi, thick / 2 - 0.03) * CFrame.Angles(0, 0, math.atan(slope)),
+			color,
+			material,
+			{ CanCollide = false, NoShadow = true }
+		)
+	end
+end
+
+-- Bande le long d'un méridien (phi peut varier avec theta : filigrane courbe).
+local function eggMeridian(m, center, a, b, phiOf, t0, t1, width, thick, color, material, steps)
+	for k = 0, steps - 1 do
+		local th = t0 + (t1 - t0) * (k + 0.5) / steps
+		local d = (t1 - t0) / steps
+		local phi = phiOf(th)
+		local along = math.sqrt((a * math.cos(th)) ^ 2 + (b * math.sin(th)) ^ 2) -- sens du méridien
+		local across = (phiOf(th + 0.01) - phi) / 0.01 * a * math.sin(th) -- sens du parallèle
+		local len = math.sqrt(along * along + across * across) * d * 1.18
+		local cf = eggPoint(center, a, b, th, phi, thick / 2 - 0.03)
+		part(
+			m,
+			"EggStrip",
+			Vector3.new(width, len, thick),
+			cf * CFrame.Angles(0, 0, math.atan(across / math.max(0.05, along))),
+			color,
+			material,
+			{ CanCollide = false, NoShadow = true }
+		)
+	end
+end
+
+-- Gemme en losange (avec cadre) posée sur la surface.
+local function eggGem(m, cf: CFrame, size: number, gem: Color3, frame: Color3?, gemMaterial)
+	if frame then
+		part(
+			m,
+			"GemFrame",
+			Vector3.new(size * 1.35, size * 1.35, 0.14),
+			cf * CFrame.new(0, 0, -0.02) * CFrame.Angles(0, 0, math.rad(45)),
+			frame,
+			Enum.Material.Metal,
+			{ CanCollide = false, NoShadow = true }
+		)
+	end
+	part(
+		m,
+		"Gem",
+		Vector3.new(size, size, 0.22),
+		cf * CFrame.new(0, 0, -0.1) * CFrame.Angles(0, 0, math.rad(45)),
+		gem,
+		gemMaterial or Enum.Material.Neon,
+		{ CanCollide = false, NoShadow = true }
+	)
+end
+
+-- Prisme de cristal dressé selon la normale (pointe vers l'extérieur).
+local function eggCrystal(m, cf: CFrame, w: number, h: number, color: Color3, material, tilt: number?)
+	part(
+		m,
+		"Crystal",
+		Vector3.new(w, h, w),
+		cf
+			* CFrame.Angles(math.rad(-90 + (tilt or 0)), 0, 0)
+			* CFrame.new(0, h * 0.3, 0)
+			* CFrame.Angles(0, math.rad(45), 0),
+		color,
+		material,
+		{ CanCollide = false, NoShadow = true }
+	)
+	part(
+		m,
+		"CrystalTip",
+		Vector3.new(w * 0.62, w * 0.62, w * 0.62),
+		cf
+			* CFrame.Angles(math.rad(-90 + (tilt or 0)), 0, 0)
+			* CFrame.new(0, h * 0.8, 0)
+			* CFrame.Angles(math.rad(45), math.rad(45), 0),
+		color:Lerp(Color3.new(1, 1, 1), 0.25),
+		material,
+		{ CanCollide = false, NoShadow = true }
+	)
+end
+
+local eggDesigns = {}
+
+-- Œuf des clairières (Commun) : coquille crème mouchetée, sillons gravés, plaques de grès à
+-- la base, ambre en façade.
+eggDesigns.Meadow = function(m, center, a, b)
+	local rand = rng(101)
+	eggBody(m, center, a, b, Color3.fromRGB(236, 222, 196))
+	for _ = 1, 46 do
+		local d = 0.1 + rand() * 0.14
+		part(
+			m,
+			"Speckle",
+			Vector3.new(0.04, d, d),
+			eggPoint(center, a, b, 0.25 + rand() * 1.55, rand() * math.pi * 2, 0) * CFrame.Angles(0, math.rad(90), 0),
+			Color3.fromRGB(196, 112, 70),
+			Enum.Material.SmoothPlastic,
+			{ Shape = Enum.PartType.Cylinder, CanCollide = false, NoShadow = true }
+		)
+	end
+	local groove = Color3.fromRGB(206, 186, 152)
+	eggMeridian(m, center, a, b, function(th)
+		return EGG_FRONT - 1.4 + th * 1.5
+	end, 0.45, 1.75, 0.13, 0.05, groove, Enum.Material.SmoothPlastic, 12)
+	eggMeridian(m, center, a, b, function(th)
+		return EGG_FRONT + 0.9 + th * 1.1
+	end, 0.6, 1.6, 0.12, 0.05, groove, Enum.Material.SmoothPlastic, 10)
+	local stone = Color3.fromRGB(206, 178, 136)
+	for row, spec in { { 2.15, 9, 0.95 }, { 2.55, 8, 0.85 }, { 2.9, 5, 0.75 } } do
+		for k = 0, spec[2] - 1 do
+			local phi = (k + (row % 2) * 0.5) / spec[2] * math.pi * 2
+			local s = spec[3] * (0.85 + rand() * 0.3)
+			part(
+				m,
+				"Plate",
+				Vector3.new(s, s * 0.8, 0.28),
+				eggPoint(center, a, b, spec[1], phi, 0.08) * CFrame.Angles(0, 0, (rand() - 0.5) * 0.6),
+				stone:Lerp(Color3.fromRGB(180, 150, 110), rand() * 0.6),
+				Enum.Material.Sandstone,
+				{ CanCollide = false }
+			)
+		end
+	end
+	local amber = eggPoint(center, a, b, 2.05, EGG_FRONT, 0.2)
+	part(
+		m,
+		"AmberSeat",
+		Vector3.new(0.75, 0.75, 0.3),
+		amber * CFrame.Angles(0, 0, math.rad(45)),
+		stone,
+		Enum.Material.Sandstone,
+		{ CanCollide = false }
+	)
+	ball(
+		m,
+		"Amber",
+		0.42,
+		amber * CFrame.new(0, 0, -0.18),
+		Color3.fromRGB(240, 150, 30),
+		Enum.Material.Glass,
+		{ CanCollide = false, NoShadow = true }
+	)
+end
+
+-- Œuf sylvestre (Peu commun) : haut vert couvert de feuilles de chêne, bas en écorce, bande de
+-- bois, émeraude, glands en façade, racines au dos.
+eggDesigns.Sylvan = function(m, center, a, b)
+	local rand = rng(202)
+	eggBody(m, center, a, b, Color3.fromRGB(78, 120, 56))
+	eggLower(m, center, a, b, 0.55, Color3.fromRGB(104, 70, 44), Enum.Material.Wood)
+	for row, spec in { { 2.0, 10 }, { 2.4, 9 }, { 2.75, 6 } } do
+		for k = 0, spec[2] - 1 do
+			local phi = (k + (row % 2) * 0.5) / spec[2] * math.pi * 2
+			part(
+				m,
+				"Bark",
+				Vector3.new(0.66, 0.7, 0.1),
+				eggPoint(center, a * 1.02, b, spec[1], phi, 0.02) * CFrame.Angles(0, 0, (rand() - 0.5) * 0.3),
+				Color3.fromRGB(92, 62, 40):Lerp(Color3.fromRGB(130, 90, 58), rand()),
+				Enum.Material.Wood,
+				{ CanCollide = false }
+			)
+		end
+	end
+	for _ = 1, 10 do
+		ball(
+			m,
+			"Moss",
+			0.25 + rand() * 0.2,
+			eggPoint(center, a * 1.02, b, 1.9 + rand() * 0.8, rand() * math.pi * 2, 0.05),
+			Color3.fromRGB(110, 150, 60),
+			Enum.Material.Grass,
+			{ CanCollide = false, NoShadow = true }
+		)
+	end
+	eggRing(m, center, a * 1.03, b, -0.15, 0.32, 0.2, Color3.fromRGB(150, 100, 58), Enum.Material.Wood, 22, 0.08, 4)
+	-- Feuilles de chêne (ellipses aplaties) et nervure
+	for k = 0, 6 do
+		local phi = EGG_FRONT + (k - 3) * 0.75
+		local cf = eggPoint(center, a, b, 0.75 + (k % 2) * 0.3, phi, 0.06) * CFrame.Angles(0, 0, (k - 3) * 0.25)
+		local leaf = part(
+			m,
+			"OakLeaf",
+			Vector3.new(0.6, 1.4, 0.1),
+			cf,
+			Color3.fromRGB(128, 178, 70):Lerp(Color3.fromRGB(150, 196, 84), rand()),
+			Enum.Material.Grass,
+			{ CanCollide = false }
+		)
+		local mesh = Instance.new("SpecialMesh")
+		mesh.MeshType = Enum.MeshType.Sphere
+		mesh.Parent = leaf
+		part(
+			m,
+			"LeafVein",
+			Vector3.new(0.06, 1.1, 0.04),
+			cf * CFrame.new(0, 0, -0.07),
+			Color3.fromRGB(96, 140, 50),
+			Enum.Material.SmoothPlastic,
+			{ CanCollide = false, NoShadow = true }
+		)
+	end
+	eggGem(
+		m,
+		eggPoint(center, a * 1.03, b, thetaAt(b, -0.15), EGG_FRONT, 0.15),
+		0.45,
+		Color3.fromRGB(40, 200, 90),
+		Color3.fromRGB(150, 100, 58)
+	)
+	-- Glands
+	for k, off in { -0.25, 0.1 } do
+		local cf = eggPoint(center, a * 1.02, b, 2.2 + k * 0.08, EGG_FRONT + 0.55 + off, 0.2)
+		local nut = part(
+			m,
+			"Acorn",
+			Vector3.new(0.34, 0.44, 0.34),
+			cf * CFrame.new(0, -0.08, 0),
+			Color3.fromRGB(176, 120, 50),
+			Enum.Material.SmoothPlastic,
+			{ CanCollide = false, NoShadow = true }
+		)
+		local mesh = Instance.new("SpecialMesh")
+		mesh.MeshType = Enum.MeshType.Sphere
+		mesh.Parent = nut
+		ball(
+			m,
+			"AcornCap",
+			0.32,
+			cf * CFrame.new(0, 0.14, 0),
+			Color3.fromRGB(110, 76, 44),
+			Enum.Material.Wood,
+			{ CanCollide = false, NoShadow = true }
+		)
+	end
+	-- Racines au dos
+	eggMeridian(m, center, a * 1.03, b, function(th)
+		return -EGG_FRONT + math.sin(th * 5) * 0.25
+	end, 1.2, 2.85, 0.22, 0.16, Color3.fromRGB(80, 52, 34), Enum.Material.Wood, 12)
+end
+
+-- Œuf du givre (Rare) : dégradé bleu, cristaux de glace en couronne, bandes d'argent ondulées,
+-- saphir en façade, fermoirs au dos.
+eggDesigns.Frost = function(m, center, a, b)
+	local rand = rng(303)
+	eggBody(m, center, a, b, Color3.fromRGB(150, 200, 248), Enum.Material.Ice)
+	eggLower(m, center, a, b, 0.62, Color3.fromRGB(56, 86, 150), Enum.Material.Ice)
+	local silver = Color3.fromRGB(205, 210, 222)
+	eggRing(m, center, a, b, 0.25, 0.2, 0.13, silver, Enum.Material.Metal, 26, 0.14, 3)
+	eggRing(m, center, a, b, -0.45, 0.2, 0.13, silver, Enum.Material.Metal, 26, 0.14, 3, 1.5)
+	eggRing(m, center, a, b, -1.1, 0.2, 0.13, silver, Enum.Material.Metal, 22, 0.1, 3, 0.7)
+	local ice = Color3.fromRGB(150, 215, 255)
+	eggCrystal(m, eggPoint(center, a, b, 0.02, 0, 0), 0.42, 1.2, ice, Enum.Material.Glass)
+	for k = 0, 8 do
+		local phi = k / 9 * math.pi * 2
+		eggCrystal(
+			m,
+			eggPoint(center, a, b, 0.45 + (k % 2) * 0.2, phi, 0),
+			0.3 + rand() * 0.12,
+			0.7 + rand() * 0.5,
+			ice:Lerp(Color3.fromRGB(150, 200, 250), rand()),
+			Enum.Material.Glass,
+			10
+		)
+	end
+	eggGem(
+		m,
+		eggPoint(center, a, b, 1.2, EGG_FRONT, 0.1),
+		0.55,
+		Color3.fromRGB(40, 80, 230),
+		silver,
+		Enum.Material.Glass
+	)
+	for _, y in { 0.25, -0.45, -1.1 } do
+		part(
+			m,
+			"Clasp",
+			Vector3.new(0.35, 0.35, 0.18),
+			eggPoint(center, a, b, thetaAt(b, y), -EGG_FRONT, 0.12),
+			silver,
+			Enum.Material.Metal,
+			{ CanCollide = false }
+		)
+	end
+end
+
+-- Œuf arcanique (Épique) : violet cerclé d'argent (méridiens + ceinture à méandres),
+-- améthyste hexagonale, trois cristaux au sommet, runes au dos.
+eggDesigns.Arcane = function(m, center, a, b)
+	eggBody(m, center, a, b, Color3.fromRGB(116, 62, 176))
+	local silver = Color3.fromRGB(172, 172, 184)
+	for k = 0, 3 do
+		local phi = EGG_FRONT + k * math.pi / 2
+		eggMeridian(m, center, a, b, function()
+			return phi
+		end, 0.25, 2.9, 0.26, 0.14, silver, Enum.Material.Metal, 12)
+	end
+	eggRing(m, center, a, b, -0.15, 0.6, 0.18, silver, Enum.Material.Metal, 26)
+	for k = 0, 17 do
+		local phi = k / 18 * math.pi * 2
+		part(
+			m,
+			"Meander",
+			Vector3.new(0.18, 0.3, 0.1),
+			eggPoint(center, a, b, thetaAt(b, -0.15), phi, 0.2) * CFrame.Angles(0, 0, math.rad(45)),
+			Color3.fromRGB(120, 120, 132),
+			Enum.Material.Metal,
+			{ CanCollide = false, NoShadow = true }
+		)
+	end
+	local gemCf = eggPoint(center, a, b, thetaAt(b, -0.15), EGG_FRONT, 0.28)
+	part(
+		m,
+		"HexFrame",
+		Vector3.new(0.18, 1.05, 1.05),
+		gemCf * CFrame.Angles(0, math.rad(90), 0),
+		silver,
+		Enum.Material.Metal,
+		{ Shape = Enum.PartType.Cylinder, CanCollide = false }
+	)
+	part(
+		m,
+		"Amethyst",
+		Vector3.new(0.24, 0.75, 0.75),
+		gemCf * CFrame.new(0, 0, -0.08) * CFrame.Angles(0, math.rad(90), 0),
+		Color3.fromRGB(176, 110, 255),
+		Enum.Material.Neon,
+		{ Shape = Enum.PartType.Cylinder, CanCollide = false, NoShadow = true }
+	)
+	for k, phi in { EGG_FRONT, EGG_FRONT + 2.1, EGG_FRONT - 2.1 } do
+		eggCrystal(
+			m,
+			eggPoint(center, a, b, if k == 1 then 0.02 else 0.35, phi, 0),
+			0.3,
+			if k == 1 then 0.9 else 0.65,
+			Color3.fromRGB(190, 140, 255),
+			Enum.Material.Neon,
+			if k == 1 then 0 else 15
+		)
+	end
+	for k = 0, 4 do
+		part(
+			m,
+			"Rune",
+			Vector3.new(0.3, 0.08, 0.05),
+			eggPoint(center, a, b, 0.7 + k * 0.42, -EGG_FRONT, 0.02) * CFrame.Angles(0, 0, k * 0.9),
+			Color3.fromRGB(220, 160, 255),
+			Enum.Material.Neon,
+			{ CanCollide = false, NoShadow = true }
+		)
+	end
+end
+
+-- Œuf draconique (Légendaire) : écailles rouges et noires sur un cœur incandescent, cornes,
+-- ceinture d'or à tête de dragon et gemme de feu.
+eggDesigns.Dragon = function(m, center, a, b)
+	local rand = rng(404)
+	eggBody(m, center, a * 0.97, b * 0.97, Color3.fromRGB(255, 110, 30), Enum.Material.Neon, "EggCore")
+	local reds = { Color3.fromRGB(150, 40, 34), Color3.fromRGB(120, 32, 30), Color3.fromRGB(170, 56, 40) }
+	local theta = 0.3
+	local row = 0
+	while theta < 2.95 do
+		local count = math.max(4, math.floor(2 * math.pi * a * math.sin(theta) / 0.55 + 0.5))
+		for k = 0, count - 1 do
+			local phi = (k + (row % 2) * 0.5) / count * math.pi * 2
+			local back = math.abs(((phi - -EGG_FRONT) + math.pi) % (2 * math.pi) - math.pi) < 0.35
+			local color = if back and row % 2 == 0 then Color3.fromRGB(46, 38, 42) else reds[math.floor(rand() * 3) + 1]
+			part(
+				m,
+				"Scale",
+				Vector3.new(0.56, 0.56, 0.14),
+				eggPoint(center, a, b, theta, phi, 0.02) * CFrame.Angles(0, 0, math.rad(45)),
+				color,
+				Enum.Material.Slate,
+				{ CanCollide = false, NoShadow = true }
+			)
+		end
+		theta += 0.27
+		row += 1
+	end
+	-- Cornes recourbées
+	for _, side in { -1, 1 } do
+		local base = eggPoint(center, a, b, 0.6, EGG_FRONT + side * 1.1, 0)
+		column(m, "HornRing", 0.25, 0.6, base * CFrame.Angles(math.rad(-90), 0, 0), GOLD, Enum.Material.Metal)
+		local seg = base * CFrame.Angles(math.rad(-90), 0, 0)
+		for k, w in { 0.42, 0.34, 0.26, 0.18 } do
+			seg = seg * CFrame.new(0, 0.3, 0) * CFrame.Angles(0, 0, side * math.rad(18))
+			part(
+				m,
+				"Horn" .. k,
+				Vector3.new(w, 0.45, w),
+				seg * CFrame.new(0, 0.1, 0),
+				Color3.fromRGB(42, 34, 36),
+				Enum.Material.SmoothPlastic,
+				{ CanCollide = false }
+			)
+		end
+	end
+	eggRing(m, center, a * 1.02, b, -0.15, 0.32, 0.18, GOLD, Enum.Material.Metal, 24)
+	-- Tête de dragon dorée et gemme de feu
+	local head = eggPoint(center, a * 1.02, b, thetaAt(b, 0.25), EGG_FRONT, 0.25)
+	part(m, "DragonHead", Vector3.new(0.6, 0.5, 0.35), head, GOLD, Enum.Material.Metal, { CanCollide = false })
+	part(
+		m,
+		"DragonSnout",
+		Vector3.new(0.34, 0.3, 0.3),
+		head * CFrame.new(0, -0.22, -0.2),
+		GOLD,
+		Enum.Material.Metal,
+		{ CanCollide = false }
+	)
+	for _, side in { -1, 1 } do
+		part(
+			m,
+			"DragonHornlet",
+			Vector3.new(0.1, 0.35, 0.1),
+			head * CFrame.new(side * 0.25, 0.32, 0) * CFrame.Angles(0, 0, -side * 0.5),
+			GOLD,
+			Enum.Material.Metal,
+			{ CanCollide = false, NoShadow = true }
+		)
+		ball(
+			m,
+			"DragonEye",
+			0.1,
+			head * CFrame.new(side * 0.15, 0.05, -0.18),
+			Color3.fromRGB(255, 200, 60),
+			Enum.Material.Neon,
+			{ CanCollide = false, NoShadow = true }
+		)
+	end
+	eggGem(m, eggPoint(center, a * 1.02, b, thetaAt(b, -0.5), EGG_FRONT, 0.2), 0.5, Color3.fromRGB(255, 130, 20), GOLD)
+end
+
+-- Œuf de l'éther (Mythique) : nacre violette et turquoise, filigranes d'or, étoile cyan,
+-- constellations, croissant de lune au sommet.
+eggDesigns.Ether = function(m, center, a, b)
+	local rand = rng(505)
+	eggBody(m, center, a, b, Color3.fromRGB(78, 54, 150))
+	eggLowerShift(m, center, a, b, 0.9, Color3.fromRGB(36, 128, 126))
+	for _ = 1, 14 do
+		local patch = part(
+			m,
+			"Nacre",
+			Vector3.new(0.9, 0.7, 0.08),
+			eggPoint(center, a, b, 0.5 + rand() * 1.9, rand() * math.pi * 2, -0.01),
+			Color3.fromRGB(130, 70, 200):Lerp(Color3.fromRGB(70, 110, 200), rand()),
+			Enum.Material.SmoothPlastic,
+			{ CanCollide = false, NoShadow = true }
+		)
+		local mesh = Instance.new("SpecialMesh")
+		mesh.MeshType = Enum.MeshType.Sphere
+		mesh.Parent = patch
+	end
+	-- Filigranes d'or : arcs en ogive de part et d'autre de la façade et du dos
+	for _, center0 in { EGG_FRONT, -EGG_FRONT } do
+		for _, side in { -1, 1 } do
+			eggMeridian(m, center, a, b, function(th)
+				return center0 + side * (0.25 + math.sin((th - 0.3) / 2.5 * math.pi) * 0.75)
+			end, 0.3, 2.8, 0.15, 0.08, GOLD, Enum.Material.Metal, 24)
+		end
+	end
+	eggRing(m, center, a, b, -1.15, 0.24, 0.14, GOLD, Enum.Material.Metal, 22, 0.12, 4)
+	-- Étoile à quatre branches
+	local star = eggPoint(center, a, b, thetaAt(b, -0.05), EGG_FRONT, 0.15)
+	part(
+		m,
+		"StarBack",
+		Vector3.new(0.8, 0.8, 0.1),
+		star * CFrame.Angles(0, 0, math.rad(45)),
+		GOLD,
+		Enum.Material.Metal,
+		{ CanCollide = false }
+	)
+	for _, sz in { Vector3.new(0.22, 1.5, 0.12), Vector3.new(1.5, 0.22, 0.12) } do
+		part(
+			m,
+			"StarRay",
+			sz,
+			star * CFrame.new(0, 0, -0.08),
+			Color3.fromRGB(90, 230, 255),
+			Enum.Material.Neon,
+			{ CanCollide = false, NoShadow = true }
+		)
+	end
+	part(
+		m,
+		"StarHeart",
+		Vector3.new(0.45, 0.45, 0.16),
+		star * CFrame.new(0, 0, -0.12) * CFrame.Angles(0, 0, math.rad(45)),
+		Color3.fromRGB(200, 250, 255),
+		Enum.Material.Neon,
+		{ CanCollide = false, NoShadow = true }
+	)
+	-- Constellations (points lumineux reliés)
+	for _, side in { -1, 1 } do
+		local points = {}
+		for k = 0, 3 do
+			local cf =
+				eggPoint(center, a, b, 0.9 + k * 0.28 + rand() * 0.1, EGG_FRONT + side * (1.1 + rand() * 0.5), 0.02)
+			ball(
+				m,
+				"StarDot",
+				0.12,
+				cf,
+				Color3.fromRGB(120, 230, 255),
+				Enum.Material.Neon,
+				{ CanCollide = false, NoShadow = true }
+			)
+			table.insert(points, cf.Position)
+		end
+		for k = 1, #points - 1 do
+			local p0, p1 = points[k], points[k + 1]
+			part(
+				m,
+				"StarLine",
+				Vector3.new(0.03, 0.03, (p1 - p0).Magnitude),
+				CFrame.lookAt((p0 + p1) / 2, p1),
+				Color3.fromRGB(120, 230, 255),
+				Enum.Material.Neon,
+				{ CanCollide = false, NoShadow = true }
+			)
+		end
+	end
+	-- Croissant de lune au sommet
+	local top = center * CFrame.new(0, b + 0.55, 0)
+	column(m, "MoonStem", 0.4, 0.22, center * CFrame.new(0, b - 0.1, 0), GOLD, Enum.Material.Metal)
+	for k = 0, 13 do
+		local t = k / 13
+		local ang = math.rad(110 + t * 270)
+		local w = 0.1 + math.sin(t * math.pi) * 0.16 -- plus épais au milieu
+		part(
+			m,
+			"Moon",
+			Vector3.new(0.2, w, 0.16),
+			top * CFrame.new(math.cos(ang) * 0.42, math.sin(ang) * 0.42, 0) * CFrame.Angles(0, 0, ang),
+			GOLD,
+			Enum.Material.Metal,
+			{ CanCollide = false, NoShadow = true }
+		)
+	end
+end
+
+-- Œuf complet posé au-dessus de `base` (bas de l'œuf à baseY). Repli : œuf uni.
+function Models.eggModel(design: string?, base: CFrame, baseY: number, parent: Instance, color: Color3)
+	local a, b = 1.45, 1.9
+	local center = base * CFrame.new(0, baseY + b, 0)
+	local builder = design and eggDesigns[design]
+	if builder then
+		builder(parent, center, a, b)
+	else
+		eggBody(parent, center, a, b, color)
+	end
+end
+
+function Models.eggStand(base: CFrame, color: Color3, royal: boolean?, design: string?): (Model, BasePart)
 	local m = newModel("EggStand")
 	local plinth
 	if royal then
@@ -1532,40 +2153,6 @@ function Models.eggStand(base: CFrame, color: Color3, royal: boolean?): (Model, 
 			local post = base * CFrame.new(math.cos(a) * 2.7, 0.6, math.sin(a) * 2.7)
 			column(m, "RoyalPost", 3.2, 0.35, post, GOLD, Enum.Material.Metal)
 			ball(m, "RoyalOrb", 0.6, post * CFrame.new(0, 3.4, 0), color, Enum.Material.Neon, { NoShadow = true })
-		end
-		local crownAt = base * CFrame.new(0, 4.75, 0) -- posée sur la pointe de l'œuf
-		column(m, "CrownBand", 0.45, 1.5, crownAt, GOLD, Enum.Material.Metal, { CanCollide = false })
-		for k = 0, 5 do
-			local a = math.rad(k * 60)
-			part(
-				m,
-				"CrownSpike",
-				Vector3.new(0.3, 0.7, 0.3),
-				crownAt
-					* CFrame.new(math.cos(a) * 0.62, 0.55, math.sin(a) * 0.62)
-					* CFrame.Angles(0, -a + math.rad(45), 0),
-				GOLD,
-				Enum.Material.Metal,
-				{ CanCollide = false, NoShadow = true }
-			)
-			ball(
-				m,
-				"CrownTip",
-				0.28,
-				crownAt * CFrame.new(math.cos(a) * 0.62, 0.95, math.sin(a) * 0.62),
-				GOLD,
-				Enum.Material.Metal,
-				{ NoShadow = true, CanCollide = false }
-			)
-			ball(
-				m,
-				"CrownGem",
-				0.25,
-				crownAt * CFrame.new(math.cos(a) * 0.78, 0, math.sin(a) * 0.78),
-				if k % 2 == 0 then C.Cloth else C.RuneBlue,
-				Enum.Material.Neon,
-				{ NoShadow = true, CanCollide = false }
-			)
 		end
 	else
 		plinth = column(m, "Plinth", 1.2, 5, base, C.StoneDark, Enum.Material.Cobblestone)
@@ -1593,25 +2180,7 @@ function Models.eggStand(base: CFrame, color: Color3, royal: boolean?): (Model, 
 		end
 	end
 	column(m, "Cushion", 0.4, 3.6, base * CFrame.new(0, 1.2, 0), GOLD, Enum.Material.Metal)
-	-- Une boule Roblox reste toujours sphérique : l'ellipsoïde passe par un SpecialMesh.
-	local egg =
-		part(m, "Egg", Vector3.new(2.6, 3.4, 2.6), base * CFrame.new(0, 3.3, 0), color, Enum.Material.SmoothPlastic)
-	local mesh = Instance.new("SpecialMesh")
-	mesh.MeshType = Enum.MeshType.Sphere
-	mesh.Parent = egg
-	column(
-		m,
-		"Band",
-		0.35,
-		2.75,
-		base * CFrame.new(0, 3.1, 0),
-		color:Lerp(Color3.new(1, 1, 1), 0.45),
-		Enum.Material.SmoothPlastic,
-		{
-			CanCollide = false,
-			NoShadow = true,
-		}
-	)
+	Models.eggModel(design, base, 1.55, m, color)
 	column(
 		m,
 		"Glow",
@@ -2706,15 +3275,6 @@ local PAVING = Color3.fromRGB(158, 150, 138)
 -- Ajoute du relief aux grandes surfaces (pierres saillantes, corbeaux, lierre, mousse) et
 -- des accessoires (tonneaux, caisses, étals). Tout est déterministe (même rendu à chaque
 -- génération) grâce à un générateur pseudo-aléatoire initialisé par une graine.
-
-local function rng(seed: number)
-	local state = math.floor(math.abs(seed) * 7919 + 12345) % 2147483646 + 1
-	return function(): number
-		state = (state * 16807) % 2147483647
-		return (state - 1) / 2147483646
-	end
-end
-Models.rng = rng
 
 local LEAF_IVY = { Color3.fromRGB(58, 112, 52), Color3.fromRGB(74, 132, 60), Color3.fromRGB(46, 96, 48) }
 local MOSS = Color3.fromRGB(92, 120, 64)
