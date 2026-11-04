@@ -234,8 +234,8 @@ local function buildPlot(index: number, parent: Instance): Plot
 		Name = "Floor",
 		Size = Vector3.new(Game.PlotSize, 1, Game.PlotSize),
 		CFrame = cf * CFrame.new(0, FLOOR_TOP - 0.5, 0),
-		Material = Enum.Material.Ground,
-		Color = Color3.fromRGB(125, 105, 75),
+		Material = Enum.Material.Cobblestone, -- sol pavé, assorti à la cour royale
+		Color = Color3.fromRGB(150, 142, 128),
 		Parent = model,
 	})
 	model.PrimaryPart = floor
@@ -256,7 +256,7 @@ local function buildPlot(index: number, parent: Instance): Plot
 	local signPost = makePart({
 		Name = "SignPost",
 		Size = Vector3.new(0.8, 7, 0.8),
-		CFrame = cf * CFrame.new(10, FLOOR_TOP + 3.5, -HALF + 2),
+		CFrame = cf * CFrame.new(10, FLOOR_TOP + 3.5, -HALF + 4.5), -- derrière le muret d'entrée
 		Material = Enum.Material.Wood,
 		Color = Models.Colors.WoodDark,
 		Parent = model,
@@ -264,7 +264,7 @@ local function buildPlot(index: number, parent: Instance): Plot
 	makePart({
 		Name = "SignBoard",
 		Size = Vector3.new(5, 2, 0.4),
-		CFrame = cf * CFrame.new(10, FLOOR_TOP + 6, -HALF + 1.5),
+		CFrame = cf * CFrame.new(10, FLOOR_TOP + 6, -HALF + 4),
 		Material = Enum.Material.WoodPlanks,
 		Color = Models.Colors.WoodLight,
 		Parent = model,

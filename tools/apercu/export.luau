@@ -52,7 +52,28 @@ end
 local scene = process.args[2] or "base"
 local function at(x, z) return roblox.CFrame.new(x, 0, z) end
 local V = roblox.Vector3.new
-if scene == "castle" then
+if scene == "plot" then
+	local GameCfg = loadData("/src/shared/Config/Game.luau", "Game")
+	local StructuresCfg = loadData("/src/shared/Config/Structures.luau", "Structures")
+	local holder = roblox.Instance.new("Model")
+	local floor = roblox.Instance.new("Part")
+	floor.Size = V(GameCfg.PlotSize, 1, GameCfg.PlotSize)
+	floor.CFrame = roblox.CFrame.new(0, 0.5, 0)
+	floor.Color = roblox.Color3.fromRGB(150, 142, 128)
+	floor.Parent = holder
+	local base = roblox.CFrame.new(0, 1, 0)
+	Models.plotDecor(base, GameCfg.PlotSize, holder)
+	dump(holder)
+	dump((Models.etherCore(base * roblox.CFrame.new(0, 0, 8))))
+	for _, def in StructuresCfg do
+		local size = V(def.Size[1], def.Size[2], def.Size[3])
+		local c = def.Color
+		dump(Models.structure(def.Id, base * roblox.CFrame.new(def.Offset[1], 0, def.Offset[2]), size, roblox.Color3.fromRGB(c[1], c[2], c[3]), roblox.Enum.Material.Slate))
+		for _, pos in def.Effects.Stations or {} do
+			dump((Models.trainingMat(base * roblox.CFrame.new(pos[1], 0.3, pos[2]), def.Effects.StationTier)))
+		end
+	end
+elseif scene == "castle" then
 	local GameCfg = loadData("/src/shared/Config/Game.luau", "Game")
 	local BossesCfg2 = loadData("/src/shared/Config/Bosses.luau", "Bosses")
 	local StreetCfg = loadData("/src/shared/Config/Street.luau", "Street")

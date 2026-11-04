@@ -1339,34 +1339,6 @@ function Models.bush(base: CFrame, parent: Instance, seed: number)
 	ball(parent, "Bush", 2.2 * s, base * CFrame.new(1.2, 0.8 * s, 0.6), C.Leaf1, Enum.Material.Grass)
 end
 
--- Bordure basse et lanternes d'entrée d'une parcelle.
-function Models.plotDecor(base: CFrame, plotSize: number, parent: Instance)
-	local half = plotSize / 2
-	for i, edge in { { 0, half, plotSize, 1 }, { -half, 0, 1, plotSize }, { half, 0, 1, plotSize } } do
-		part(
-			parent,
-			"Curb" .. i,
-			Vector3.new(edge[3], 0.8, edge[4]),
-			base * CFrame.new(edge[1], 0.4, edge[2]),
-			C.StoneDark,
-			Enum.Material.Cobblestone
-		)
-	end
-	-- Entrée : bordure ouverte au centre
-	local seg = (plotSize - 12) / 2
-	for _, sign in { -1, 1 } do
-		part(
-			parent,
-			"CurbFront",
-			Vector3.new(seg, 0.8, 1),
-			base * CFrame.new(sign * (6 + seg / 2), 0.4, -half),
-			C.StoneDark,
-			Enum.Material.Cobblestone
-		)
-		Models.lantern(base * CFrame.new(sign * 6.5, 0, -half), parent, false)
-	end
-end
-
 -- Décor du hub : puits central décoratif autour du point d'apparition, lanternes, bannières.
 function Models.hubDecor(parent: Instance, radius: number)
 	for i = 1, 6 do
@@ -3197,6 +3169,142 @@ function Models.castle(parent: Instance, cfg)
 			CFrame.new(math.cos(a) * mid, 0.3, math.sin(a) * mid) * CFrame.Angles(0, -a, 0),
 			PAVING,
 			Enum.Material.Cobblestone
+		)
+	end
+end
+
+-- Bastion (parcelle) : enceinte basse crénelée, tours d'angle, portail d'entrée à arc avec
+-- torches, allée dallée jusqu'au Noyau. `base` au sol de la parcelle, -Z = entrée (vers le hub).
+function Models.plotDecor(base: CFrame, plotSize: number, parent: Instance)
+	local half = plotSize / 2
+	local h, t = 3.6, 1.4
+	local gate = 12
+	local function lowWall(cf: CFrame, length: number)
+		part(
+			parent,
+			"LowWall",
+			Vector3.new(length, h, t),
+			cf * CFrame.new(0, h / 2, 0),
+			WALL_STONE,
+			Enum.Material.Cobblestone
+		)
+		part(
+			parent,
+			"LowWallCap",
+			Vector3.new(length, 0.35, t + 0.3),
+			cf * CFrame.new(0, h + 0.17, 0),
+			WALL_LIGHT,
+			Enum.Material.Slate
+		)
+		local count = math.max(1, math.floor(length / 4))
+		for k = 0, count - 1 do
+			if k % 2 == 0 then
+				part(
+					parent,
+					"LowMerlon",
+					Vector3.new(length / count * 0.9, 0.9, t),
+					cf * CFrame.new(-length / 2 + (k + 0.5) * (length / count), h + 0.8, 0),
+					WALL_STONE,
+					Enum.Material.Cobblestone
+				)
+			end
+		end
+	end
+	-- Trois côtés pleins, façade d'entrée ouverte au centre
+	lowWall(base * CFrame.new(0, 0, half - t / 2), plotSize - 4)
+	for _, sx in { -1, 1 } do
+		lowWall(base * CFrame.new(sx * (half - t / 2), 0, 0) * CFrame.Angles(0, math.rad(90), 0), plotSize - 4)
+		local seg = (plotSize - gate) / 2 - 2
+		lowWall(base * CFrame.new(sx * (gate / 2 + seg / 2), 0, -half + t / 2), seg)
+	end
+	-- Tours d'angle (cylindres à créneaux et toit en gradins)
+	for _, cx in { -1, 1 } do
+		for _, cz in { -1, 1 } do
+			local tower = base * CFrame.new(cx * (half - 1.5), 0, cz * (half - 1.5))
+			column(parent, "CornerTower", 7, 4.2, tower, WALL_STONE, Enum.Material.Cobblestone)
+			column(parent, "CornerTowerTop", 0.6, 5, tower * CFrame.new(0, 7, 0), WALL_LIGHT, Enum.Material.Slate)
+			for k, sc in { 1, 0.7, 0.4 } do
+				column(
+					parent,
+					"CornerRoof",
+					1.1,
+					5 * sc,
+					tower * CFrame.new(0, 7.6 + (k - 1) * 1, 0),
+					if k % 2 == 0 then C.RoofDark else C.Roof,
+					Enum.Material.Slate
+				)
+			end
+		end
+	end
+	-- Portail : piliers à chapiteau doré, arc de claveaux, torches
+	for _, sx in { -1, 1 } do
+		local pillar = base * CFrame.new(sx * (gate / 2 + 1), 0, -half + t / 2)
+		part(
+			parent,
+			"GatePillar",
+			Vector3.new(2, 7.5, 2),
+			pillar * CFrame.new(0, 3.75, 0),
+			WALL_DARK,
+			Enum.Material.Cobblestone
+		)
+		part(
+			parent,
+			"GatePillarCap",
+			Vector3.new(2.6, 0.5, 2.6),
+			pillar * CFrame.new(0, 7.75, 0),
+			GOLD,
+			Enum.Material.Metal
+		)
+		local torch = pillar * CFrame.new(0, 5, -1.2)
+		part(parent, "Sconce", Vector3.new(0.5, 1, 0.5), torch, C.WoodDark, Enum.Material.Wood)
+		part(
+			parent,
+			"Flame",
+			Vector3.new(0.6, 0.8, 0.6),
+			torch * CFrame.new(0, 0.9, 0),
+			Color3.fromRGB(255, 160, 70),
+			Enum.Material.Neon,
+			{
+				CanCollide = false,
+				NoShadow = true,
+			}
+		)
+	end
+	arch(parent, base * CFrame.new(0, 7.2, -half + t / 2), gate / 2 + 1, 1.4, 2, 11, WALL_LIGHT, Enum.Material.Slate)
+	part(
+		parent,
+		"GateKeystone",
+		Vector3.new(1.4, 1.4, 2.2),
+		base * CFrame.new(0, 7.2 + gate / 2 + 1.9, -half + t / 2) * CFrame.Angles(0, 0, math.rad(45)),
+		GOLD,
+		Enum.Material.Metal,
+		{
+			NoShadow = true,
+		}
+	)
+	-- Allée dallée de l'entrée au Noyau d'Éther, bordée de pierre
+	local alleyLength = half + 2
+	local alley = base * CFrame.new(0, 0.06, -half + alleyLength / 2)
+	part(
+		parent,
+		"PlotAlley",
+		Vector3.new(6, 0.12, alleyLength),
+		alley,
+		WALL_LIGHT,
+		Enum.Material.Slate,
+		{ NoShadow = true }
+	)
+	for _, sx in { -1, 1 } do
+		part(
+			parent,
+			"PlotAlleyEdge",
+			Vector3.new(0.5, 0.16, alleyLength),
+			alley * CFrame.new(sx * 3.25, 0.02, 0),
+			WALL_DARK,
+			Enum.Material.Slate,
+			{
+				NoShadow = true,
+			}
 		)
 	end
 end
