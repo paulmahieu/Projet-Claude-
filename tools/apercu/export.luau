@@ -7,10 +7,22 @@ local process = require("@lune/process")
 local root = process.args[1]
 local src = fs.readFile(root .. "/src/server/Art/Models.luau")
 -- Simulacre minimal de `game` : aucun asset importé dans l'aperçu.
-local fakeGame = { GetService = function() return { FindFirstChild = function() return nil end } end }
+local fakeGame = {
+	GetService = function()
+		return {
+			FindFirstChild = function()
+				return nil
+			end,
+		}
+	end,
+}
 local env = setmetatable({
-	Instance = roblox.Instance, CFrame = roblox.CFrame, Vector3 = roblox.Vector3,
-	Color3 = roblox.Color3, Enum = roblox.Enum, game = fakeGame,
+	Instance = roblox.Instance,
+	CFrame = roblox.CFrame,
+	Vector3 = roblox.Vector3,
+	Color3 = roblox.Color3,
+	Enum = roblox.Enum,
+	game = fakeGame,
 }, { __index = _G })
 local Models = luau.load(src, { environment = env, debugName = "Models" })()
 local function loadModule(path, name)
@@ -30,9 +42,13 @@ local function dump(model)
 			local cf = p.CFrame
 			local rx, ry, rz = cf:ToEulerAnglesXYZ()
 			local shape = "Block"
-			if p:FindFirstChildOfClass("SpecialMesh") then shape = "Ball" -- ellipsoïde
-			elseif p.ClassName == "WedgePart" then shape = "Wedge"
-			elseif p.ClassName == "Part" then shape = p.Shape.Name end
+			if p:FindFirstChildOfClass("SpecialMesh") then
+				shape = "Ball" -- ellipsoïde
+			elseif p.ClassName == "WedgePart" then
+				shape = "Wedge"
+			elseif p.ClassName == "Part" then
+				shape = p.Shape.Name
+			end
 			if not (p:GetAttribute("Depletable") and false) then
 				table.insert(out, {
 					s = { p.Size.X, p.Size.Y, p.Size.Z },
@@ -52,16 +68,43 @@ end
 
 -- Scène : choisie par l'argument 2 ("base" ou "v2")
 local scene = process.args[2] or "base"
-local function at(x, z) return roblox.CFrame.new(x, 0, z) end
+local function at(x, z)
+	return roblox.CFrame.new(x, 0, z)
+end
 local V = roblox.Vector3.new
-if scene == "pantin" then
+if scene == "etalon" then
+	-- Étalon de luxe : face, trois quarts, profil.
+	local holder = roblox.Instance.new("Model")
+	local def
+	for _, d in PetsCfg.List do
+		if d.Id == "LuxuryStallion" then
+			def = d
+		end
+	end
+	for i, angle in { 0, -35, -90 } do
+		local model = PetModels.build(def, roblox.Color3.new(1, 1, 1))
+		local base = roblox.CFrame.new((i - 2) * 3.2, 1.6, 0) * roblox.CFrame.Angles(0, math.rad(angle), 0)
+		local pivot = model.PrimaryPart.CFrame
+		for _, p in model:GetDescendants() do
+			if p:IsA("BasePart") then
+				p.CFrame = base * pivot:Inverse() * p.CFrame
+			end
+		end
+		model.Parent = holder
+	end
+	dump(holder)
+elseif scene == "pantin" then
 	-- Pantin chevalier : face, profil, dos (et une version de zone royale).
 	local holder = roblox.Instance.new("Model")
 	local blue = roblox.Color3.fromRGB(46, 84, 170)
 	Models.dummy(roblox.CFrame.new(-6, 0, 0) * roblox.CFrame.Angles(0, math.pi, 0), holder, blue)
 	Models.dummy(roblox.CFrame.new(0, 0, 0) * roblox.CFrame.Angles(0, math.pi / 2, 0), holder, blue)
 	Models.dummy(roblox.CFrame.new(6, 0, 0), holder, blue)
-	Models.dummy(roblox.CFrame.new(12, 0, 0) * roblox.CFrame.Angles(0, math.pi, 0), holder, roblox.Color3.fromRGB(212, 160, 50))
+	Models.dummy(
+		roblox.CFrame.new(12, 0, 0) * roblox.CFrame.Angles(0, math.pi, 0),
+		holder,
+		roblox.Color3.fromRGB(212, 160, 50)
+	)
 	dump(holder)
 elseif scene == "decors" then
 	-- Nouveautés liées au pack : torche, minerai de cristal, portail du bastion à battants.
@@ -103,7 +146,12 @@ elseif scene == "enemies" then
 	local list = groups[process.args[3] or "petits"]
 	local spacing = ({ petits = 7, frontieres = 9, elites = 13, regionaux = 20, majeurs = 26 })[process.args[3] or "petits"]
 	for i, id in list do
-		local model = Models.enemy(byId[id], roblox.CFrame.new((i - 2) * spacing, 0, 0) * roblox.CFrame.Angles(0, math.rad(-25), 0), 1, false)
+		local model = Models.enemy(
+			byId[id],
+			roblox.CFrame.new((i - 2) * spacing, 0, 0) * roblox.CFrame.Angles(0, math.rad(-25), 0),
+			1,
+			false
+		)
 		dump(model)
 	end
 elseif scene == "pets" then
@@ -170,7 +218,15 @@ elseif scene == "plot" then
 	for _, def in StructuresCfg do
 		local size = V(def.Size[1], def.Size[2], def.Size[3])
 		local c = def.Color
-		dump(Models.structure(def.Id, base * roblox.CFrame.new(def.Offset[1], 0, def.Offset[2]), size, roblox.Color3.fromRGB(c[1], c[2], c[3]), roblox.Enum.Material.Slate))
+		dump(
+			Models.structure(
+				def.Id,
+				base * roblox.CFrame.new(def.Offset[1], 0, def.Offset[2]),
+				size,
+				roblox.Color3.fromRGB(c[1], c[2], c[3]),
+				roblox.Enum.Material.Slate
+			)
+		)
 		for _, pos in def.Effects.Stations or {} do
 			dump((Models.trainingMat(base * roblox.CFrame.new(pos[1], 0.3, pos[2]), def.Effects.StationTier)))
 		end
@@ -194,7 +250,15 @@ elseif scene == "land" then
 	for _, def in StructuresCfg do
 		local size = V(def.Size[1], def.Size[2], def.Size[3])
 		local c = def.Color
-		dump(Models.structure(def.Id, base * roblox.CFrame.new(def.Offset[1], 0, def.Offset[2]), size, roblox.Color3.fromRGB(c[1], c[2], c[3]), roblox.Enum.Material.Slate))
+		dump(
+			Models.structure(
+				def.Id,
+				base * roblox.CFrame.new(def.Offset[1], 0, def.Offset[2]),
+				size,
+				roblox.Color3.fromRGB(c[1], c[2], c[3]),
+				roblox.Enum.Material.Slate
+			)
+		)
 	end
 	local level = 3
 	local owned = Formulas.landOwned(LandCfg, level)
@@ -256,7 +320,16 @@ elseif scene == "castle" then
 	dump((Models.portal(lookCenter(FarmCfg.Portal), roblox.Color3.fromRGB(110, 210, 255))))
 	for _, egg in PetsCfg.Eggs do
 		local c = egg.Color
-		dump((Models.eggStand(lookCenter(egg.Position), roblox.Color3.fromRGB(c[1], c[2], c[3]), egg.Product ~= nil, egg.Design)))
+		dump(
+			(
+				Models.eggStand(
+					lookCenter(egg.Position),
+					roblox.Color3.fromRGB(c[1], c[2], c[3]),
+					egg.Product ~= nil,
+					egg.Design
+				)
+			)
+		)
 	end
 elseif scene == "hub" then
 	local holder = roblox.Instance.new("Model")
@@ -291,7 +364,8 @@ elseif scene == "farm" then
 		local i = p:GetAttribute("ZoneIndex")
 		if i then
 			local zone = FarmCfg.Zones[i]
-			p.Color = if zone.PassKey then roblox.Color3.fromRGB(255, 205, 80)
+			p.Color = if zone.PassKey
+				then roblox.Color3.fromRGB(255, 205, 80)
 				elseif zone.Rebirths <= 3 then roblox.Color3.fromRGB(90, 230, 120)
 				else roblox.Color3.fromRGB(230, 70, 60)
 		end
@@ -309,9 +383,27 @@ elseif scene == "street" then
 	Models.mysticHall(origin, hallCfg, roblox.Color3.fromRGB(255, 110, 90), holder, 7)
 	dump(holder)
 	for i, kind in StreetCfg.Kinds do
-		dump((Models.enemy(kind, origin * roblox.CFrame.new(-9 + i * 4, 0, -24) * roblox.CFrame.Angles(0, math.pi, 0), kind.Scale, false)))
+		dump(
+			(
+				Models.enemy(
+					kind,
+					origin * roblox.CFrame.new(-9 + i * 4, 0, -24) * roblox.CFrame.Angles(0, math.pi, 0),
+					kind.Scale,
+					false
+				)
+			)
+		)
 	end
-	dump((Models.enemy(StreetCfg.Kinds[2], origin * roblox.CFrame.new(0, 0, -40) * roblox.CFrame.Angles(0, math.pi, 0), 1, true)))
+	dump(
+		(
+			Models.enemy(
+				StreetCfg.Kinds[2],
+				origin * roblox.CFrame.new(0, 0, -40) * roblox.CFrame.Angles(0, math.pi, 0),
+				1,
+				true
+			)
+		)
+	)
 	-- Porte locale (rendue côté client dans le jeu)
 	local gate = roblox.Instance.new("Part")
 	gate.Size = V(cfg.Width - 2, 12, 1)

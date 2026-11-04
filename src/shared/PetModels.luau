@@ -1224,6 +1224,195 @@ local function golem(m: Model, s)
 	return body
 end
 
+-- Étalon de luxe (design du créateur) : cheval debout, très carré d'épaules, veste violette à
+-- épaulettes bombées et boutons dorés, chemise rouge à pois au col ouvert, tee-shirt noir,
+-- grosse chaîne en or avec pendentif « A », montre en or, pantalon gris, mocassins noirs ;
+-- tête de cheval rieuse (bouche ouverte, dents), barbe noire, banane de crinière noire,
+-- lunettes d'aviateur dorées à verres jaunes. Origine = centre du torse, -Z = face.
+local function stallion(m: Model, s)
+	local o = CFrame.new()
+	local coat = rgb(s.Coat)
+	local skin = rgb(s.Color)
+	local dark = Color3.fromRGB(30, 26, 28)
+	local gold = Color3.fromRGB(236, 186, 60)
+	local shirt = Color3.fromRGB(205, 50, 40)
+	local pants = Color3.fromRGB(110, 106, 112)
+	local MET = { Material = Enum.Material.Metal }
+
+	-- Jambes, pantalon gris et mocassins noirs
+	for _, side in { -1, 1 } do
+		part(m, "Pantalon", Vector3.new(0.34, 0.78, 0.38), o * CFrame.new(side * 0.22, -1.0, 0), pants)
+		part(
+			m,
+			"PliPantalon",
+			Vector3.new(0.04, 0.7, 0.04),
+			o * CFrame.new(side * 0.22, -1.0, -0.2),
+			pants:Lerp(dark, 0.25)
+		)
+		ell(m, "Mocassin", Vector3.new(0.4, 0.22, 0.58), o * CFrame.new(side * 0.23, -1.44, -0.07), dark)
+		part(
+			m,
+			"MocassinSemelle",
+			Vector3.new(0.4, 0.06, 0.56),
+			o * CFrame.new(side * 0.23, -1.53, -0.06),
+			Color3.fromRGB(15, 13, 15)
+		)
+	end
+	part(m, "Ceinture", Vector3.new(0.82, 0.12, 0.48), o * CFrame.new(0, -0.6, 0), dark)
+
+	-- Torse : tee-shirt noir, chemise rouge à pois, veste violette
+	local body = part(m, "TeeShirt", Vector3.new(0.7, 0.85, 0.46), o * CFrame.new(0, -0.15, 0), dark)
+	for _, side in { -1, 1 } do
+		-- Pans de veste, revers et poche
+		part(m, "Veste", Vector3.new(0.42, 0.95, 0.5), o * CFrame.new(side * 0.33, -0.15, 0.02), coat)
+		part(
+			m,
+			"Revers",
+			Vector3.new(0.16, 0.5, 0.06),
+			o * CFrame.new(side * 0.2, 0.1, -0.27) * CFrame.Angles(0, 0, side * math.rad(-22)),
+			coat:Lerp(Color3.new(1, 1, 1), 0.08)
+		)
+		part(
+			m,
+			"Col",
+			Vector3.new(0.14, 0.42, 0.07),
+			o * CFrame.new(side * 0.13, 0.18, -0.29) * CFrame.Angles(0, 0, side * math.rad(-26)),
+			shirt
+		)
+		part(m, "Poche", Vector3.new(0.22, 0.06, 0.06), o * CFrame.new(side * 0.32, -0.42, -0.27), coat:Lerp(dark, 0.2))
+		-- Épaulettes très bombées
+		ell(m, "Epaulette", Vector3.new(0.62, 0.62, 0.62), o * CFrame.new(side * 0.6, 0.18, 0), coat)
+		-- Bras : manche, boutons dorés au poignet, main
+		ell(m, "Manche", Vector3.new(0.36, 0.72, 0.4), o * CFrame.new(side * 0.72, -0.3, 0), coat)
+		for b = 0, 1 do
+			ball(m, "BoutonManche", 0.06, o * CFrame.new(side * 0.9, -0.48 - b * 0.09, 0.02), gold, MET)
+		end
+		ell(m, "Main", Vector3.new(0.3, 0.34, 0.3), o * CFrame.new(side * 0.74, -0.78, -0.03), skin)
+		part(m, "Pouce", Vector3.new(0.08, 0.16, 0.08), o * CFrame.new(side * 0.64, -0.74, -0.14), skin)
+	end
+	-- Chemise rouge à pois sous la veste
+	part(m, "Chemise", Vector3.new(0.4, 0.75, 0.05), o * CFrame.new(0, -0.08, -0.255), shirt)
+	part(m, "TeeShirtVisible", Vector3.new(0.26, 0.62, 0.06), o * CFrame.new(0, -0.05, -0.265), dark)
+	for i = 0, 7 do
+		ball(
+			m,
+			"Pois",
+			0.035,
+			o * CFrame.new((i % 2 == 0 and -0.15 or 0.15), 0.2 - i * 0.07, -0.285),
+			Color3.fromRGB(70, 50, 80)
+		)
+	end
+	ball(m, "BoutonVeste", 0.08, o * CFrame.new(0.13, -0.42, -0.27), gold, MET)
+	-- Montre en or au poignet gauche
+	part(m, "Montre", Vector3.new(0.38, 0.1, 0.42), o * CFrame.new(-0.74, -0.62, -0.01), gold, MET)
+	part(
+		m,
+		"Cadran",
+		Vector3.new(0.02, 0.14, 0.14),
+		o * CFrame.new(-0.94, -0.62, -0.01),
+		dark,
+		{ Shape = Enum.PartType.Cylinder }
+	)
+
+	-- Chaîne en or et pendentif « A »
+	for i = 0, 10 do
+		local a = math.rad(-75 + i * 15)
+		ball(m, "Maillon", 0.075, o * CFrame.new(math.sin(a) * 0.22, 0.27 - math.cos(a) * 0.17, -0.27), gold, MET)
+	end
+	local pend = o * CFrame.new(0, -0.03, -0.3)
+	for _, side in { -1, 1 } do
+		part(
+			m,
+			"LettreA",
+			Vector3.new(0.04, 0.22, 0.03),
+			pend * CFrame.new(side * 0.045, 0, 0) * CFrame.Angles(0, 0, side * math.rad(-20)),
+			gold,
+			MET
+		)
+	end
+	part(m, "LettreABarre", Vector3.new(0.09, 0.03, 0.03), pend * CFrame.new(0, -0.03, 0), gold, MET)
+
+	-- Cou et tête de cheval
+	ell(m, "Cou", Vector3.new(0.38, 0.42, 0.4), o * CFrame.new(0, 0.42, 0.04), skin)
+	local head = o * CFrame.new(0, 0.82, 0.02)
+	ell(m, "Crane", Vector3.new(0.56, 0.58, 0.62), head, skin)
+	-- Long museau sombre, bouche ouverte rieuse
+	local muzzle = head * CFrame.new(0, -0.14, -0.38) * CFrame.Angles(math.rad(10), 0, 0)
+	ell(m, "Chanfrein", Vector3.new(0.36, 0.3, 0.5), head * CFrame.new(0, -0.1, -0.26), skin)
+	ell(m, "Museau", Vector3.new(0.42, 0.3, 0.42), muzzle, Color3.fromRGB(40, 36, 40))
+	for _, side in { -1, 1 } do
+		ball(m, "Naseau", 0.08, muzzle * CFrame.new(side * 0.1, 0.06, -0.2), Color3.fromRGB(15, 13, 15))
+	end
+	ell(m, "Bouche", Vector3.new(0.36, 0.16, 0.34), muzzle * CFrame.new(0, -0.17, -0.02), Color3.fromRGB(150, 40, 50))
+	part(
+		m,
+		"DentsHaut",
+		Vector3.new(0.3, 0.07, 0.04),
+		muzzle * CFrame.new(0, -0.11, -0.19),
+		Color3.fromRGB(245, 240, 225)
+	)
+	part(
+		m,
+		"DentsBas",
+		Vector3.new(0.24, 0.06, 0.04),
+		muzzle * CFrame.new(0, -0.24, -0.15),
+		Color3.fromRGB(245, 240, 225)
+	)
+	ell(m, "Machoire", Vector3.new(0.38, 0.12, 0.34), muzzle * CFrame.new(0, -0.28, 0.02), Color3.fromRGB(40, 36, 40))
+	-- Barbe noire (menton et joues)
+	ell(m, "Barbe", Vector3.new(0.42, 0.24, 0.28), muzzle * CFrame.new(0, -0.36, 0.12), dark)
+	for _, side in { -1, 1 } do
+		ell(m, "Favori", Vector3.new(0.1, 0.3, 0.26), head * CFrame.new(side * 0.25, -0.2, -0.08), dark)
+		-- Oreilles pointues
+		local ear = head * CFrame.new(side * 0.17, 0.33, 0.06) * CFrame.Angles(0, 0, -side * 0.18)
+		ell(m, "Oreille", Vector3.new(0.13, 0.32, 0.12), ear * CFrame.new(0, 0.12, 0), skin)
+		ell(
+			m,
+			"OreilleInt",
+			Vector3.new(0.07, 0.22, 0.04),
+			ear * CFrame.new(0, 0.12, -0.05),
+			Color3.fromRGB(190, 120, 90)
+		)
+	end
+	-- Banane de crinière noire
+	for i = 0, 3 do
+		ell(
+			m,
+			"Crin",
+			Vector3.new(0.26 - i * 0.02, 0.28 - i * 0.02, 0.32),
+			head * CFrame.new(0, 0.32 + (i == 0 and 0.08 or 0), -0.2 + i * 0.14) * CFrame.Angles(math.rad(-25), 0, 0),
+			dark
+		)
+	end
+	-- Yeux rieurs derrière des lunettes d'aviateur dorées à verres jaunes
+	for _, side in { -1, 1 } do
+		local eye = head * CFrame.new(side * 0.14, 0.1, -0.29)
+		ell(m, "Oeil", Vector3.new(0.13, 0.08, 0.04), eye, Color3.fromRGB(240, 200, 60))
+		ell(
+			m,
+			"Verre",
+			Vector3.new(0.24, 0.2, 0.03),
+			eye * CFrame.new(0, 0, -0.05),
+			Color3.fromRGB(240, 190, 50),
+			{ Transparency = 0.35 }
+		)
+		ring(
+			m,
+			"Monture",
+			eye * CFrame.new(0, 0, -0.06) * CFrame.Angles(math.rad(90), 0, 0),
+			0.125,
+			0.02,
+			0.02,
+			gold,
+			MET,
+			10
+		)
+		part(m, "Branche", Vector3.new(0.02, 0.02, 0.3), head * CFrame.new(side * 0.27, 0.12, -0.18), gold, MET)
+	end
+	part(m, "Pont", Vector3.new(0.1, 0.025, 0.02), head * CFrame.new(0, 0.15, -0.35), gold, MET)
+	return body
+end
+
 -- Fiches des espèces (planches du créateur) ---------------------------------------------------
 
 local SPECIES = {
@@ -1714,6 +1903,7 @@ local SPECIES = {
 
 	-- Céleste
 	SunGuardian = { Kind = "Golem", Color = { 235, 200, 110 }, Glow = { 255, 220, 90 } },
+	LuxuryStallion = { Kind = "Stallion", Color = { 150, 72, 42 }, Coat = { 112, 52, 200 } },
 	CelestialDragon = {
 		Kind = "Quad",
 		Size = { 1.15, 1.05, 1.7 },
@@ -1749,6 +1939,8 @@ function PetModels.build(def, _rarityColor: Color3?): Model
 		body = serpent(m, spec)
 	elseif spec.Kind == "Turtle" then
 		body = turtle(m, spec)
+	elseif spec.Kind == "Stallion" then
+		body = stallion(m, spec)
 	elseif spec.Kind == "Golem" then
 		body = golem(m, spec)
 	else

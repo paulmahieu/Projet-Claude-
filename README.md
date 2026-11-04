@@ -223,6 +223,7 @@ Le code vit dans `src/` (fichiers texte versionnés). **Rojo** le synchronise en
 | 81 | Cour du château | 12 torches sur pied éclairent les allées. |
 | 82 | Bosquets 1, 4, 5, 8 | Minerai de cristal : maintenir E → +2 Cristal, +1 Pierre ; les cristaux repoussent en 90 s. |
 | 83 | Après import du pack dans ServerStorage > Assets | Caisses, tonneaux, rochers, buissons, torches, portail, palissade, murets et pavés des extensions remplacés par les modèles Blender, à la bonne taille. |
+| 84 | Ouvrir des Œufs de l'éther (ou commande admin) jusqu'à obtenir l'Étalon de luxe, l'équiper | Cheval debout en costume violet (épaules bouffantes, col rouge à pois, chaîne dorée avec « A », montre), lunettes d'aviateur dorées, bouche rieuse ; il marche au sol à côté du joueur, bonus +580 %. |
 
 ### À plusieurs : *Test → Clients and Servers → 2 ou 3 joueurs → Start*
 
