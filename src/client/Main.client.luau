@@ -23,18 +23,25 @@ local Materials = require(Shared.Config.Materials)
 local Upgrades = require(Shared.Config.Upgrades)
 local Products = require(Shared.Config.Products)
 local Texts = require(Shared.Config.Texts)
+local Pets = require(Shared.Config.Pets)
+local Rebirth = require(Shared.Config.Rebirth)
 local Ui = require(script.Parent.Ui)
 local Effects = require(script.Parent.Effects)
+local PetFollowers = require(script.Parent.PetFollowers)
+local CombatUi = require(script.Parent.CombatUi)
+local ProximityPromptService = game:GetService("ProximityPromptService")
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local Request = Remotes:WaitForChild("Request") :: RemoteFunction
 local NotifyRemote = Remotes:WaitForChild("Notify") :: RemoteEvent
 local GroupUpdate = Remotes:WaitForChild("GroupUpdate") :: RemoteEvent
+local PetsUpdate = Remotes:WaitForChild("PetsUpdate") :: RemoteEvent
 
 local player = Players.LocalPlayer
 local C = Ui.Colors
 
 local groupState = nil
+local petState = nil -- { Pets, Equipped, Slots, Size }
 local devTools = false
 local menuOpen = false
 local currentTab = "Group"
@@ -544,6 +551,17 @@ local function priceText(item): string?
 end
 
 local function renderShop()
+	if devTools then
+		heading("Outils de test (Studio uniquement)")
+		local r = row(56)
+		rowText(r, "Accélérer les tests", "Invisible et refusé dans le jeu publié.", 236)
+		rightButton(r, "+10 niveaux", C.info, 1, function()
+			request("DevBoost", { Kind = "Levels" })
+		end)
+		rightButton(r, "+10 000 or", C.info, 2, function()
+			request("DevBoost", { Kind = "Gold" })
+		end)
+	end
 	heading("Boutique du royaume")
 	for _, item in Products do
 		local sellable = item.Id ~= 0 and item.Ready
@@ -571,9 +589,125 @@ local function renderShop()
 	end
 end
 
+local petById = {}
+for _, def in Pets.List do
+	petById[def.Id] = def
+end
+
+local function rarityColor(rarityId: string): Color3
+	local r = Pets.Rarities[rarityId]
+	return Color3.fromRGB(r.Color[1], r.Color[2], r.Color[3])
+end
+
+-- Onglet Compagnons
+local function renderPets()
+	local state = petState
+	if not state then
+		heading(Texts.Loading)
+		return
+	end
+	local mult = player:GetAttribute("PetMult") or 1
+	heading(
+		string.format(
+			"Équipés %d/%d · bonus total +%d %% · inventaire %d/%d",
+			#state.Equipped,
+			state.Slots,
+			math.floor((mult - 1) * 100 + 0.5),
+			#state.Pets,
+			state.Size
+		)
+	)
+	local top = row(52)
+	rowText(top, "Les œufs sont au point d'accueil.", "Renaissance 1 et 3 : emplacements supplémentaires.", 130)
+	rightButton(top, "Équiper le meilleur", C.Robux, 1, function()
+		request("EquipBestPets", {})
+	end)
+
+	local list = table.clone(state.Pets)
+	table.sort(list, function(a, b)
+		local da, db = petById[a.PetId], petById[b.PetId]
+		local ba, bb = da and da.Bonus or 0, db and db.Bonus or 0
+		if ba ~= bb then
+			return ba > bb
+		end
+		return a.Uid < b.Uid
+	end)
+	for _, pet in list do
+		local def = petById[pet.PetId]
+		if def then
+			local equipped = table.find(state.Equipped, pet.Uid) ~= nil
+			local r = row(58)
+			r.BackgroundColor3 = C.Row:Lerp(rarityColor(def.Rarity), 0.18)
+			rowText(
+				r,
+				(if equipped then "✔ " else "") .. def.Name,
+				string.format("%s · +%d %%", Pets.Rarities[def.Rarity].Name, math.floor(def.Bonus * 100 + 0.5)),
+				236
+			)
+			rightButton(r, "Relâcher", C.Danger, 1, function()
+				request("ReleasePet", { Uid = pet.Uid })
+			end, true)
+			rightButton(
+				r,
+				if equipped then "Retirer" else "Équiper",
+				if equipped then C.info else C.Free,
+				2,
+				function()
+					request("TogglePet", { Uid = pet.Uid })
+				end
+			)
+		end
+	end
+	if #list == 0 then
+		heading("Aucun compagnon : ouvre un œuf au point d'accueil !")
+	end
+end
+
+-- Onglet Renaissance
+local function renderRebirth()
+	local rebirths = player:GetAttribute("Rebirths") or 0
+	local level = player:GetAttribute("Level") or 1
+	local required = player:GetAttribute("RebirthLevel") or Formulas.rebirthRequiredLevel(rebirths, Rebirth)
+	local now = Formulas.rebirthMultiplier(rebirths, Rebirth)
+	local nextMult = Formulas.rebirthMultiplier(rebirths + 1, Rebirth)
+	heading(string.format("Renaissances : %d · multiplicateur actuel x%.2f", rebirths, now))
+	local r = row(84)
+	rowText(
+		r,
+		string.format("x%.2f  →  x%.2f (XP, or et Puissance)", now, nextMult),
+		string.format(
+			"Niveau requis : %d (tu es niveau %d).\nRemet à zéro : niveau, XP et or. Conserve : améliorations, compagnons, bastion.",
+			required,
+			level
+		),
+		130
+	)
+	if rebirths >= Rebirth.MaxRebirths then
+		rightButton(r, "Maximum", C.Disabled, 1, nil)
+	elseif level >= required then
+		rightButton(r, "Renaître", C.reward, 1, function()
+			request("Rebirth", { Confirm = true })
+			task.defer(renderTab)
+		end, true)
+	else
+		rightButton(r, "Niveau " .. required, C.Disabled, 1, nil)
+	end
+	heading("Débloqué par la renaissance")
+	local unlocks = {
+		{ 1, "Tapis d'Éther (x3) · 2e emplacement de compagnon" },
+		{ 3, "Tapis célestes (x6) · 3e emplacement de compagnon" },
+	}
+	for _, u in unlocks do
+		local ur = row(44)
+		rowText(ur, (if rebirths >= u[1] then "✔ " else "") .. "Renaissance " .. u[1] .. " : " .. u[2], nil, 0)
+	end
+end
+
 local TABS = {
 	{ Id = "Group", Label = "Groupe", Render = renderGroup },
-	{ Id = "Upgrades", Label = "Améliorations", Render = renderUpgrades },
+	{ Id = "Pets", Label = "Compagnons", Render = renderPets },
+	{ Id = "Upgrades", Label = "Améliorer", Render = renderUpgrades },
+	{ Id = "Rebirth", Label = "Renaissance", Render = renderRebirth },
 	{ Id = "Shop", Label = "Boutique", Render = renderShop },
 }
 
@@ -591,8 +725,9 @@ end
 for i, tab in TABS do
 	tabButtons[tab.Id] = Ui.button({
 		LayoutOrder = i,
-		Size = UDim2.new(1 / 3, -6, 1, 0),
+		Size = UDim2.new(1 / #TABS, -6, 1, 0),
 		BackgroundColor3 = C.Row,
+		TextScaled = true,
 		Text = tab.Label,
 		Parent = tabBar,
 	}, function()
@@ -684,7 +819,141 @@ for _, name in { "Upg_Focus", "Upg_Toughness", "Gold" } do
 	end)
 end
 
+-- Fenêtre d'œuf : ouverte quand le joueur utilise l'invite d'un présentoir --------------------
+
+local eggById = {}
+for _, egg in Pets.Eggs do
+	eggById[egg.Id] = egg
+end
+
+local eggPanel = Ui.create("Frame", {
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.5),
+	Size = UDim2.new(0.9, 0, 0, 380),
+	BackgroundColor3 = C.Panel,
+	Visible = false,
+	Parent = gui,
+}, { Ui.corner(12), Ui.stroke(), Ui.create("UISizeConstraint", { MaxSize = Vector2.new(420, 380) }) })
+local eggTitle = Ui.label({
+	Position = UDim2.fromOffset(14, 10),
+	Size = UDim2.new(1, -70, 0, 30),
+	Font = Enum.Font.GothamBold,
+	TextSize = 20,
+	TextColor3 = C.Gold,
+	Parent = eggPanel,
+})
+local eggClose = Ui.button({
+	AnchorPoint = Vector2.new(1, 0),
+	Position = UDim2.new(1, -10, 0, 10),
+	Size = UDim2.fromOffset(44, 44),
+	BackgroundColor3 = C.Danger,
+	Text = "X",
+	Parent = eggPanel,
+})
+local eggList = Ui.create("Frame", {
+	Position = UDim2.fromOffset(14, 58),
+	Size = UDim2.new(1, -28, 0, 220),
+	BackgroundTransparency = 1,
+	Parent = eggPanel,
+})
+Ui.list(eggList, 4)
+local eggResult = Ui.label({
+	Position = UDim2.new(0, 14, 1, -100),
+	Size = UDim2.new(1, -28, 0, 30),
+	Font = Enum.Font.GothamBold,
+	TextXAlignment = Enum.TextXAlignment.Center,
+	Parent = eggPanel,
+})
+local eggButton = Ui.button({
+	AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 0, 1, -14),
+	Size = UDim2.new(1, -28, 0, 52),
+	BackgroundColor3 = C.reward,
+	TextSize = 18,
+	Parent = eggPanel,
+})
+local currentEgg = nil
+
+local function openEgg(eggId: string)
+	local egg = eggById[eggId]
+	if not egg then
+		return
+	end
+	currentEgg = egg
+	eggTitle.Text = egg.Name
+	eggResult.Text = ""
+	for _, child in eggList:GetChildren() do
+		if child:IsA("TextLabel") then
+			child:Destroy()
+		end
+	end
+	-- Probabilités affichées avant l'achat.
+	for i, entry in Formulas.eggOdds(egg) do
+		local def = petById[entry.Id]
+		Ui.label({
+			LayoutOrder = i,
+			Size = UDim2.new(1, 0, 0, 24),
+			TextColor3 = rarityColor(def.Rarity),
+			Font = Enum.Font.GothamBold,
+			Text = string.format(
+				"%s · %s · +%d %%   —   %s %%",
+				def.Name,
+				Pets.Rarities[def.Rarity].Name,
+				math.floor(def.Bonus * 100 + 0.5),
+				string.format("%.1f", entry.Chance * 100):gsub("%.", ",")
+			),
+			Parent = eggList,
+		})
+	end
+	eggButton.Text = string.format("Ouvrir (%s or)", Formulas.formatNumber(egg.Cost))
+	eggPanel.Visible = true
+	if UserInputService:GetLastInputType().Name:sub(1, 7) == "Gamepad" then
+		GuiService.SelectedObject = eggButton
+	end
+end
+
+eggButton.Activated:Connect(function()
+	if not currentEgg then
+		return
+	end
+	local res = request("HatchEgg", { EggId = currentEgg.Id })
+	if res.ok and res.pet then
+		local def = petById[res.pet.PetId]
+		eggResult.TextColor3 = rarityColor(def.Rarity)
+		eggResult.Text = "Obtenu : " .. def.Name .. " (" .. Pets.Rarities[def.Rarity].Name .. ")"
+		Effects.float(def.Name .. " !", rarityColor(def.Rarity), true)
+	end
+end)
+eggClose.Activated:Connect(function()
+	eggPanel.Visible = false
+	currentEgg = nil
+end)
+
+ProximityPromptService.PromptTriggered:Connect(function(prompt)
+	local eggId = prompt:GetAttribute("EggId")
+	if type(eggId) == "string" then
+		openEgg(eggId)
+	end
+end)
+
+PetsUpdate.OnClientEvent:Connect(function(state)
+	petState = state
+	if menuOpen and currentTab == "Pets" then
+		renderTab()
+	end
+end)
+
+for _, name in { "Rebirths", "Level", "RebirthLevel" } do
+	player:GetAttributeChangedSignal(name):Connect(function()
+		if menuOpen and currentTab == "Rebirth" then
+			renderTab()
+		end
+	end)
+end
+
 Effects.start()
+PetFollowers.start()
+CombatUi.start(gui, toast)
 refreshHud()
 task.spawn(function()
 	local ok, res = pcall(function()
@@ -694,6 +963,9 @@ task.spawn(function()
 		devTools = res.devTools == true
 		if res.group and res.group.Name then
 			groupState = res.group
+		end
+		if res.pets then
+			petState = res.pets
 		end
 		refreshHud()
 	end

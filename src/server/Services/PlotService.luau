@@ -104,6 +104,34 @@ end
 
 -- Monde --------------------------------------------------------------------------------
 
+-- Terrain Roblox : herbe animée, collines à l'horizon, mare. FillBlock/FillBall remplacent
+-- seulement les zones concernées (le reste du terrain éventuel n'est pas effacé).
+local function buildTerrain()
+	local terrain = workspace.Terrain
+	terrain.Decoration = true -- brins d'herbe animés (optimisés par Roblox, réglables par le joueur)
+	terrain:SetMaterialColor(Enum.Material.Grass, Color3.fromRGB(104, 160, 82))
+	terrain:SetMaterialColor(Enum.Material.Ground, Color3.fromRGB(122, 98, 70))
+	terrain:SetMaterialColor(Enum.Material.Rock, Color3.fromRGB(128, 126, 122))
+	terrain:FillBlock(CFrame.new(0, -4, 0), Vector3.new(1100, 8, 1100), Enum.Material.Grass)
+
+	-- Collines en anneau au-delà des parcelles, en évitant les directions des arènes (0° et 270°).
+	for i = 1, 18 do
+		local angle = (i / 18) * math.pi * 2
+		local deg = math.deg(angle) % 360
+		local nearArena = deg < 25 or deg > 335 or math.abs(deg - 270) < 25
+		if not nearArena then
+			local dist = 330 + (i % 3) * 45
+			local radius = 45 + (i % 4) * 12
+			local center = Vector3.new(math.cos(angle) * dist, -radius * 0.45, math.sin(angle) * dist)
+			terrain:FillBall(center, radius, if i % 5 == 0 then Enum.Material.Rock else Enum.Material.Grass)
+		end
+	end
+	-- Mare décorative entre deux parcelles.
+	local pond = Vector3.new(math.cos(math.rad(112.5)) * 72, -1.5, math.sin(math.rad(112.5)) * 72)
+	terrain:FillCylinder(CFrame.new(pond), 3, 9, Enum.Material.Water)
+	terrain:FillCylinder(CFrame.new(pond + Vector3.new(0, -2, 0)), 2, 10, Enum.Material.Sand)
+end
+
 local function buildWorld()
 	local existing = workspace:FindFirstChild("World")
 	if existing then
@@ -113,14 +141,7 @@ local function buildWorld()
 	world.Name = "World"
 	world.Parent = workspace
 
-	makePart({
-		Name = "Ground",
-		Size = Vector3.new(1024, 4, 1024),
-		Position = Vector3.new(0, -2, 0),
-		Material = Enum.Material.Grass,
-		Color = Color3.fromRGB(96, 150, 78),
-		Parent = world,
-	})
+	buildTerrain()
 
 	-- Point d'accueil (futur marchand, portail d'exploration).
 	makePart({

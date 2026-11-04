@@ -8,7 +8,7 @@ return {
 	BaseGoldPerSecond = 1,
 
 	-- Multiplicateur par palier de tapis (StationTier).
-	TierMultiplier = { [1] = 1, [2] = 1.5 },
+	TierMultiplier = { [1] = 1, [2] = 1.5, [3] = 3, [4] = 6 },
 
 	-- Distance max (studs) entre le joueur et le centre du tapis.
 	MaxRange = 6,

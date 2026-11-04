@@ -20,6 +20,13 @@ Légende : ✅ implémenté · 🧪 testé automatiquement (Lune) · 🔍 à vé
 - ✅🔍 Interface : HUD, objectif, menu Groupe / Améliorations / Boutique ; clavier, manette, tactile
 - ✅🧪 Boutique : catalogue de 13 offres, traitement des reçus, simulation Studio (ventes désactivées)
 
+## Ajouts demandés (04/11/2026)
+- ✅🧪🔍 Renaissance facultative + Tapis d'Éther (x3) et Tapis célestes (x6)
+- ✅🧪🔍 Œufs (or, probabilités affichées), 9 compagnons en 5 raretés, emplacements, suiveurs
+- ✅🧪🔍 2 arènes de boss avec portails, 2 phases, attaques annoncées, compétences, esquive,
+  participation validée, butin personnel et butin de groupe
+- ✅🔍 Terrain Roblox, éclairage, remplacement par modèles de la boutique (`docs/ASSETS.md`)
+
 ## Étape 2 — Persistance et construction complètes
 - ⏳ Annuaire MemoryStore groupe -> serveur, téléportation vers le bastion (décision R2)
 - ⏳ Serveur plein, échec de téléportation, attente sans copie modifiable

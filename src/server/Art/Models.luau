@@ -123,7 +123,21 @@ end
 -- Ressources ---------------------------------------------------------------------------
 
 -- variant : 1 = chêne, 2 = sapin, 3 = bouleau
+local TREE_ASSETS = { "Tree_Oak", "Tree_Pine", "Tree_Birch" }
+
 function Models.tree(base: CFrame, variant: number, seed: number): Model
+	local imported = Models.override(TREE_ASSETS[variant] or "Tree_Oak", base * CFrame.Angles(0, seed * 1.7, 0))
+	if imported then
+		-- Modèle importé : tout disparaît à la récolte sauf une souche générée.
+		for _, inst in imported:GetDescendants() do
+			if inst:IsA("BasePart") then
+				inst:SetAttribute("Depletable", true)
+			end
+		end
+		local stump = column(imported, "Stump", 1.2, 2.2, base, C.Bark, Enum.Material.Wood)
+		imported.PrimaryPart = stump
+		return imported
+	end
 	local m = newModel("Tree")
 	local turn = base * CFrame.Angles(0, seed * 1.7, 0)
 	local scale = 1 + jitter(seed, 0.12)
@@ -261,6 +275,24 @@ function Models.tree(base: CFrame, variant: number, seed: number): Model
 end
 
 function Models.rock(base: CFrame, seed: number): Model
+	local imported = Models.override("Rock", base * CFrame.Angles(0, seed * 2.3, 0))
+	if imported then
+		for _, inst in imported:GetDescendants() do
+			if inst:IsA("BasePart") then
+				inst:SetAttribute("Depletable", true)
+			end
+		end
+		local rubble = part(
+			imported,
+			"Rubble",
+			Vector3.new(1.4, 0.7, 1.2),
+			base * CFrame.new(-2, 0.35, 1.4),
+			C.StoneDark,
+			Enum.Material.Rock
+		)
+		imported.PrimaryPart = rubble
+		return imported
+	end
 	local m = newModel("Rock")
 	local turn = base * CFrame.Angles(0, seed * 2.3, 0)
 	local main = part(
@@ -321,15 +353,28 @@ end
 function Models.trainingMat(base: CFrame, tier: number): (Model, BasePart, BasePart)
 	local m = newModel("Mat")
 	local platform, rune
+	-- Palette par palier : runique (violet), Éther (cyan), céleste (or et marbre).
+	local palettes = {
+		[2] = { Platform = C.StoneDark, Rune = C.RuneBlue, Material = Enum.Material.Slate },
+		[3] = { Platform = Color3.fromRGB(40, 70, 95), Rune = C.Ether, Material = Enum.Material.Slate },
+		[4] = { Platform = Color3.fromRGB(235, 230, 215), Rune = C.Rune, Material = Enum.Material.Marble },
+	}
+	local palette = palettes[math.min(tier, 4)] or palettes[2]
 	if tier >= 2 then
-		platform =
-			part(m, "Platform", Vector3.new(5, 0.6, 5), base * CFrame.new(0, 0.3, 0), C.StoneDark, Enum.Material.Slate)
+		platform = part(
+			m,
+			"Platform",
+			Vector3.new(5, 0.6, 5),
+			base * CFrame.new(0, 0.3, 0),
+			palette.Platform,
+			palette.Material
+		)
 		rune = part(
 			m,
 			"Rune",
 			Vector3.new(0.12, 4, 4),
 			base * CFrame.new(0, 0.64, 0) * VERTICAL,
-			C.RuneBlue,
+			palette.Rune,
 			Enum.Material.Neon,
 			{
 				Shape = Enum.PartType.Cylinder,
@@ -366,7 +411,7 @@ function Models.trainingMat(base: CFrame, tier: number): (Model, BasePart, BaseP
 				"Shard" .. i,
 				Vector3.new(0.45, 0.9, 0.45),
 				pylon * CFrame.new(0, 2.1, 0) * CFrame.Angles(0, math.rad(45), 0),
-				C.RuneBlue,
+				palette.Rune,
 				Enum.Material.Neon,
 				{
 					CanCollide = false,
@@ -727,6 +772,11 @@ end
 
 -- Construit le modèle d'une construction. `base` au sol, centre de l'emprise.
 function Models.structure(id: string, base: CFrame, size: Vector3, fallbackColor: Color3, fallbackMaterial): Model
+	local imported = Models.override("Structure_" .. id, base, size)
+	if imported then
+		imported.Name = id
+		return imported
+	end
 	local m = newModel(id)
 	local builder = builders[id]
 	if builder then
@@ -889,6 +939,387 @@ function Models.hubDecor(parent: Instance, radius: number)
 			}
 		)
 	end
+end
+
+-- Tapis d'Éther : dalle bleu nuit, cristaux cyan flottants.
+builders.EtherMats = function(m: Model, base: CFrame, size: Vector3)
+	local sx, sz = size.X, size.Z
+	part(
+		m,
+		"Floor",
+		Vector3.new(sx, 0.3, sz),
+		base * CFrame.new(0, 0.15, 0),
+		Color3.fromRGB(35, 55, 80),
+		Enum.Material.Slate
+	)
+	part(
+		m,
+		"Edge",
+		Vector3.new(sx, 0.08, 0.3),
+		base * CFrame.new(0, 0.32, -sz / 2 + 0.3),
+		C.Ether,
+		Enum.Material.Neon,
+		{
+			CanCollide = false,
+			NoShadow = true,
+		}
+	)
+	for _, x in { -sx / 2 + 0.8, sx / 2 - 0.8 } do
+		local pillar = base * CFrame.new(x, 0.3, sz / 2 - 0.8)
+		part(m, "Pillar", Vector3.new(1, 3, 1), pillar * CFrame.new(0, 1.5, 0), C.StoneDark, Enum.Material.Slate)
+		part(
+			m,
+			"Crystal",
+			Vector3.new(0.9, 1.8, 0.9),
+			pillar * CFrame.new(0, 4.2, 0) * CFrame.Angles(0, math.rad(45), math.rad(10)),
+			C.Ether,
+			Enum.Material.Neon,
+			{
+				CanCollide = false,
+				NoShadow = true,
+			}
+		)
+	end
+end
+
+-- Tapis célestes : marbre blanc, arches dorées.
+builders.CelestialMats = function(m: Model, base: CFrame, size: Vector3)
+	local sx, sz = size.X, size.Z
+	part(
+		m,
+		"Floor",
+		Vector3.new(sx, 0.3, sz),
+		base * CFrame.new(0, 0.15, 0),
+		Color3.fromRGB(240, 236, 225),
+		Enum.Material.Marble
+	)
+	part(m, "Trim", Vector3.new(sx + 0.4, 0.2, sz + 0.4), base * CFrame.new(0, 0.05, 0), C.Rune, Enum.Material.Metal)
+	local back = base * CFrame.new(0, 0.3, sz / 2 - 0.6)
+	for _, x in { -sx / 2 + 0.8, sx / 2 - 0.8 } do
+		column(m, "ArchPillar", 6, 0.9, back * CFrame.new(x, 0, 0), Color3.fromRGB(240, 236, 225), Enum.Material.Marble)
+	end
+	part(m, "ArchTop", Vector3.new(sx - 0.6, 0.8, 0.9), back * CFrame.new(0, 6.2, 0), C.Rune, Enum.Material.Metal)
+	part(m, "Sun", Vector3.new(0.3, 2.2, 2.2), back * CFrame.new(0, 7.8, 0) * VERTICAL, C.Rune, Enum.Material.Neon, {
+		Shape = Enum.PartType.Cylinder,
+		CanCollide = false,
+		NoShadow = true,
+	})
+end
+
+-- Remplacement par des modèles importés ---------------------------------------------------
+
+--[[
+	Si ServerStorage/Assets contient un modèle portant le nom attendu (ex. "Tree_Oak",
+	"Rock", "Structure_Sawmill", "Boss_ForestGuardian"), il remplace le modèle généré.
+	Sécurité (cahier §11) : tous les scripts du modèle importé sont supprimés avant usage.
+	Le modèle est ancré, mis à l'échelle de l'emprise prévue et posé au sol.
+	Guide : docs/ASSETS.md
+]]
+local ServerStorage = game:GetService("ServerStorage")
+
+local function assetFolder(): Instance?
+	return ServerStorage:FindFirstChild("Assets")
+end
+
+function Models.override(assetName: string, base: CFrame, footprint: Vector3?): Model?
+	local folder = assetFolder()
+	local source = folder and folder:FindFirstChild(assetName)
+	if not source or not source:IsA("Model") then
+		return nil
+	end
+	local m = source:Clone()
+	for _, inst in m:GetDescendants() do
+		if inst:IsA("LuaSourceContainer") then
+			inst:Destroy() -- jamais de script provenant d'un modèle externe
+		elseif inst:IsA("BasePart") then
+			inst.Anchored = true
+		end
+	end
+	if footprint then
+		local _, size = m:GetBoundingBox()
+		local scale = math.min(footprint.X / math.max(size.X, 0.1), footprint.Z / math.max(size.Z, 0.1))
+		if scale > 0 and math.abs(scale - 1) > 0.01 then
+			m:ScaleTo(m:GetScale() * scale)
+		end
+	end
+	m:PivotTo(base)
+	local cf, size = m:GetBoundingBox()
+	local offset = base.Position - cf.Position
+	m:PivotTo(m:GetPivot() + Vector3.new(offset.X, offset.Y + size.Y / 2, offset.Z))
+	return m
+end
+
+-- Œufs, portails, arènes, boss ----------------------------------------------------------------
+
+-- Présentoir d'œuf : socle, œuf (ellipsoïde), anneau lumineux. Retourne model, socle.
+function Models.eggStand(base: CFrame, color: Color3): (Model, BasePart)
+	local m = newModel("EggStand")
+	local plinth = column(m, "Plinth", 1.2, 5, base, C.StoneDark, Enum.Material.Cobblestone)
+	column(m, "Cushion", 0.4, 3.6, base * CFrame.new(0, 1.2, 0), C.Cloth, Enum.Material.Fabric)
+	-- Une boule Roblox reste toujours sphérique : l'ellipsoïde passe par un SpecialMesh.
+	local egg =
+		part(m, "Egg", Vector3.new(2.6, 3.4, 2.6), base * CFrame.new(0, 3.3, 0), color, Enum.Material.SmoothPlastic)
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Sphere
+	mesh.Parent = egg
+	column(
+		m,
+		"Band",
+		0.35,
+		2.75,
+		base * CFrame.new(0, 3.1, 0),
+		color:Lerp(Color3.new(1, 1, 1), 0.45),
+		Enum.Material.SmoothPlastic,
+		{
+			CanCollide = false,
+			NoShadow = true,
+		}
+	)
+	column(
+		m,
+		"Glow",
+		0.1,
+		4.6,
+		base * CFrame.new(0, 1.22, 0),
+		color,
+		Enum.Material.Neon,
+		{ CanCollide = false, NoShadow = true }
+	)
+	m.PrimaryPart = plinth
+	return m, plinth
+end
+
+-- Portail : arche de pierre et voile lumineux. Retourne model, voile (porte l'invite).
+function Models.portal(base: CFrame, color: Color3): (Model, BasePart)
+	local m = newModel("Portal")
+	part(m, "Step", Vector3.new(10, 0.6, 4), base * CFrame.new(0, 0.3, 0), C.StoneDark, Enum.Material.Cobblestone)
+	for _, x in { -4, 4 } do
+		part(m, "Pillar", Vector3.new(1.6, 9, 1.6), base * CFrame.new(x, 4.8, 0), C.Stone, Enum.Material.Cobblestone)
+		part(m, "Cap", Vector3.new(2.2, 0.8, 2.2), base * CFrame.new(x, 9.6, 0), C.StoneLight, Enum.Material.Slate)
+	end
+	part(m, "Lintel", Vector3.new(10, 1.4, 1.8), base * CFrame.new(0, 10.4, 0), C.StoneLight, Enum.Material.Slate)
+	part(
+		m,
+		"Keystone",
+		Vector3.new(1.4, 1.4, 1.9),
+		base * CFrame.new(0, 10.4, 0) * CFrame.Angles(0, 0, math.rad(45)),
+		color,
+		Enum.Material.Neon,
+		{
+			NoShadow = true,
+		}
+	)
+	local veil = part(m, "Veil", Vector3.new(6.4, 8.6, 0.3), base * CFrame.new(0, 5, 0), color, Enum.Material.Neon, {
+		CanCollide = false,
+		Transparency = 0.45,
+		NoShadow = true,
+	})
+	m.PrimaryPart = veil
+	return m, veil
+end
+
+-- Arène circulaire : sol, bordure de pierres levées, torches. `center` au sol.
+function Models.arena(center: CFrame, radius: number, accent: Color3, parent: Instance)
+	part(
+		parent,
+		"ArenaFloor",
+		Vector3.new(1.2, radius * 2, radius * 2),
+		center * CFrame.new(0, 0.6, 0) * VERTICAL,
+		C.StoneDark,
+		Enum.Material.Slate,
+		{
+			Shape = Enum.PartType.Cylinder,
+		}
+	)
+	part(
+		parent,
+		"ArenaRing",
+		Vector3.new(0.15, radius * 1.3, radius * 1.3),
+		center * CFrame.new(0, 1.25, 0) * VERTICAL,
+		accent,
+		Enum.Material.Neon,
+		{
+			Shape = Enum.PartType.Cylinder,
+			CanCollide = false,
+			Transparency = 0.7,
+			NoShadow = true,
+		}
+	)
+	local count = 16
+	for i = 1, count do
+		local angle = (i / count) * math.pi * 2
+		local pos = center * CFrame.new(math.cos(angle) * (radius - 1.5), 1.2, math.sin(angle) * (radius - 1.5))
+		if i % 4 ~= 0 then
+			part(
+				parent,
+				"Standing",
+				Vector3.new(2.5, 7 + (i % 3), 2),
+				pos * CFrame.Angles(0, -angle, 0) * CFrame.new(0, 3.5, 0),
+				C.Stone,
+				Enum.Material.Rock
+			)
+		else
+			column(parent, "Torch", 4, 0.6, pos, C.WoodDark, Enum.Material.Wood)
+			local flame = part(
+				parent,
+				"Flame",
+				Vector3.new(1, 1.4, 1),
+				pos * CFrame.new(0, 4.7, 0),
+				Color3.fromRGB(255, 150, 60),
+				Enum.Material.Neon,
+				{
+					CanCollide = false,
+					NoShadow = true,
+				}
+			)
+			local fire = Instance.new("Fire")
+			fire.Size = 3
+			fire.Heat = 4
+			fire.Parent = flame
+		end
+	end
+end
+
+-- Boss. Retourne model, Root (pièce de référence, invisible).
+function Models.boss(def, base: CFrame): (Model, BasePart)
+	local override = Models.override("Boss_" .. def.Id, base, Vector3.new(16, 0, 16))
+	local body = Color3.fromRGB(def.Colors.Body[1], def.Colors.Body[2], def.Colors.Body[3])
+	local accent = Color3.fromRGB(def.Colors.Accent[1], def.Colors.Accent[2], def.Colors.Accent[3])
+	local eyes = Color3.fromRGB(def.Colors.Eyes[1], def.Colors.Eyes[2], def.Colors.Eyes[3])
+	local m = override or newModel(def.Id)
+	local root = part(m, "Root", Vector3.new(8, 14, 8), base * CFrame.new(0, 7, 0), body, Enum.Material.SmoothPlastic, {
+		Transparency = 1,
+		CanCollide = false,
+	})
+	root.CanQuery = false
+	if not override then
+		if def.Kind == "Treant" then
+			column(m, "Trunk", 12, 6, base, body, Enum.Material.Wood)
+			for i, a in { 0, 2.1, 4.2 } do
+				part(
+					m,
+					"Root" .. i,
+					Vector3.new(6, 1.6, 1.6),
+					base * CFrame.Angles(0, a, 0) * CFrame.new(3.5, 0.8, 0) * CFrame.Angles(0, 0, math.rad(-20)),
+					body:Lerp(Color3.new(0, 0, 0), 0.15),
+					Enum.Material.Wood
+				)
+			end
+			for _, side in { -1, 1 } do
+				part(
+					m,
+					"Arm",
+					Vector3.new(1.6, 8, 1.6),
+					base * CFrame.new(side * 4.4, 8, 0) * CFrame.Angles(0, 0, math.rad(side * 35)),
+					body,
+					Enum.Material.Wood
+				)
+				ball(m, "Hand", 2.6, base * CFrame.new(side * 6.6, 4.8, 0), accent, Enum.Material.Grass)
+			end
+			ball(m, "Crown", 11, base * CFrame.new(0, 15, 0), accent, Enum.Material.Grass)
+			ball(
+				m,
+				"Crown2",
+				7,
+				base * CFrame.new(3.5, 13.5, 2),
+				accent:Lerp(Color3.new(1, 1, 0.6), 0.2),
+				Enum.Material.Grass
+			)
+			for _, x in { -1.2, 1.2 } do
+				part(
+					m,
+					"Eye",
+					Vector3.new(0.9, 0.9, 0.3),
+					base * CFrame.new(x, 9.5, -3.05),
+					eyes,
+					Enum.Material.Neon,
+					{ NoShadow = true }
+				)
+			end
+		else -- Golem
+			part(
+				m,
+				"Legs",
+				Vector3.new(6, 4, 3.5),
+				base * CFrame.new(0, 2, 0),
+				body:Lerp(Color3.new(0, 0, 0), 0.2),
+				Enum.Material.Slate
+			)
+			part(m, "Torso", Vector3.new(9, 7, 5.5), base * CFrame.new(0, 7.5, 0), body, Enum.Material.Rock)
+			part(
+				m,
+				"Head",
+				Vector3.new(4, 3.2, 3.6),
+				base * CFrame.new(0, 12.6, -0.5),
+				body:Lerp(Color3.new(1, 1, 1), 0.1),
+				Enum.Material.Rock
+			)
+			for _, side in { -1, 1 } do
+				part(
+					m,
+					"Arm",
+					Vector3.new(3, 8, 3),
+					base * CFrame.new(side * 6.2, 6.5, 0) * CFrame.Angles(0, 0, math.rad(side * 10)),
+					body,
+					Enum.Material.Rock
+				)
+				part(
+					m,
+					"Fist",
+					Vector3.new(3.6, 3, 3.6),
+					base * CFrame.new(side * 6.8, 2.2, 0),
+					body:Lerp(Color3.new(0, 0, 0), 0.25),
+					Enum.Material.Slate
+				)
+			end
+			for i = 1, 4 do
+				part(
+					m,
+					"Crystal" .. i,
+					Vector3.new(1, 2.6, 1),
+					base
+						* CFrame.new(-3 + i * 1.3, 11.5 + (i % 2) * 0.6, 2.2)
+						* CFrame.Angles(math.rad(-25), 0, math.rad((i - 2.5) * 12)),
+					accent,
+					Enum.Material.Neon,
+					{
+						NoShadow = true,
+					}
+				)
+			end
+			for _, x in { -0.9, 0.9 } do
+				part(
+					m,
+					"Eye",
+					Vector3.new(0.8, 0.5, 0.3),
+					base * CFrame.new(x, 12.8, -2.35),
+					eyes,
+					Enum.Material.Neon,
+					{ NoShadow = true }
+				)
+			end
+		end
+	end
+	m.PrimaryPart = root
+	return m, root
+end
+
+-- Zone d'impact annoncée : disque rouge au sol. Retourne la pièce (à détruire après l'impact).
+function Models.telegraph(parent: Instance, position: Vector3, radius: number): BasePart
+	return part(
+		parent,
+		"Telegraph",
+		Vector3.new(0.2, radius * 2, radius * 2),
+		CFrame.new(position) * VERTICAL,
+		Color3.fromRGB(255, 60, 40),
+		Enum.Material.Neon,
+		{
+			Shape = Enum.PartType.Cylinder,
+			CanCollide = false,
+			Transparency = 0.55,
+			NoShadow = true,
+		}
+	)
 end
 
 return Models

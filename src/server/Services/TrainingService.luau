@@ -35,6 +35,7 @@ type Station = {
 	Id: string,
 	GroupId: string,
 	Tier: number,
+	RequiredRebirths: number,
 	Part: BasePart, -- plateforme (porte le ProximityPrompt)
 	Rune: BasePart, -- cercle lumineux qui pulse à chaque gain
 	Prompt: ProximityPrompt,
@@ -63,7 +64,8 @@ local function durableRates(player: Player, tier: number)
 		Formulas.groupTrainingMult(Structures, group.Data.Structures),
 		Formulas.upgradeLevel(profile, "Focus"),
 		focusDef.PerLevel,
-		Training
+		Training,
+		ProfileService.personalMultiplier(player) -- renaissances x compagnons
 	)
 end
 
@@ -98,6 +100,15 @@ local function start(player: Player, station: Station)
 		Notifier.send(player, Texts.ReadOnly, "error")
 		return
 	end
+	local profile = ProfileService.get(player)
+	if profile and profile.Rebirths < station.RequiredRebirths then
+		Notifier.send(
+			player,
+			string.format("Renaissance %d requise pour ce tapis (menu > Renaissance).", station.RequiredRebirths),
+			"error"
+		)
+		return
+	end
 	if training[player] == station then
 		TrainingService.stop(player, Texts.TrainingStop)
 		return
@@ -124,7 +135,9 @@ local function start(player: Player, station: Station)
 	Notifier.send(player, Texts.TrainingStart, "info")
 end
 
-local function createStation(group, plot, id: string, pos, tier: number)
+local MAT_NAMES = { "Tapis d'entraînement", "Tapis runique", "Tapis d'Éther", "Tapis céleste" }
+
+local function createStation(group, plot, id: string, pos, tier: number, requiredRebirths: number)
 	-- Posé sur le sol de la construction (0,3 stud d'épaisseur).
 	local model, part, rune = Models.trainingMat(PlotService.localCFrame(plot, pos[1], 0.3, pos[2]), tier)
 	model.Name = id
@@ -132,7 +145,9 @@ local function createStation(group, plot, id: string, pos, tier: number)
 	rune:SetAttribute("RestTransparency", rune.Transparency)
 	PlotService.makeBillboard(
 		part,
-		if tier >= 2 then "Tapis runique" else "Tapis d'entraînement",
+		(MAT_NAMES[tier] or MAT_NAMES[1])
+			.. string.format(" · x%s", tostring(Training.TierMultiplier[tier] or 1))
+			.. (if requiredRebirths > 0 then string.format("\nRenaissance %d", requiredRebirths) else ""),
 		6,
 		Vector2.new(8, 1.4)
 	)
@@ -145,8 +160,16 @@ local function createStation(group, plot, id: string, pos, tier: number)
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = part
 
-	local station: Station =
-		{ Id = id, GroupId = group.Id, Tier = tier, Part = part, Rune = rune, Prompt = prompt, Occupant = nil }
+	local station: Station = {
+		Id = id,
+		GroupId = group.Id,
+		Tier = tier,
+		RequiredRebirths = requiredRebirths,
+		Part = part,
+		Rune = rune,
+		Prompt = prompt,
+		Occupant = nil,
+	}
 	prompt.Triggered:Connect(function(player)
 		start(player, station)
 	end)
@@ -170,7 +193,14 @@ local function ensureStations(group)
 			for index, pos in positions do
 				local id = def.Id .. "_" .. index
 				if not stations[id] or not stations[id].Part.Parent then
-					stations[id] = createStation(group, plot, id, pos, def.Effects.StationTier or 1)
+					stations[id] = createStation(
+						group,
+						plot,
+						id,
+						pos,
+						def.Effects.StationTier or 1,
+						def.Effects.RequiredRebirths or 0
+					)
 				end
 			end
 		end
@@ -218,7 +248,7 @@ local function tick(player: Player, station: Station, dt: number)
 	profile.Gold = Formulas.clamp(profile.Gold + rates.Gold * dt, Economy.GoldCap)
 	pulse(station.Rune)
 	if gained > 0 then
-		Notifier.send(player, string.format(Texts.LevelUp, level, Formulas.power(level, Training)), "success")
+		Notifier.send(player, string.format(Texts.LevelUp, level, ProfileService.power(player)), "success")
 	end
 	ProfileService.sync(player)
 end
@@ -247,7 +277,8 @@ function TrainingService.init()
 	ProfileService.beforeSave(function(player, profile)
 		local group = GroupService.groupOf(player)
 		if group then
-			profile.AfkRate = durableRates(player, Formulas.bestStationTier(Structures, group.Data.Structures))
+			profile.AfkRate =
+				durableRates(player, Formulas.bestStationTier(Structures, group.Data.Structures, profile.Rebirths))
 		end
 	end)
 end

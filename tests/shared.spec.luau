@@ -19,6 +19,10 @@ local Products = require("../src/shared/Config/Products")
 local Groups = require("../src/shared/Config/Groups")
 local Game = require("../src/shared/Config/Game")
 local Harvest = require("../src/shared/Config/Harvest")
+local Rebirth = require("../src/shared/Config/Rebirth")
+local Pets = require("../src/shared/Config/Pets")
+local Bosses = require("../src/shared/Config/Bosses")
+local Combat = require("../src/shared/Config/Combat")
 
 local passed, failed = 0, 0
 
@@ -462,6 +466,129 @@ test("première amélioration accessible en moins d'une minute de récolte", fun
 	local harvests = math.ceil(wood / Harvest.Nodes.Tree.Amount)
 	local seconds = harvests * (Harvest.Nodes.Tree.HoldDuration + Harvest.PlayerCooldown + 3) -- + déplacements
 	assert(seconds <= 60, "environ " .. seconds .. " s")
+end)
+
+----------------------------------------------------------------------------------------
+print("Renaissance")
+
+test("niveau requis croissant et plafond", function()
+	eq(Formulas.rebirthRequiredLevel(0, Rebirth), Rebirth.RequiredLevelBase)
+	eq(Formulas.rebirthRequiredLevel(2, Rebirth), Rebirth.RequiredLevelBase + 2 * Rebirth.RequiredLevelPerRebirth)
+	eq(select(2, Formulas.canRebirth(Rebirth.RequiredLevelBase - 1, 0, Rebirth)), "Level")
+	assert(Formulas.canRebirth(Rebirth.RequiredLevelBase, 0, Rebirth), "niveau atteint")
+	eq(select(2, Formulas.canRebirth(999, Rebirth.MaxRebirths, Rebirth)), "Max")
+end)
+
+test("multiplicateur et Puissance plafonnés", function()
+	eq(Formulas.rebirthMultiplier(0, Rebirth), 1)
+	near(Formulas.rebirthMultiplier(4, Rebirth), 1 + 4 * Rebirth.MultiplierPerRebirth)
+	eq(Formulas.rebirthMultiplier(1000, Rebirth), Formulas.rebirthMultiplier(Rebirth.MaxRebirths, Rebirth))
+	assert(
+		Formulas.power(10, Training, 2, Rebirth) > Formulas.power(10, Training),
+		"la renaissance augmente la Puissance"
+	)
+end)
+
+test("emplacements de compagnons : 1, puis 2 (R1), puis 3 (R3)", function()
+	eq(Formulas.petSlots(0, Rebirth), 1)
+	eq(Formulas.petSlots(1, Rebirth), 2)
+	eq(Formulas.petSlots(2, Rebirth), 2)
+	eq(Formulas.petSlots(3, Rebirth), 3)
+end)
+
+test("tapis supérieurs : ignorés sans la renaissance requise", function()
+	local owned = { TrainingGround = true, RuneMats = true, EtherMats = true, CelestialMats = true }
+	eq(Formulas.bestStationTier(Structures, owned, 0), 2)
+	eq(Formulas.bestStationTier(Structures, owned, 1), 3)
+	eq(Formulas.bestStationTier(Structures, owned, 3), 4)
+end)
+
+----------------------------------------------------------------------------------------
+print("Œufs et compagnons")
+
+test("œufs : probabilités totales = 100 %, compagnons existants, coût positif", function()
+	local ids = {}
+	for _, def in Pets.List do
+		ids[def.Id] = true
+		assert(Pets.Rarities[def.Rarity], def.Id .. " : rareté inconnue")
+	end
+	for _, egg in Pets.Eggs do
+		assert(egg.Cost > 0, egg.Id .. " : coût")
+		local total = 0
+		for _, entry in Formulas.eggOdds(egg) do
+			assert(ids[entry.Id], egg.Id .. " : compagnon inconnu " .. entry.Id)
+			total += entry.Chance
+		end
+		near(total, 1, egg.Id)
+	end
+end)
+
+test("tirage : bornes et répartition conforme aux poids", function()
+	local egg = Pets.Eggs[1]
+	local odds = Formulas.eggOdds(egg)
+	eq(Formulas.rollEgg(egg, 0), odds[1].Id)
+	eq(Formulas.rollEgg(egg, 0.999999), odds[#odds].Id)
+	local counts, n = {}, 20000
+	for i = 0, n - 1 do
+		local id = Formulas.rollEgg(egg, (i + 0.5) / n)
+		counts[id] = (counts[id] or 0) + 1
+	end
+	for _, entry in odds do
+		near(counts[entry.Id] / n, entry.Chance, entry.Id)
+	end
+end)
+
+test("bonus des compagnons cumulé et plafonné", function()
+	eq(Formulas.petMultiplier(Pets, {}), 1)
+	near(Formulas.petMultiplier(Pets, { "Sprout", "RuneWolf" }), 1.35)
+	local many = {}
+	for _ = 1, 20 do
+		table.insert(many, "EtherPhoenix")
+	end
+	eq(Formulas.petMultiplier(Pets, many), 1 + Pets.MaxTotalBonus)
+end)
+
+test("équiper le meilleur choisit les plus gros bonus", function()
+	local inv = { { Uid = 1, PetId = "Sprout" }, { Uid = 2, PetId = "LittleGolem" }, { Uid = 3, PetId = "Owl" } }
+	local best = Formulas.bestPets(Pets, inv, 2)
+	eq(#best, 2)
+	eq(best[1], 2)
+	eq(best[2], 3)
+end)
+
+----------------------------------------------------------------------------------------
+print("Boss et combat")
+
+test("PV figés selon les participants", function()
+	local boss = Bosses[1]
+	eq(Formulas.bossHealth(boss, 1), boss.MaxHealth)
+	eq(Formulas.bossHealth(boss, 3), math.floor(boss.MaxHealth * (1 + 2 * boss.HealthPerExtraPlayer)))
+end)
+
+test("participation validée par les dégâts, pas par le dernier coup", function()
+	local valid = Formulas.validParticipants({ [1] = 500, [2] = 10, [3] = 2000 }, 2500, 0.03)
+	eq(#valid, 2)
+	eq(valid[1], 1)
+	eq(valid[2], 3)
+end)
+
+test("dégâts : Puissance x multiplicateur x compagnons, minimum 1", function()
+	eq(Formulas.hitDamage(10, 1, 1), 10)
+	eq(Formulas.hitDamage(10, Combat.Skills.Strike.DamageMult, 1.5), 75)
+	eq(Formulas.hitDamage(0, 1, 1), 1)
+end)
+
+test("arènes : hors des parcelles, portails au hub, attaques valides", function()
+	local plotOuter = 200 + 45 * math.sqrt(2)
+	for _, boss in Bosses do
+		local d = math.sqrt(boss.Arena[1] ^ 2 + boss.Arena[2] ^ 2)
+		assert(d - boss.ArenaRadius > plotOuter, boss.Id .. " : arène trop proche des parcelles")
+		assert(d + boss.ArenaRadius < 512, boss.Id .. " : arène hors du sol")
+		assert(math.sqrt(boss.Portal[1] ^ 2 + boss.Portal[2] ^ 2) < 28, boss.Id .. " : portail hors du hub")
+		for _, attack in boss.Attacks do
+			assert(attack.Telegraph >= 1, boss.Id .. " : attaque non annoncée assez tôt")
+		end
+	end
 end)
 
 print(string.format("\n%d réussi(s), %d échec(s)", passed, failed))

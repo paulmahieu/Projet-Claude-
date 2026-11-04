@@ -31,8 +31,135 @@ function Formulas.addXp(level: number, xp: number, amount: number, cfg): (number
 	return level, xp, gained
 end
 
-function Formulas.power(level: number, cfg): number
-	return cfg.PowerBase + cfg.PowerPerLevel * (level - 1)
+-- Puissance : dérivée du niveau, augmentée par les renaissances (rebirthCfg optionnel).
+function Formulas.power(level: number, cfg, rebirths: number?, rebirthCfg): number
+	local base = cfg.PowerBase + cfg.PowerPerLevel * (level - 1)
+	if rebirths and rebirthCfg then
+		base *= 1 + math.min(rebirths, rebirthCfg.MaxRebirths) * rebirthCfg.PowerPerRebirth
+	end
+	return math.floor(base)
+end
+
+-- Renaissance ------------------------------------------------------------------------
+
+function Formulas.rebirthRequiredLevel(rebirths: number, cfg): number
+	return cfg.RequiredLevelBase + cfg.RequiredLevelPerRebirth * rebirths
+end
+
+function Formulas.canRebirth(level: number, rebirths: number, cfg): (boolean, string?)
+	if rebirths >= cfg.MaxRebirths then
+		return false, "Max"
+	end
+	if level < Formulas.rebirthRequiredLevel(rebirths, cfg) then
+		return false, "Level"
+	end
+	return true, nil
+end
+
+function Formulas.rebirthMultiplier(rebirths: number, cfg): number
+	return 1 + math.min(rebirths, cfg.MaxRebirths) * cfg.MultiplierPerRebirth
+end
+
+function Formulas.petSlots(rebirths: number, cfg): number
+	local slots = 1
+	for _, step in cfg.PetSlots do
+		if rebirths >= step.Rebirths then
+			slots = math.max(slots, step.Slots)
+		end
+	end
+	return slots
+end
+
+-- Compagnons ---------------------------------------------------------------------------
+
+-- Bonus total des compagnons équipés (liste d'Id), plafonné. Retourne le multiplicateur (>= 1).
+function Formulas.petMultiplier(petsCfg, equippedIds): number
+	local byId = {}
+	for _, def in petsCfg.List do
+		byId[def.Id] = def
+	end
+	local bonus = 0
+	for _, id in equippedIds do
+		local def = byId[id]
+		if def then
+			bonus += def.Bonus
+		end
+	end
+	return 1 + math.min(bonus, petsCfg.MaxTotalBonus)
+end
+
+-- Probabilités d'un œuf : liste triée { { Id, Chance (0-1) } }.
+function Formulas.eggOdds(egg)
+	local total = 0
+	for _, w in egg.Weights do
+		total += w
+	end
+	local list = {}
+	for id, w in egg.Weights do
+		table.insert(list, { Id = id, Chance = w / total })
+	end
+	table.sort(list, function(a, b)
+		return a.Chance > b.Chance
+	end)
+	return list
+end
+
+-- Tirage déterministe : r dans [0, 1[ (fourni par le serveur). Retourne l'Id obtenu.
+function Formulas.rollEgg(egg, r: number): string
+	local odds = Formulas.eggOdds(egg)
+	local acc = 0
+	for _, entry in odds do
+		acc += entry.Chance
+		if r < acc then
+			return entry.Id
+		end
+	end
+	return odds[#odds].Id
+end
+
+-- Les meilleurs compagnons de l'inventaire (Uid) pour remplir `slots` emplacements.
+function Formulas.bestPets(petsCfg, inventory, slots: number)
+	local byId = {}
+	for _, def in petsCfg.List do
+		byId[def.Id] = def
+	end
+	local sorted = table.clone(inventory)
+	table.sort(sorted, function(a, b)
+		local ba = byId[a.PetId] and byId[a.PetId].Bonus or 0
+		local bb = byId[b.PetId] and byId[b.PetId].Bonus or 0
+		if ba ~= bb then
+			return ba > bb
+		end
+		return a.Uid < b.Uid
+	end)
+	local result = {}
+	for i = 1, math.min(slots, #sorted) do
+		table.insert(result, sorted[i].Uid)
+	end
+	return result
+end
+
+-- Combat -------------------------------------------------------------------------------
+
+-- PV d'un boss figés au début du combat selon le nombre de participants.
+function Formulas.bossHealth(boss, participants: number): number
+	return math.floor(boss.MaxHealth * (1 + math.max(0, participants - 1) * boss.HealthPerExtraPlayer))
+end
+
+function Formulas.hitDamage(power: number, mult: number, petMult: number): number
+	return math.max(1, math.floor(power * mult * petMult))
+end
+
+-- Participants validés : dégâts >= ratio x PV max.
+function Formulas.validParticipants(damageByUser, maxHealth: number, ratio: number)
+	local list = {}
+	for userId, dmg in damageByUser do
+		if dmg >= maxHealth * ratio then
+			table.insert(list, userId)
+		end
+	end
+	table.sort(list)
+	return list
 end
 
 -- Niveau d'une amélioration personnelle (0 si absente).
@@ -59,10 +186,12 @@ function Formulas.groupTrainingMult(structureDefs, owned): number
 end
 
 -- Meilleur palier de tapis disponible dans un bastion (0 = aucun tapis).
-function Formulas.bestStationTier(structureDefs, owned): number
+-- rebirths (optionnel) : ignore les tapis dont la renaissance requise n'est pas atteinte.
+function Formulas.bestStationTier(structureDefs, owned, rebirths: number?): number
 	local best = 0
 	for _, def in structureDefs do
-		if owned[def.Id] and def.Effects.StationTier then
+		local usable = (def.Effects.RequiredRebirths or 0) <= (rebirths or math.huge)
+		if owned[def.Id] and def.Effects.StationTier and usable then
 			best = math.max(best, def.Effects.StationTier)
 		end
 	end
@@ -71,11 +200,19 @@ end
 
 -- Rendement d'un tapis par seconde, SANS bonus temporaire.
 -- focusLevel/focusPerLevel : amélioration personnelle « Concentration ».
-function Formulas.trainingRates(tier: number, groupMult: number, focusLevel: number, focusPerLevel: number, cfg)
+-- extraMult : renaissances x compagnons (1 par défaut).
+function Formulas.trainingRates(
+	tier: number,
+	groupMult: number,
+	focusLevel: number,
+	focusPerLevel: number,
+	cfg,
+	extraMult: number?
+)
 	if tier <= 0 then
 		return { Xp = 0, Gold = 0 }
 	end
-	local mult = (cfg.TierMultiplier[tier] or 1) * groupMult * (1 + focusLevel * focusPerLevel)
+	local mult = (cfg.TierMultiplier[tier] or 1) * groupMult * (1 + focusLevel * focusPerLevel) * (extraMult or 1)
 	return { Xp = cfg.BaseXpPerSecond * mult, Gold = cfg.BaseGoldPerSecond * mult }
 end
 

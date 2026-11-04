@@ -22,6 +22,11 @@ function ProfileSchema.template()
 		OfflineCarry = { Xp = 0, Gold = 0 }, -- fractions reportées
 		Ops = {}, -- OpLog : reçus et récompenses uniques traités
 		Entitlements = {}, -- droits durables { [Key] = true } (passes, cadeaux uniques)
+		Rebirths = 0,
+		Pets = {}, -- inventaire { { Uid, PetId } }
+		EquippedPets = {}, -- liste d'Uid équipés
+		NextPetUid = 1,
+		BossKills = {}, -- { [BossId] = nombre de victoires validées }
 		Stats = { FirstJoin = 0, PlaySeconds = 0, Harvests = 0 },
 	}
 end

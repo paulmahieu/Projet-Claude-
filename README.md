@@ -10,6 +10,7 @@ puis part à l'aventure. Cahier des charges : [`docs/01_CAHIER_DES_CHARGES.md`](
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Groupe persistant, autorité unique, invariants, sécurité |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Étapes 1 à 4 et statut de chaque élément |
 | [`docs/BOUTIQUE.md`](docs/BOUTIQUE.md) | Les 13 offres, produits à créer dans le Creator Hub |
+| [`docs/ASSETS.md`](docs/ASSETS.md) | Remplacer les modèles par des modèles de la boutique Roblox |
 
 **État : étape 1 (fondations jouables).** Aperçu des modèles 3D : [`docs/apercu/`](docs/apercu/). Rien n'a encore été exécuté dans Roblox Studio (voir § 4).
 
@@ -47,7 +48,7 @@ Le code vit dans `src/` (fichiers texte versionnés). **Rojo** le synchronise en
 | Commande | Rôle |
 |---|---|
 | `rojo build -o build/BastionsDEther.rbxl` | Régénère la place |
-| `lune run tests/shared.spec` | 32 tests automatiques (formules, verrous, groupes, hors ligne, configuration) |
+| `lune run tests/shared.spec` | 44 tests automatiques (formules, verrous, groupes, hors ligne, configuration) |
 | `selene src tests` | Analyse statique (variables non définies, erreurs courantes) |
 | `stylua src tests` | Formatage |
 
@@ -67,6 +68,22 @@ Le code vit dans `src/` (fichiers texte versionnés). **Rojo** le synchronise en
 | 6 | **M** (manette : Y, tactile : bouton Menu) → Améliorations → Concentration | L'or baisse, le rendement des tapis augmente de 10 %. |
 | 7 | Menu → Boutique | 13 offres « Bientôt » ; « Simuler (Studio) » sur les bourses d'or → or crédité. |
 | 8 | (Sauvegardes actives) Quitter après s'être entraîné, attendre 5 min, relancer | Message « Pendant ton absence (5 min) : +300 XP et +75 or (25 %...) ». |
+
+### Nouveautés : compagnons, renaissance, boss
+
+> Pour tester vite : Menu → **Boutique** → « Outils de test » : **+10 000 or** et **+10 niveaux**.
+> Ces boutons n'existent que dans Studio (refusés dans le jeu publié).
+
+| # | Action | Attendu |
+|---|---|---|
+| 15 | Au point d'accueil, approcher un **œuf** sur son socle, touche E | Fenêtre avec les probabilités de chaque compagnon et le prix. |
+| 16 | « Ouvrir » (avec assez d'or) | Annonce du compagnon obtenu ; il apparaît et **suit** ton personnage. |
+| 17 | Menu → **Compagnons** | Liste, bonus total, « Équiper le meilleur », Équiper/Retirer, Relâcher (2 clics). |
+| 18 | Menu → **Renaissance** (niveau 15 requis) | Multiplicateur actuel → suivant, ce qui est remis à zéro / conservé ; « Renaître » (2 clics). |
+| 19 | Au point d'accueil, **portail** vert « Gardien sylvestre » → E | Téléportation dans l'arène ; barre de vie du boss en haut, boutons Frappe runique et Esquive. |
+| 20 | S'approcher du boss | Attaques automatiques (chiffres rouges) ; les disques rouges au sol annoncent ses coups : sors-en ou **Esquive (Q)**. |
+| 21 | Le vaincre | « Victoire ! +400 or, +600 XP » et « Butin du bastion : +80 Bois, +6 Cristal ». Le boss réapparaît 90 s plus tard. |
+| 22 | Mourir dans l'arène | Réapparition dans ton bastion, rien n'est perdu. |
 
 ### À plusieurs : *Test → Clients and Servers → 2 ou 3 joueurs → Start*
 
@@ -89,7 +106,7 @@ Le code vit dans `src/` (fichiers texte versionnés). **Rojo** le synchronise en
 
 | Élément | Statut |
 |---|---|
-| Formules, hors ligne (5 min / 8 h / 48 h, reconnexion immédiate), verrou à deux serveurs, appartenance, achats concurrents, validation des entrées, cohérence de la configuration | **Testé** (Lune, 32 tests) — simulation hors Roblox |
+| Formules, hors ligne (5 min / 8 h / 48 h, reconnexion immédiate), verrou à deux serveurs, appartenance, achats concurrents, validation des entrées, cohérence de la configuration | **Testé** (Lune, 44 tests, dont renaissance, tirages d'œufs, compagnons, boss) — simulation hors Roblox |
 | Syntaxe, variables non définies, structure de la place | **Vérifié** (StyLua, Selene, `rojo build`) |
 | Comportement en jeu : monde, groupes, récolte, constructions, tapis, interface, manette, tactile | **À vérifier dans Studio** (scénario ci-dessus) |
 | DataStores réels, achats Robux, prix régionaux, téléportations | **À vérifier** dans une expérience de test publiée |

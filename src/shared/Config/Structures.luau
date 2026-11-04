@@ -11,6 +11,7 @@
 	              StationTier  : palier des tapis créés (multiplie l'XP et l'or)
 	              TrainingMult : bonus du bastion sur tous ses tapis (0.10 = +10 %)
 	              HarvestBonus : { [MaterialId] = bonus par récolte }
+	              RequiredRebirths : renaissances personnelles nécessaires pour UTILISER ces tapis
 	Offset/Size : position {x, z} et taille {x, y, z} relatives à la parcelle.
 	              z négatif = entrée (côté hub). Parcelle de 90 x 90 (de -45 à 45).
 ]]
@@ -87,5 +88,29 @@ return {
 		Size = { 8, 22, 8 },
 		Color = { 150, 150, 140 },
 		Material = "Cobblestone",
+	},
+	{
+		Id = "EtherMats",
+		Name = "Tapis d'Éther",
+		Cost = { Wood = 200, Stone = 150, Crystal = 10 },
+		Requires = "Watchtower",
+		Effect = "2 tapis x3 (renaissance 1 requise pour s'y entraîner)",
+		Effects = { Stations = { { -4, -14 }, { 4, -14 } }, StationTier = 3, RequiredRebirths = 1 },
+		Offset = { 0, -14 },
+		Size = { 16, 0.4, 12 },
+		Color = { 60, 120, 150 },
+		Material = "Slate",
+	},
+	{
+		Id = "CelestialMats",
+		Name = "Tapis célestes",
+		Cost = { Wood = 400, Stone = 300, Ore = 20, Crystal = 40 },
+		Requires = "EtherMats",
+		Effect = "2 tapis x6 (renaissance 3 requise pour s'y entraîner)",
+		Effects = { Stations = { { -29, 4 }, { -19, 4 } }, StationTier = 4, RequiredRebirths = 3 },
+		Offset = { -24, 4 },
+		Size = { 18, 0.4, 10 },
+		Color = { 230, 210, 140 },
+		Material = "Marble",
 	},
 }

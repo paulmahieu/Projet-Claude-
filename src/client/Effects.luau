@@ -70,6 +70,44 @@ function Effects.float(text: string, color: Color3, big: boolean?)
 	end)
 end
 
+-- Texte flottant à une position du monde (ex. dégâts infligés au boss).
+function Effects.floatAt(position: Vector3, text: string, color: Color3)
+	if active >= MAX_ACTIVE * 2 then
+		return
+	end
+	active += 1
+	local attachment = Instance.new("Attachment")
+	attachment.Parent = workspace.Terrain -- parent d'abord : WorldPosition est relative au parent
+	attachment.WorldPosition = position
+	local gui = Instance.new("BillboardGui")
+	gui.Size = UDim2.fromOffset(150, 44)
+	gui.AlwaysOnTop = true
+	gui.LightInfluence = 0
+	gui.Adornee = attachment
+	gui.Parent = player:WaitForChild("PlayerGui")
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.TextColor3 = color
+	label.TextStrokeTransparency = 0
+	label.Text = text
+	label.Parent = gui
+	TweenService:Create(gui, TweenInfo.new(0.9, Enum.EasingStyle.Quad), { StudsOffset = Vector3.new(0, 3, 0) }):Play()
+	local fade = TweenService:Create(
+		label,
+		TweenInfo.new(0.4, Enum.EasingStyle.Linear, Enum.EasingDirection.In, 0, false, 0.5),
+		{ TextTransparency = 1, TextStrokeTransparency = 1 }
+	)
+	fade:Play()
+	fade.Completed:Connect(function()
+		gui:Destroy()
+		attachment:Destroy()
+		active -= 1
+	end)
+end
+
 function Effects.start()
 	local lastXp = player:GetAttribute("TrainXp")
 	local lastGold = player:GetAttribute("Gold")

@@ -55,8 +55,22 @@ Exemples côté joueur :
 - **P2** : Tom et Inès s'entraînent côte à côte, l'affichage passe à « +12 XP/s (+5 % cercle) ».
 - **P3** : une rune dorée clignote au-dessus du tapis ; Sam appuie sur X à la manette et voit « x3 pendant 10 s ».
 
-## 5. Décisions qui te reviennent
+## 5. Changements demandés par le créateur (04/11/2026)
 
+| Demande | Ce qui est fait | Écart avec le cahier initial |
+|---|---|---|
+| Système de renaissance | Renaissance **facultative** : niveau requis croissant (15, 25, 35…), remet à zéro niveau, XP et or ; garde améliorations, compagnons et bastion. Multiplicateur permanent +25 %/renaissance (plafond 25 renaissances). | Le cahier §2 excluait une renaissance « imposée » : elle reste un choix du joueur. |
+| Tapis à multiplicateurs plus élevés | Tapis d'Éther (x3, renaissance 1) et Tapis célestes (x6, renaissance 3). Le groupe les construit avec des **cristaux de boss** ; chaque joueur doit avoir fait la renaissance pour s'y entraîner. | Relie la renaissance, les boss et le bastion. |
+| Œufs de compagnons, multiplicateurs selon la rareté | 3 œufs au point d'accueil, achetés en **or**, probabilités affichées ; 9 compagnons en 5 raretés (+10 % à +300 %) ; 1 à 3 emplacements selon les renaissances ; bonus total plafonné à +600 %. Les compagnons suivent leur propriétaire. | Le cahier §7 prévoyait 3 compagnons obtenus en jeu ; les 3 prévus (loup runique, petit golem, esprit de lumière) font partie de la liste. |
+| Lieux de combat de boss | 2 arènes (Gardien sylvestre, Golem des profondeurs) accessibles par des portails au point d'accueil ; boss à 2 phases, attaques annoncées au sol, attaque automatique, Frappe runique et Esquive. | Avance une partie de l'étape 3. Les arènes sont dans le même serveur (pas de « places » séparées) : plus simple, testable dans Studio. |
+| Graphismes, packs open source | Terrain Roblox (herbe animée, collines, mare), éclairage, nouveaux modèles, et **remplacement par des modèles de la boutique** sans toucher au code (`docs/ASSETS.md`). | — |
+
+## 6. Décisions qui te reviennent
+
+0. **Œufs en Robux ?** Je les ai faits en **or**. Le cahier §9.1 interdit les caisses aléatoires
+   payantes, et Roblox impose d'afficher les probabilités des objets aléatoires payants et les
+   interdit dans certains pays. Si tu veux des œufs en Robux, je recommande plutôt des œufs
+   **garantis** (« Œuf rare garanti ») ou des accélérations, à contenu connu.
 1. **R2** : téléportation proposée (avec choix de rester) ou téléportation automatique vers le serveur du bastion ?
 2. **R4** : créditer aussi la présence inactive en ligne à 25 %, ou garder la règle actuelle ?
 3. **P2 / P3** : les retiens-tu pour l'étape 2 ?

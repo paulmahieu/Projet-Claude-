@@ -19,6 +19,12 @@ local GroupService = require(script.Parent.GroupService)
 local UpgradeService = require(script.Parent.UpgradeService)
 local TrainingService = require(script.Parent.TrainingService)
 local MonetizationService = require(script.Parent.MonetizationService)
+local RebirthService = require(script.Parent.RebirthService)
+local PetService = require(script.Parent.PetService)
+local BossService = require(script.Parent.BossService)
+local ProfileService = require(script.Parent.ProfileService)
+local Formulas = require(Shared.Formulas)
+local Training = require(Shared.Config.Training)
 
 local Request = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Request") :: RemoteFunction
 
@@ -52,7 +58,12 @@ end
 
 local handlers = {
 	Sync = function(player)
-		return { ok = true, group = GroupService.snapshotFor(player), devTools = MonetizationService.devToolsEnabled() }
+		return {
+			ok = true,
+			group = GroupService.snapshotFor(player),
+			pets = PetService.snapshot(player),
+			devTools = MonetizationService.devToolsEnabled(),
+		}
 	end,
 
 	Invite = function(player, p)
@@ -110,6 +121,69 @@ local handlers = {
 	StopTraining = function(player)
 		TrainingService.stop(player, Texts.TrainingStop)
 		return { ok = true }
+	end,
+
+	Rebirth = function(player, p)
+		if not Validate.boolean(p.Confirm) or not p.Confirm then
+			return bad()
+		end
+		return RebirthService.rebirth(player)
+	end,
+
+	HatchEgg = function(player, p)
+		if not Validate.id(p.EggId, 32) then
+			return bad()
+		end
+		return PetService.hatch(player, p.EggId)
+	end,
+
+	TogglePet = function(player, p)
+		if not Validate.positiveInteger(p.Uid, 1e9) then
+			return bad()
+		end
+		return PetService.toggleEquip(player, p.Uid)
+	end,
+
+	EquipBestPets = function(player)
+		return PetService.equipBest(player)
+	end,
+
+	ReleasePet = function(player, p)
+		if not Validate.positiveInteger(p.Uid, 1e9) then
+			return bad()
+		end
+		return PetService.release(player, p.Uid)
+	end,
+
+	UseSkill = function(player, p)
+		if p.Id ~= "Strike" and p.Id ~= "Dodge" then
+			return bad()
+		end
+		return BossService.useSkill(player, p.Id)
+	end,
+
+	-- Outil de test, UNIQUEMENT dans Studio (refusé dans le jeu publié).
+	DevBoost = function(player, p)
+		if not MonetizationService.devToolsEnabled() then
+			return bad()
+		end
+		local profile = ProfileService.get(player)
+		if not profile then
+			return bad()
+		end
+		if p.Kind == "Gold" then
+			profile.Gold += 10000
+		elseif p.Kind == "Levels" then
+			local target = profile.Level + 10
+			while profile.Level < target and profile.Level < Training.MaxLevel do
+				profile.Level, profile.TrainXp =
+					Formulas.addXp(profile.Level, profile.TrainXp, Formulas.xpToNext(profile.Level, Training), Training)
+			end
+		else
+			return bad()
+		end
+		ProfileService.sync(player)
+		return { ok = true, msg = "Test Studio : appliqué." }
 	end,
 
 	DevSimulatePurchase = function(player, p)

@@ -20,6 +20,8 @@ local Formulas = require(Shared.Formulas)
 local Economy = require(Shared.Config.Economy)
 local Training = require(Shared.Config.Training)
 local Upgrades = require(Shared.Config.Upgrades)
+local Rebirth = require(Shared.Config.Rebirth)
+local Pets = require(Shared.Config.Pets)
 local Texts = require(Shared.Config.Texts)
 
 local Store = require(script.Parent.Store)
@@ -106,6 +108,43 @@ function ProfileService.saveNow(player: Player): boolean
 	return save(player, false)
 end
 
+-- Id des compagnons équipés (dans l'ordre d'équipement).
+function ProfileService.equippedPetIds(player: Player): { string }
+	local data = profiles[player]
+	local ids = {}
+	if not data then
+		return ids
+	end
+	local byUid = {}
+	for _, pet in data.Pets do
+		byUid[pet.Uid] = pet.PetId
+	end
+	for _, uid in data.EquippedPets do
+		if byUid[uid] then
+			table.insert(ids, byUid[uid])
+		end
+	end
+	return ids
+end
+
+-- Multiplicateur durable hors bastion : renaissances x compagnons équipés.
+function ProfileService.personalMultiplier(player: Player): number
+	local data = profiles[player]
+	if not data then
+		return 1
+	end
+	return Formulas.rebirthMultiplier(data.Rebirths, Rebirth)
+		* Formulas.petMultiplier(Pets, ProfileService.equippedPetIds(player))
+end
+
+function ProfileService.power(player: Player): number
+	local data = profiles[player]
+	if not data then
+		return Training.PowerBase
+	end
+	return Formulas.power(data.Level, Training, data.Rebirths, Rebirth)
+end
+
 -- Pousse l'état personnel vers le client (attributs répliqués automatiquement).
 function ProfileService.sync(player: Player)
 	local data = profiles[player]
@@ -116,7 +155,13 @@ function ProfileService.sync(player: Player)
 	player:SetAttribute("Level", data.Level)
 	player:SetAttribute("TrainXp", math.floor(data.TrainXp))
 	player:SetAttribute("XpNext", Formulas.xpToNext(data.Level, Training))
-	player:SetAttribute("Power", Formulas.power(data.Level, Training))
+	player:SetAttribute("Power", ProfileService.power(player))
+	player:SetAttribute("Rebirths", data.Rebirths)
+	player:SetAttribute("RebirthLevel", Formulas.rebirthRequiredLevel(data.Rebirths, Rebirth))
+	player:SetAttribute("PetSlots", Formulas.petSlots(data.Rebirths, Rebirth))
+	player:SetAttribute("PetMult", Formulas.petMultiplier(Pets, ProfileService.equippedPetIds(player)))
+	-- Lu par tous les clients pour afficher les compagnons qui suivent ce joueur.
+	player:SetAttribute("EquippedPets", table.concat(ProfileService.equippedPetIds(player), ","))
 	for _, def in Upgrades do
 		player:SetAttribute("Upg_" .. def.Id, Formulas.upgradeLevel(data, def.Id))
 	end

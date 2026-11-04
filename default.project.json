@@ -16,6 +16,12 @@
         },
         "Request": {
           "$className": "RemoteFunction"
+        },
+        "PetsUpdate": {
+          "$className": "RemoteEvent"
+        },
+        "CombatFx": {
+          "$className": "RemoteEvent"
         }
       }
     },
