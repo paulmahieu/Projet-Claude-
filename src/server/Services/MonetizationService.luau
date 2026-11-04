@@ -87,6 +87,31 @@ local function processReceipt(info)
 	return processPurchase(player, item, tostring(info.PurchaseId))
 end
 
+-- Possession d'un pass, vérifiée côté serveur et mise en cache par joueur.
+local passCache: { [Player]: { [string]: boolean } } = {}
+
+function MonetizationService.ownsPass(player: Player, key: string): boolean
+	local item = productByKey[key]
+	if not item or item.Kind ~= "Pass" or item.Id == 0 or not item.Ready then
+		return false
+	end
+	local cache = passCache[player]
+	if not cache then
+		cache = {}
+		passCache[player] = cache
+	end
+	if cache[key] == nil then
+		local ok, owns = pcall(function()
+			return MarketplaceService:UserOwnsGamePassAsync(player.UserId, item.Id)
+		end)
+		if not ok then
+			return false -- erreur réseau : on réessaiera plus tard
+		end
+		cache[key] = owns
+	end
+	return cache[key]
+end
+
 function MonetizationService.devToolsEnabled(): boolean
 	return RunService:IsStudio() and Game.DevToolsInStudio
 end
@@ -106,6 +131,15 @@ end
 
 function MonetizationService.init()
 	MarketplaceService.ProcessReceipt = processReceipt
+	-- La fermeture de la fenêtre ne prouve rien : on revérifie la possession côté serveur.
+	MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, _passId, purchased)
+		if purchased then
+			passCache[player] = nil
+		end
+	end)
+	Players.PlayerRemoving:Connect(function(player)
+		passCache[player] = nil
+	end)
 end
 
 return MonetizationService

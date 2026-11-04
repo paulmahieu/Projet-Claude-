@@ -48,7 +48,7 @@ Le code vit dans `src/` (fichiers texte versionnés). **Rojo** le synchronise en
 | Commande | Rôle |
 |---|---|
 | `rojo build -o build/BastionsDEther.rbxl` | Régénère la place |
-| `lune run tests/shared.spec` | 49 tests automatiques (formules, verrous, groupes, hors ligne, configuration) |
+| `lune run tests/shared.spec` | 53 tests automatiques (formules, verrous, groupes, hors ligne, configuration) |
 | `selene src tests` | Analyse statique (variables non définies, erreurs courantes) |
 | `stylua src tests` | Formatage |
 
@@ -96,6 +96,16 @@ Le code vit dans `src/` (fichiers texte versionnés). **Rojo** le synchronise en
 | 27 | Après la section 10 | Retour au début de la rue, la numérotation continue (étape 11, ennemis plus forts). |
 | 28 | Mourir, ou ressortir par le portail bleu du parvis | Retour au bastion ; l'étape atteinte est conservée. |
 
+### Champ des champions (zones de farm)
+
+| # | Action | Attendu |
+|---|---|---|
+| 29 | Au point d'accueil, portail **bleu** « Champ des champions » (côté sud, derrière les œufs) → E | Arrivée sur une île suspendue : 10 zones encadrées + 1 zone royale dorée. Bordure **verte** = accessible, **rouge** = renaissances manquantes. |
+| 30 | Entrer dans la zone « x1 · Renaissance 0 » | Bandeau « zone x1 », les mannequins tremblent, « +XP » et « +or » jaillissent chaque seconde. |
+| 31 | Entrer dans une zone rouge | Message « Zone x4 : 3 renaissance(s) requise(s) », aucun gain. |
+| 32 | Faire une renaissance (menu) puis revenir | La zone x2 passe au vert et rapporte deux fois plus. |
+| 33 | Zone royale | « réservée au pass » (le pass n'est pas encore créé : décision en attente). |
+
 ### À plusieurs : *Test → Clients and Servers → 2 ou 3 joueurs → Start*
 
 | # | Action | Attendu |
@@ -117,7 +127,7 @@ Le code vit dans `src/` (fichiers texte versionnés). **Rojo** le synchronise en
 
 | Élément | Statut |
 |---|---|
-| Formules, hors ligne (5 min / 8 h / 48 h, reconnexion immédiate), verrou à deux serveurs, appartenance, achats concurrents, validation des entrées, cohérence de la configuration | **Testé** (Lune, 49 tests, dont renaissance, tirages d'œufs, compagnons, boss, Rue des boss) — simulation hors Roblox |
+| Formules, hors ligne (5 min / 8 h / 48 h, reconnexion immédiate), verrou à deux serveurs, appartenance, achats concurrents, validation des entrées, cohérence de la configuration | **Testé** (Lune, 53 tests, dont renaissance, tirages d'œufs, compagnons, boss, Rue des boss, zones de farm) — simulation hors Roblox |
 | Syntaxe, variables non définies, structure de la place | **Vérifié** (StyLua, Selene, `rojo build`) |
 | Comportement en jeu : monde, groupes, récolte, constructions, tapis, interface, manette, tactile | **À vérifier dans Studio** (scénario ci-dessus) |
 | DataStores réels, achats Robux, prix régionaux, téléportations | **À vérifier** dans une expérience de test publiée |

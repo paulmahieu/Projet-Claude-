@@ -26,6 +26,8 @@ Légende : ✅ implémenté · 🧪 testé automatiquement (Lune) · 🔍 à vé
 - ✅🧪🔍 2 arènes de boss avec portails, 2 phases, attaques annoncées, compétences, esquive,
   participation validée, butin personnel et butin de groupe
 - ✅🔍 Terrain Roblox, éclairage, remplacement par modèles de la boutique (`docs/ASSETS.md`)
+- ✅🧪🔍 Champ des champions : 10 zones de farm (x1 à x30) débloquées par les renaissances,
+  zone royale x50 liée à un pass (désactivé), gains hors ligne basés sur le meilleur rendement durable
 - ✅🧪🔍 Rue des boss : étapes à Puissance conseillée croissante, vagues propres à chaque joueur,
   portes locales, patron toutes les 5 étapes avec butin affiché, progression sauvegardée
 

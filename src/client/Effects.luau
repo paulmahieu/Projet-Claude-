@@ -125,7 +125,7 @@ function Effects.start()
 	-- Pendant l'entraînement : « +4 XP » et « +1 or » à chaque gain.
 	player:GetAttributeChangedSignal("TrainXp"):Connect(function()
 		local xp = player:GetAttribute("TrainXp") or 0
-		if lastXp and player:GetAttribute("Training") then
+		if lastXp and (player:GetAttribute("Training") or (player:GetAttribute("FarmZone") or 0) > 0) then
 			local delta = xp - lastXp
 			if delta > 0 then
 				xpCarry += delta
@@ -140,7 +140,11 @@ function Effects.start()
 
 	player:GetAttributeChangedSignal("Gold"):Connect(function()
 		local gold = player:GetAttribute("Gold") or 0
-		if lastGold and gold > lastGold and player:GetAttribute("Training") then
+		if
+			lastGold
+			and gold > lastGold
+			and (player:GetAttribute("Training") or (player:GetAttribute("FarmZone") or 0) > 0)
+		then
 			Effects.float("+" .. Formulas.formatNumber(gold - lastGold) .. " or", COLORS.Gold)
 		end
 		lastGold = gold

@@ -145,6 +145,17 @@ return {
 		Ready = false, -- parcours de progression : étapes 3-4
 	},
 	{
+		Key = "RoyalTraining",
+		Kind = "Pass",
+		Id = 0,
+		SuggestedPrice = 149,
+		Name = "Zone royale d'entraînement",
+		Description = "Accès permanent à la zone royale du Champ des champions (x50 XP et or).",
+		Preview = "Zone x50",
+		Delivery = { Type = "Entitlement", Key = "RoyalTraining" },
+		Ready = true, -- vérifié par possession du pass (UserOwnsGamePassAsync)
+	},
+	{
 		Key = "TitleWarden",
 		Kind = "Pass",
 		Id = 0,

@@ -308,6 +308,42 @@ function Formulas.harvestBonus(structureDefs, owned, materialId: string): number
 	return bonus
 end
 
+-- Champ des champions ------------------------------------------------------------------
+
+-- Rendement dans une zone de farm (par seconde) : base x zone x Concentration x personnel.
+function Formulas.zoneRates(zoneMult: number, focusLevel: number, focusPerLevel: number, cfg, personalMult: number)
+	local mult = zoneMult * (1 + focusLevel * focusPerLevel) * personalMult
+	return { Xp = cfg.BaseXpPerSecond * mult, Gold = cfg.BaseGoldPerSecond * mult }
+end
+
+-- Une zone est-elle accessible ? ownsPass(key) -> boolean.
+function Formulas.zoneUnlocked(zone, rebirths: number, ownsPass): boolean
+	if zone.PassKey and not ownsPass(zone.PassKey) then
+		return false
+	end
+	return rebirths >= zone.Rebirths
+end
+
+-- Meilleur multiplicateur de zone accessible (0 si aucune).
+function Formulas.bestZoneMult(farmCfg, rebirths: number, ownsPass): number
+	local best = 0
+	for _, zone in farmCfg.Zones do
+		if Formulas.zoneUnlocked(zone, rebirths, ownsPass) then
+			best = math.max(best, zone.Mult)
+		end
+	end
+	return best
+end
+
+-- Centre {x, z} (relatif à l'origine de l'île) de la zone n.
+function Formulas.zoneCenter(farmCfg, index: number): (number, number)
+	local col = (index - 1) % farmCfg.Columns
+	local rowIndex = (index - 1) // farmCfg.Columns
+	local step = farmCfg.ZoneSize + farmCfg.Gap
+	local width = farmCfg.Columns * step - farmCfg.Gap
+	return -width / 2 + farmCfg.ZoneSize / 2 + col * step, rowIndex * step
+end
+
 -- Rue des boss ------------------------------------------------------------------------
 
 function Formulas.streetIsPatron(stage: number, cfg): boolean

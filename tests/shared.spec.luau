@@ -24,6 +24,7 @@ local Pets = require("../src/shared/Config/Pets")
 local Bosses = require("../src/shared/Config/Bosses")
 local Combat = require("../src/shared/Config/Combat")
 local Street = require("../src/shared/Config/Street")
+local Farm = require("../src/shared/Config/Farm")
 
 local passed, failed = 0, 0
 
@@ -456,7 +457,10 @@ test("catalogue : au moins 13 offres, clés uniques, identifiants non inventés"
 		eq(item.Id, 0, item.Key .. " : identifiant à créer dans le Creator Hub")
 		assert(item.Name and item.Description and item.Preview, item.Key .. " : textes manquants")
 		if item.Ready then
-			eq(item.Delivery.Type, "Gold", item.Key .. " : seule la livraison d'or est implémentée")
+			assert(
+				item.Delivery.Type == "Gold" or item.Delivery.Type == "Entitlement",
+				item.Key .. " : livraison non implémentée"
+			)
 		end
 	end
 end)
@@ -650,6 +654,75 @@ test("rue : dans le ciel, au-dessus des arènes et de la carte", function()
 	for _, boss in Bosses do
 		local dx, dz = Street.Portal[1] - boss.Portal[1], Street.Portal[2] - boss.Portal[2]
 		assert(math.sqrt(dx * dx + dz * dz) >= 10, "portails trop proches")
+	end
+end)
+
+----------------------------------------------------------------------------------------
+print("Champ des champions")
+
+local function noPass()
+	return false
+end
+
+test("zones : multiplicateurs croissants avec les renaissances, plafond respecté", function()
+	local last = { Mult = 0, Rebirths = -1 }
+	for _, zone in Farm.Zones do
+		if not zone.PassKey then
+			assert(zone.Mult > last.Mult and zone.Rebirths > last.Rebirths, "progression des zones")
+			assert(zone.Rebirths <= Rebirth.MaxRebirths, "zone inaccessible (renaissances > maximum)")
+			last = zone
+		end
+	end
+	eq(Formulas.bestZoneMult(Farm, 0, noPass), 1)
+	eq(Formulas.bestZoneMult(Farm, 3, noPass), 4)
+	eq(Formulas.bestZoneMult(Farm, 999, noPass), 30)
+end)
+
+test("zone royale : uniquement avec le pass", function()
+	local royal
+	for _, zone in Farm.Zones do
+		if zone.PassKey then
+			royal = zone
+		end
+	end
+	assert(royal, "zone royale définie")
+	assert(not Formulas.zoneUnlocked(royal, 999, noPass), "sans pass : verrouillée")
+	assert(
+		Formulas.zoneUnlocked(royal, 0, function()
+			return true
+		end),
+		"avec pass : ouverte"
+	)
+	local found = false
+	for _, item in Products do
+		if item.Key == royal.PassKey then
+			found = true
+		end
+	end
+	assert(found, "pass présent dans le catalogue")
+end)
+
+test("rendement d'une zone : base x zone x Concentration x personnel", function()
+	local r = Formulas.zoneRates(4, 2, 0.1, Training, 1.5)
+	near(r.Xp, Training.BaseXpPerSecond * 4 * 1.2 * 1.5)
+	near(r.Gold, Training.BaseGoldPerSecond * 4 * 1.2 * 1.5)
+end)
+
+test("zones sans chevauchement et lieux séparés (île, rue, arènes, hub)", function()
+	local half = Farm.ZoneSize / 2
+	for i = 1, #Farm.Zones do
+		local xi, zi = Formulas.zoneCenter(Farm, i)
+		for j = i + 1, #Farm.Zones do
+			local xj, zj = Formulas.zoneCenter(Farm, j)
+			assert(math.abs(xi - xj) >= Farm.ZoneSize or math.abs(zi - zj) >= Farm.ZoneSize, "zones " .. i .. "/" .. j)
+		end
+		assert(math.abs(xi) + half < 92, "zone hors de l'île")
+	end
+	assert(math.abs(Farm.Origin[2] - Street.Origin[2]) > 60, "île et rue à des hauteurs différentes")
+	assert(math.sqrt(Farm.Portal[1] ^ 2 + Farm.Portal[2] ^ 2) < 28, "portail dans le hub")
+	for _, egg in Pets.Eggs do
+		local dx, dz = Farm.Portal[1] - egg.Position[1], Farm.Portal[2] - egg.Position[2]
+		assert(math.sqrt(dx * dx + dz * dz) >= 7, "portail trop proche de " .. egg.Id)
 	end
 end)
 

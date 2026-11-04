@@ -64,10 +64,14 @@ Exemples côté joueur :
 | Œufs de compagnons, multiplicateurs selon la rareté | 3 œufs au point d'accueil, achetés en **or**, probabilités affichées ; 9 compagnons en 5 raretés (+10 % à +300 %) ; 1 à 3 emplacements selon les renaissances ; bonus total plafonné à +600 %. Les compagnons suivent leur propriétaire. | Le cahier §7 prévoyait 3 compagnons obtenus en jeu ; les 3 prévus (loup runique, petit golem, esprit de lumière) font partie de la liste. |
 | Lieux de combat de boss | 2 arènes (Gardien sylvestre, Golem des profondeurs) accessibles par des portails au point d'accueil ; boss à 2 phases, attaques annoncées au sol, attaque automatique, Frappe runique et Esquive. | Avance une partie de l'étape 3. Les arènes sont dans le même serveur (pas de « places » séparées) : plus simple, testable dans Studio. |
 | Rue des boss (vidéo d'inspiration) | Rue suspendue de 10 sections : chaque étape = une vague d'ennemis propre au joueur, porte qui s'ouvre une fois la vague vaincue, Puissance conseillée croissante, patron toutes les 5 étapes avec butin affiché (matériaux pour le groupe, petite chance de compagnon), retour au début après la section 10 avec numérotation continue. | Format repris de la vidéo (étapes, vagues, patrons) ; univers, ennemis et visuels propres à Bastions d'Éther. |
+| Zones de farm (2e vidéo) | Champ des champions : île suspendue de 10 zones x1 à x30 débloquées par 0 à 25 renaissances, + zone royale x50. On frappe automatiquement les mannequins en restant dans la zone. Les gains hors ligne prennent le meilleur rendement durable (tapis du bastion ou zone). | Les tapis du bastion restent utiles au début (x6 à la renaissance 3 contre x4 en zone) ; au-delà, les zones prennent le relais. **Zone royale payante : à valider** (voir décisions). |
 | Graphismes, packs open source | Terrain Roblox (herbe animée, collines, mare), éclairage, nouveaux modèles, et **remplacement par des modèles de la boutique** sans toucher au code (`docs/ASSETS.md`). | — |
 
 ## 6. Décisions qui te reviennent
 
+0. **Zone royale x50 payante (pass ~149 R$) ?** Elle est prête mais désactivée. Le cahier autorise
+   les achats qui accélèrent les gains sans rendre le contenu obligatoire ; à toi de valider le
+   principe et le multiplicateur.
 0. **Œufs en Robux ?** Je les ai faits en **or**. Le cahier §9.1 interdit les caisses aléatoires
    payantes, et Roblox impose d'afficher les probabilités des objets aléatoires payants et les
    interdit dans certains pays. Si tu veux des œufs en Robux, je recommande plutôt des œufs

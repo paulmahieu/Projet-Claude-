@@ -30,6 +30,7 @@ local Effects = require(script.Parent.Effects)
 local PetFollowers = require(script.Parent.PetFollowers)
 local CombatUi = require(script.Parent.CombatUi)
 local StreetUi = require(script.Parent.StreetUi)
+local FarmUi = require(script.Parent.FarmUi)
 local ProximityPromptService = game:GetService("ProximityPromptService")
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -227,6 +228,10 @@ local function refreshHud()
 		banner.Text = STATE_TEXT[groupStateAttr]
 		banner.BackgroundColor3 = if groupStateAttr == "Loading" then C.info else C.error
 		banner.Visible = true
+	elseif (player:GetAttribute("FarmZone") or 0) > 0 then
+		banner.Text = string.format("Champ des champions · zone x%s", tostring(player:GetAttribute("FarmZone")))
+		banner.BackgroundColor3 = C.success
+		banner.Visible = true
 	elseif player:GetAttribute("Training") then
 		banner.Text = "Entraînement · " .. tostring(player:GetAttribute("TrainingRate") or "")
 		banner.BackgroundColor3 = C.success
@@ -237,7 +242,18 @@ local function refreshHud()
 end
 
 for _, name in
-	{ "Gold", "Level", "TrainXp", "XpNext", "Power", "Training", "TrainingRate", "ProfileState", "GroupState" }
+	{
+		"Gold",
+		"Level",
+		"TrainXp",
+		"XpNext",
+		"Power",
+		"Training",
+		"TrainingRate",
+		"ProfileState",
+		"GroupState",
+		"FarmZone",
+	}
 do
 	player:GetAttributeChangedSignal(name):Connect(refreshHud)
 end
@@ -956,6 +972,7 @@ Effects.start()
 PetFollowers.start()
 CombatUi.start(gui, toast)
 StreetUi.start(gui)
+FarmUi.start()
 refreshHud()
 task.spawn(function()
 	local ok, res = pcall(function()

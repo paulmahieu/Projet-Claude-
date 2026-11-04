@@ -919,8 +919,8 @@ end
 function Models.hubDecor(parent: Instance, radius: number)
 	for i = 1, 6 do
 		local angle = (i / 6) * math.pi * 2 + math.pi / 6
-		if i == 1 then
-			continue -- 90° : emplacement du portail de la Rue des boss
+		if i == 1 or i == 4 then
+			continue -- 90° et 270° : portails de la Rue des boss et du Champ des champions
 		end
 		local pos = CFrame.new(math.cos(angle) * (radius - 3), 1, math.sin(angle) * (radius - 3))
 		Models.lantern(CFrame.lookAt(pos.Position, Vector3.new(0, 1, 0)), parent, i % 2 == 0)
@@ -1643,6 +1643,123 @@ function Models.enemy(kind, base: CFrame, scale: number, patron: boolean): (Mode
 	end
 	m.PrimaryPart = root
 	return m, root
+end
+
+-- Champ des champions ---------------------------------------------------------------------
+
+-- Mannequin d'entraînement autonome (poteau, bras, corps, tête). Retourne le corps.
+function Models.dummy(base: CFrame, parent: Instance, color: Color3): BasePart
+	column(parent, "DummyPole", 4.6, 0.45, base, C.WoodDark, Enum.Material.Wood)
+	part(
+		parent,
+		"DummyArms",
+		Vector3.new(2.8, 0.35, 0.35),
+		base * CFrame.new(0, 3.4, 0),
+		C.WoodDark,
+		Enum.Material.Wood
+	)
+	local body =
+		part(parent, "DummyBody", Vector3.new(1.5, 1.8, 0.9), base * CFrame.new(0, 3, 0), color, Enum.Material.Fabric)
+	ball(parent, "DummyHead", 1.1, base * CFrame.new(0, 4.5, 0), C.Straw, Enum.Material.Fabric)
+	return body
+end
+
+--[[
+	Île suspendue et ses zones. `origin` : CFrame au sol, -Z = vers le fond de l'île.
+	Retourne { { Border = {BasePart}, Dummies = {BasePart}, Center = CFrame } } par zone.
+	La couleur des bordures est ajustée côté client (vert = accessible, rouge = verrouillé).
+]]
+function Models.farmIsland(origin: CFrame, cfg, zoneCenter, parent: Instance)
+	local step = cfg.ZoneSize + cfg.Gap
+	local rows = math.ceil(#cfg.Zones / cfg.Columns)
+	local width = cfg.Columns * step + 16
+	local depth = rows * step + 34
+	-- Plateau principal + bordure basse + parvis d'arrivée
+	part(
+		parent,
+		"Island",
+		Vector3.new(width, 4, depth),
+		origin * CFrame.new(0, -2, -(depth / 2) + 22),
+		C.Stone,
+		Enum.Material.Slate
+	)
+	part(
+		parent,
+		"IslandRock",
+		Vector3.new(width - 10, 18, depth - 10),
+		origin * CFrame.new(0, -13, -(depth / 2) + 22),
+		C.StoneDark,
+		Enum.Material.Rock
+	)
+	for _, side in { -1, 1 } do
+		part(
+			parent,
+			"Rail",
+			Vector3.new(1.2, 3, depth),
+			origin * CFrame.new(side * (width / 2 - 0.6), 1.5, -(depth / 2) + 22),
+			C.StoneLight,
+			Enum.Material.Slate
+		)
+	end
+	part(
+		parent,
+		"RailBack",
+		Vector3.new(width, 3, 1.2),
+		origin * CFrame.new(0, 1.5, -depth + 22.6),
+		C.StoneLight,
+		Enum.Material.Slate
+	)
+
+	local zones = {}
+	for i, zone in cfg.Zones do
+		local x, z = zoneCenter(cfg, i)
+		local center = origin * CFrame.new(x, 0, -z)
+		local floorColor = if zone.Royal then Color3.fromRGB(120, 90, 30) else C.StoneDark:Lerp(C.RuneBlue, 0.15)
+		part(
+			parent,
+			"ZoneFloor" .. i,
+			Vector3.new(cfg.ZoneSize, 0.2, cfg.ZoneSize),
+			center * CFrame.new(0, 0.1, 0),
+			floorColor,
+			Enum.Material.Slate
+		)
+		local border = {}
+		local h = cfg.ZoneSize / 2
+		for _, e in
+			{
+				{ 0, -h, cfg.ZoneSize, 0.6 },
+				{ 0, h, cfg.ZoneSize, 0.6 },
+				{ -h, 0, 0.6, cfg.ZoneSize },
+				{ h, 0, 0.6, cfg.ZoneSize },
+			}
+		do
+			local b = part(
+				parent,
+				"ZoneBorder" .. i,
+				Vector3.new(e[3], 0.3, e[4]),
+				center * CFrame.new(e[1], 0.3, e[2]),
+				if zone.Royal then C.Rune else C.Ether,
+				Enum.Material.Neon,
+				{
+					CanCollide = false,
+					NoShadow = true,
+				}
+			)
+			b:SetAttribute("ZoneIndex", i)
+			table.insert(border, b)
+		end
+		local dummies = {}
+		for d = -1, 1 do
+			local body = Models.dummy(
+				center * CFrame.new(d * 6, 0.2, -5),
+				parent,
+				if zone.Royal then C.Rune else C.Straw:Lerp(C.Cloth, (i % 3) * 0.3)
+			)
+			table.insert(dummies, body)
+		end
+		table.insert(zones, { Border = border, Dummies = dummies, Center = center })
+	end
+	return zones
 end
 
 return Models

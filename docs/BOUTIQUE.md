@@ -4,7 +4,7 @@ Toutes les ventes sont **désactivées** : les identifiants valent `0` dans
 `src/shared/Config/Products.luau`, et seuls les articles marqués `Ready = true` ont une livraison
 implémentée. Aucun identifiant n'a été inventé.
 
-## Catalogue (13 offres)
+## Catalogue (14 offres)
 
 | Clé | Type | Prix de conception | Contenu | Livraison |
 |---|---|---|---|---|
@@ -20,6 +20,7 @@ implémentée. Aucun identifiant n'a été inventé.
 | AuraRunic | Pass | 19 R$ | Aura visuelle | ⏳ Étape 4 |
 | StarterPack | Pass | 29 R$ | Bannière + 1 000 or (une seule fois) | ⏳ Étape 4 |
 | PremiumTrack | Pass | 79 R$ | Parcours premium, rétroactif | ⏳ Étapes 3-4 |
+| RoyalTraining | Pass | 149 R$ | Accès à la zone royale x50 du Champ des champions | ✅ Vérifiée par possession du pass (décision de principe en attente) |
 | TitleWarden | Pass | 9 R$ | Titre « Gardien d'Éther » | ⏳ Étape 4 |
 
 Le prix affiché dans le jeu est toujours celui que renvoie Roblox (`GetProductInfo`, côté client,

@@ -52,7 +52,23 @@ end
 local scene = process.args[2] or "base"
 local function at(x, z) return roblox.CFrame.new(x, 0, z) end
 local V = roblox.Vector3.new
-if scene == "street" then
+if scene == "farm" then
+	local FarmCfg = loadData("/src/shared/Config/Farm.luau", "Farm")
+	local Formulas = loadData("/src/shared/Formulas.luau", "Formulas")
+	local holder = roblox.Instance.new("Model")
+	Models.farmIsland(roblox.CFrame.new(0, 0, 0), FarmCfg, Formulas.zoneCenter, holder)
+	-- Couleurs telles qu'un joueur à 3 renaissances les voit (vert / rouge / or).
+	for _, p in holder:GetDescendants() do
+		local i = p:GetAttribute("ZoneIndex")
+		if i then
+			local zone = FarmCfg.Zones[i]
+			p.Color = if zone.PassKey then roblox.Color3.fromRGB(255, 205, 80)
+				elseif zone.Rebirths <= 3 then roblox.Color3.fromRGB(90, 230, 120)
+				else roblox.Color3.fromRGB(230, 70, 60)
+		end
+	end
+	dump(holder)
+elseif scene == "street" then
 	local StreetCfg = loadData("/src/shared/Config/Street.luau", "Street")
 	local cfg = table.clone(StreetCfg)
 	cfg.Sections = 3
