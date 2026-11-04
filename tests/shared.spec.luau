@@ -1475,6 +1475,31 @@ test("Rue des boss : comportements et attaques spéciales configurés", function
 	assert(Street.Behaviors.Leap.Windup + Street.Behaviors.Leap.Time >= 0.9, "bond annoncé assez tôt")
 end)
 
+test("Projet Rojo : pas de propriété Position (ignorée par Rojo, cause de sols qui clignotent)", function()
+	local fs = require("@lune/fs")
+	local serde = require("@lune/serde")
+	local project = serde.decode("json", fs.readFile("default.project.json"))
+	local function walk(node, path: string)
+		if type(node) ~= "table" then
+			return
+		end
+		local props = node["$properties"]
+		if props then
+			assert(props.Position == nil, path .. " : utiliser CFrame, pas Position")
+		end
+		for key, child in node do
+			if type(key) == "string" and key:sub(1, 1) ~= "$" then
+				walk(child, path .. "/" .. key)
+			end
+		end
+	end
+	walk(project.tree, "")
+	-- Le sol de la carte : dessus à y = 0, sous les sols de la cour et des bastions (y = 1).
+	local ground = project.tree.Workspace.Ground["$properties"]
+	local y = ground.CFrame.CFrame.position[2] + ground.Size[2] / 2
+	eq(y, 0, "dessus du sol à y = 0")
+end)
+
 print(string.format("\n%d réussi(s), %d échec(s)", passed, failed))
 if failed > 0 then
 	error("Des tests ont échoué")

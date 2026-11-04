@@ -56,11 +56,12 @@
             1,
             8
           ],
-          "Position": [
-            0,
-            0.5,
-            0
-          ],
+          "CFrame": {
+            "CFrame": {
+              "position": [0, 0.5, 0],
+              "orientation": [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+            }
+          },
           "Neutral": true,
           "Duration": 0,
           "Transparency": 1,
@@ -76,11 +77,12 @@
             2,
             1240
           ],
-          "Position": [
-            0,
-            -1,
-            0
-          ],
+          "CFrame": {
+            "CFrame": {
+              "position": [0, -1, 0],
+              "orientation": [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+            }
+          },
           "Material": "Grass",
           "Color": [
             0.41,
