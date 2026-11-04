@@ -3,54 +3,91 @@
 	1. init()  : préparation (monde, magasins de données, connexions entre services)
 	2. start() : boucles et événements joueurs. ProfileService démarre en DERNIER : il
 	   déclenche les chargements, une fois tous les abonnements en place.
+
+	Robustesse : chaque étape est isolée (pcall). Une erreur dans un service n'empêche plus
+	les autres de démarrer ; elle est journalisée et, dans Studio, affichée à l'écran
+	(Diagnostics) pour pouvoir la signaler facilement.
 ]]
 
 local Services = script.Parent.Services
-local ProfileService = require(Services.ProfileService)
-local GroupService = require(Services.GroupService)
-local PlotService = require(Services.PlotService)
-local HarvestService = require(Services.HarvestService)
-local BuildService = require(Services.BuildService)
-local TrainingService = require(Services.TrainingService)
-local TreeService = require(Services.TreeService)
-local MonetizationService = require(Services.MonetizationService)
-local PetService = require(Services.PetService)
-local BossService = require(Services.BossService)
-local StreetService = require(Services.StreetService)
-local FarmService = require(Services.FarmService)
-local LeaderboardService = require(Services.LeaderboardService)
-local Net = require(Services.Net)
+local Diagnostics = require(Services.Diagnostics)
+Diagnostics.init()
 
-ProfileService.init()
-GroupService.init()
-PlotService.init()
-HarvestService.init()
-BuildService.init()
-TrainingService.init()
-MonetizationService.init()
-PetService.init()
-BossService.init()
-StreetService.init()
-FarmService.init() -- après TrainingService.init (ordre des calculs hors ligne)
-LeaderboardService.init()
--- Esquive et Frappe runique partagées entre arènes et Rue des boss.
-StreetService.setInvulnerabilityCheck(BossService.isInvulnerable)
-BossService.setStrikeFallback(StreetService.strike)
-Net.init()
+local function load(name: string)
+	local ok, result = pcall(require, Services[name])
+	if not ok then
+		Diagnostics.report("Chargement de " .. name, result)
+		return nil
+	end
+	return result
+end
 
--- La récolte est incompatible avec l'entraînement.
-HarvestService.beforeHarvest(function(player)
-	TrainingService.stop(player)
+local ProfileService = load("ProfileService")
+local GroupService = load("GroupService")
+local PlotService = load("PlotService")
+local HarvestService = load("HarvestService")
+local BuildService = load("BuildService")
+local TrainingService = load("TrainingService")
+local TreeService = load("TreeService")
+local MonetizationService = load("MonetizationService")
+local PetService = load("PetService")
+local BossService = load("BossService")
+local StreetService = load("StreetService")
+local FarmService = load("FarmService")
+local LeaderboardService = load("LeaderboardService")
+local Net = load("Net")
+
+-- Exécute une étape ; en cas d'erreur, la signale et continue.
+local function step(label: string, fn: () -> ())
+	local ok, err = pcall(fn)
+	if not ok then
+		Diagnostics.report(label, err)
+	end
+end
+
+local function call(service, method: string, name: string)
+	if service and service[method] then
+		step(name .. "." .. method, service[method])
+	end
+end
+
+-- Le monde en premier : sol, point d'accueil et parcelles doivent exister au plus tôt.
+call(PlotService, "init", "PlotService")
+call(ProfileService, "init", "ProfileService")
+call(GroupService, "init", "GroupService")
+call(HarvestService, "init", "HarvestService")
+call(BuildService, "init", "BuildService")
+call(TrainingService, "init", "TrainingService")
+call(MonetizationService, "init", "MonetizationService")
+call(PetService, "init", "PetService")
+call(BossService, "init", "BossService")
+call(StreetService, "init", "StreetService")
+call(FarmService, "init", "FarmService") -- après TrainingService.init (ordre des calculs hors ligne)
+call(LeaderboardService, "init", "LeaderboardService")
+
+step("Liaisons combat", function()
+	-- Esquive et Frappe runique partagées entre arènes et Rue des boss.
+	StreetService.setInvulnerabilityCheck(BossService.isInvulnerable)
+	BossService.setStrikeFallback(StreetService.strike)
+end)
+call(Net, "init", "Net")
+
+step("Liaison récolte", function()
+	-- La récolte est incompatible avec l'entraînement.
+	HarvestService.beforeHarvest(function(player)
+		TrainingService.stop(player)
+	end)
 end)
 
-GroupService.start()
-TrainingService.start()
-TreeService.start()
-PetService.start()
-BossService.start()
-StreetService.start()
-FarmService.start()
-LeaderboardService.start()
-ProfileService.start()
+call(GroupService, "start", "GroupService")
+call(TrainingService, "start", "TrainingService")
+call(TreeService, "start", "TreeService")
+call(PetService, "start", "PetService")
+call(BossService, "start", "BossService")
+call(StreetService, "start", "StreetService")
+call(FarmService, "start", "FarmService")
+call(LeaderboardService, "start", "LeaderboardService")
+call(ProfileService, "start", "ProfileService")
+Diagnostics.startVoidRescue()
 
-print("[Bastions d'Éther] Serveur prêt")
+print(string.format("[Bastions d'Éther] Serveur prêt (%d erreur(s) au démarrage)", Diagnostics.count()))

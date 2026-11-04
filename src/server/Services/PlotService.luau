@@ -108,7 +108,9 @@ end
 -- seulement les zones concernées (le reste du terrain éventuel n'est pas effacé).
 local function buildTerrain()
 	local terrain = workspace.Terrain
-	terrain.Decoration = true -- brins d'herbe animés (optimisés par Roblox, réglables par le joueur)
+	-- NB : Terrain.Decoration (herbe animée) ne peut pas être modifié par un script : c'était la
+	-- cause de l'arrêt du serveur au démarrage. À activer à la main si souhaité :
+	-- Explorer > Workspace > Terrain > propriété « Decoration ».
 	terrain:SetMaterialColor(Enum.Material.Grass, Color3.fromRGB(104, 160, 82))
 	terrain:SetMaterialColor(Enum.Material.Ground, Color3.fromRGB(122, 98, 70))
 	terrain:SetMaterialColor(Enum.Material.Rock, Color3.fromRGB(128, 126, 122))
@@ -141,7 +143,10 @@ local function buildWorld()
 	world.Name = "World"
 	world.Parent = workspace
 
-	buildTerrain()
+	local terrainOk, terrainErr = pcall(buildTerrain)
+	if not terrainOk then
+		warn("[PlotService] Terrain : " .. tostring(terrainErr))
+	end
 
 	-- Point d'accueil (futur marchand, portail d'exploration).
 	makePart({
@@ -445,8 +450,18 @@ function PlotService.world(): Folder
 end
 
 function PlotService.init()
-	setupLighting()
+	-- L'éclairage est cosmétique : une erreur ne doit jamais empêcher de construire le monde.
+	local ok, err = pcall(setupLighting)
+	if not ok then
+		warn("[PlotService] Éclairage : " .. tostring(err))
+	end
 	buildWorld()
+	-- Le point d'apparition du hub existe : celui de secours ne sert plus. Le sol de secours
+	-- (fichier du projet) reste en place sous le terrain, au cas où le terrain échouerait.
+	local safetySpawn = workspace:FindFirstChild("SafetySpawn")
+	if safetySpawn then
+		safetySpawn:Destroy()
+	end
 	local plotsFolder = Instance.new("Folder")
 	plotsFolder.Name = "Plots"
 	plotsFolder.Parent = world

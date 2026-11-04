@@ -35,6 +35,15 @@ Sans réglage, Studio refuse les DataStores : le jeu passe en **mode test** (mes
 
 ---
 
+### En cas de problème
+
+- **Panneau rouge en bas à gauche** (Studio uniquement) : il liste les erreurs du serveur et du
+  client. Fais une capture d'écran et envoie-la : c'est tout ce qu'il me faut pour corriger.
+- **Tomber dans le vide** : un sol et un point d'apparition de secours sont inclus dans le
+  fichier, et un joueur tombé sous le monde est replacé au point d'accueil.
+- **Herbe animée** (facultatif) : Roblox interdit de l'activer par script. Dans Studio :
+  Explorer → Workspace → Terrain → cocher la propriété **Decoration**, puis enregistrer.
+
 ## 2. Travailler sur le code (Rojo)
 
 Le code vit dans `src/` (fichiers texte versionnés). **Rojo** le synchronise en direct avec Studio.

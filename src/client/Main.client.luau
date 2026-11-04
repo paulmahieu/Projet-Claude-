@@ -31,6 +31,7 @@ local PetFollowers = require(script.Parent.PetFollowers)
 local CombatUi = require(script.Parent.CombatUi)
 local StreetUi = require(script.Parent.StreetUi)
 local FarmUi = require(script.Parent.FarmUi)
+local DiagnosticsUi = require(script.Parent.DiagnosticsUi)
 local ProximityPromptService = game:GetService("ProximityPromptService")
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -71,6 +72,9 @@ local gui = Ui.create("ScreenGui", {
 	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 	Parent = player:WaitForChild("PlayerGui"),
 })
+-- Diagnostic (Studio) démarré tout de suite : il doit pouvoir afficher les erreurs même si la
+-- suite de ce script échoue.
+DiagnosticsUi.start(gui)
 
 -- Panneau personnel (haut gauche) ----------------------------------------------------
 

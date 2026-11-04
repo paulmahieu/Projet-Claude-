@@ -42,6 +42,55 @@
         "Technology": "Future",
         "ShadowSoftness": 0.15
       }
+    },
+    "Workspace": {
+      "$properties": {
+        "FallenPartsDestroyHeight": -500
+      },
+      "SafetyFloor": {
+        "$className": "Part",
+        "$properties": {
+          "Anchored": true,
+          "Size": [
+            1024,
+            2,
+            1024
+          ],
+          "Position": [
+            0,
+            -1.5,
+            0
+          ],
+          "Material": "Grass",
+          "Color": [
+            0.38,
+            0.58,
+            0.31
+          ],
+          "TopSurface": "Smooth",
+          "BottomSurface": "Smooth"
+        }
+      },
+      "SafetySpawn": {
+        "$className": "SpawnLocation",
+        "$properties": {
+          "Anchored": true,
+          "Size": [
+            8,
+            1,
+            8
+          ],
+          "Position": [
+            0,
+            0.5,
+            0
+          ],
+          "Neutral": true,
+          "Duration": 0,
+          "Transparency": 1,
+          "CanCollide": true
+        }
+      }
     }
   }
 }
