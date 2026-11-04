@@ -22,6 +22,8 @@ local ProfileService = require(script.Parent.ProfileService)
 local GroupService = require(script.Parent.GroupService)
 local RewardService = require(script.Parent.RewardService)
 local Notifier = require(script.Parent.Notifier)
+local PassService = require(script.Parent.PassService)
+local Pass = require(Shared.Config.Pass)
 local Membership = require(Shared.Membership)
 
 local QuestService = {}
@@ -85,6 +87,7 @@ local function tickPlayer(player: Player)
 			OpLog.add(profile.Ops, opId, Economy.Save.MaxOps)
 			ProfileService.sync(player)
 			Notifier.send(player, "Mission accomplie : " .. quest.Text .. " !", "reward")
+			PassService.addXp(player, Pass.Xp.Quest)
 		end
 		profile.Quest += 1
 	end

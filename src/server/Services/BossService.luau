@@ -30,6 +30,8 @@ local ProfileService = require(script.Parent.ProfileService)
 local GroupService = require(script.Parent.GroupService)
 local PlotService = require(script.Parent.PlotService)
 local Notifier = require(script.Parent.Notifier)
+local PassService = require(script.Parent.PassService)
+local Pass = require(Shared.Config.Pass)
 local Models = require(script.Parent.Parent.Art.Models)
 
 local CombatFx = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("CombatFx") :: RemoteEvent
@@ -209,6 +211,7 @@ local function grantRewards(arena: Arena)
 			profile.Level, profile.TrainXp =
 				Formulas.addXp(profile.Level, profile.TrainXp, def.Rewards.Personal.Xp, Training)
 			profile.BossKills[def.Id] = (profile.BossKills[def.Id] or 0) + 1
+			PassService.addXp(player, Pass.Xp.BossWin)
 			local trophies = ProfileService.addTrophies(player, Tree.TrophyRewards.BossVictory[def.Id] or 20)
 			ProfileService.sync(player)
 			Notifier.send(

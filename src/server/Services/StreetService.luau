@@ -32,6 +32,8 @@ local GroupService = require(script.Parent.GroupService)
 local PlotService = require(script.Parent.PlotService)
 local PetService = require(script.Parent.PetService)
 local Notifier = require(script.Parent.Notifier)
+local PassService = require(script.Parent.PassService)
+local Pass = require(Shared.Config.Pass)
 local Models = require(script.Parent.Parent.Art.Models)
 
 local CombatFx = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("CombatFx") :: RemoteEvent
@@ -254,6 +256,7 @@ local function clearStage(player: Player, run: Run)
 	local trophies = ProfileService.addTrophies(player, stage * Tree.TrophyRewards.StreetStagePerStage)
 	profile.Street.Best = math.max(profile.Street.Best, stage)
 	profile.Street.Stage = stage + 1
+	PassService.addXp(player, Pass.Xp.StreetStage)
 	ProfileService.sync(player)
 	publish(player)
 	Notifier.send(

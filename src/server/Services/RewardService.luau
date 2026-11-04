@@ -65,6 +65,9 @@ function RewardService.describe(reward): string
 	if reward.Egg then
 		table.insert(parts, eggName[reward.Egg] or reward.Egg)
 	end
+	if reward.Entitlement then
+		table.insert(parts, reward.Entitlement.Name)
+	end
 	return table.concat(parts, ", ")
 end
 
@@ -86,6 +89,14 @@ local function grant(player: Player, profile, reward)
 	if reward.Egg then
 		PetService.openEgg(player, reward.Egg) -- annonce le compagnon obtenu
 	end
+	if reward.Entitlement then
+		profile.Entitlements[reward.Entitlement.Key] = true -- droit durable (ex. tapis x500)
+	end
+end
+
+-- Le joueur a-t-il bougé récemment ? (temps de jeu actif, parcours)
+function RewardService.isActive(player: Player): boolean
+	return lastActivity[player] ~= nil and os.clock() - lastActivity[player] <= Rewards.ActivityWindow
 end
 
 local function publish(player: Player)

@@ -28,6 +28,7 @@ local Rebirth = require(Shared.Config.Rebirth)
 local Rewards = require(Shared.Config.Rewards)
 local Titles = require(Shared.Config.Titles)
 local Quests = require(Shared.Config.Quests)
+local Pass = require(Shared.Config.Pass)
 local Ui = require(script.Parent.Ui)
 local Effects = require(script.Parent.Effects)
 local PetFollowers = require(script.Parent.PetFollowers)
@@ -837,6 +838,10 @@ task.spawn(function()
 	end)
 	paidRandomRestricted = not (ok and info and info.ArePaidRandomItemsRestricted == false)
 end)
+local productByKey = {}
+for _, item in Products do
+	productByKey[item.Key] = item
+end
 local priceCache = {}
 local onPriceLoaded: (() -> ())? = nil -- rafraîchit la fenêtre d'œuf ouverte
 local function priceText(item): string?
@@ -1051,6 +1056,9 @@ local function rewardText(reward): string
 			end
 		end
 	end
+	if reward.Entitlement then
+		table.insert(parts, "⭐ " .. reward.Entitlement.Name)
+	end
 	return table.concat(parts, " · ")
 end
 
@@ -1217,6 +1225,109 @@ local function renderQuests()
 	end
 end
 
+-- Onglet Parcours du champion : pass de saison (piste gratuite + piste premium)
+local function renderPass()
+	local xp = player:GetAttribute("PassXp") or 0
+	local tier = player:GetAttribute("PassTier") or 0
+	local isPremium = player:GetAttribute("PassPremium") == true
+	local claimable = player:GetAttribute("PassClaimable") or 0
+	local freeDone, premiumDone = {}, {}
+	for id in string.gmatch(player:GetAttribute("PassFree") or "", "[^,]+") do
+		freeDone[tonumber(id)] = true
+	end
+	for id in string.gmatch(player:GetAttribute("PassPremiumClaimed") or "", "[^,]+") do
+		premiumDone[tonumber(id)] = true
+	end
+
+	heading(Pass.Name)
+	local top = row(64)
+	local nextText = if tier >= #Pass.Tiers
+		then "Parcours terminé !"
+		else string.format("Palier suivant : %d / %d XP", xp - tier * Pass.XpPerTier, Pass.XpPerTier)
+	rowText(
+		top,
+		string.format("Palier %d / %d", tier, #Pass.Tiers),
+		nextText .. " · XP en jouant : minutes actives, missions, boss, Rue, défense",
+		220
+	)
+	local claimButton = rightButton(
+		top,
+		if claimable > 0 then string.format("Tout récupérer (%d)", claimable) else "Rien à récupérer",
+		if claimable > 0 then C.Free else C.Disabled,
+		1,
+		if claimable > 0
+			then function()
+				request("ClaimPass", {})
+			end
+			else nil
+	)
+	claimButton.Size = UDim2.fromOffset(200, 44)
+
+	local prem = row(60)
+	if isPremium then
+		rowText(prem, "👑 Piste premium active", "Toutes les récompenses premium atteintes sont à toi.", 0)
+	else
+		local item = productByKey[Pass.PremiumPass]
+		local price = if item and item.Id ~= 0 then priceText(item) else nil
+		rowText(
+			prem,
+			"👑 Piste premium : œufs royaux et célestes, tapis x100 puis x500",
+			"Paliers déjà atteints inclus.",
+			200
+		)
+		if price then
+			rightButton(prem, "R$ " .. price, C.Robux, 1, function()
+				MarketplaceService:PromptGamePassPurchase(player, item.Id)
+			end)
+		elseif devTools then
+			rightButton(prem, "Simuler (Studio)", C.info, 1, function()
+				request("DevSimulatePurchase", { Key = Pass.PremiumPass })
+			end)
+		else
+			rightButton(prem, "Bientôt", C.Disabled, 1, nil)
+		end
+	end
+	if devTools then
+		local dev = row(52)
+		rowText(dev, "Test Studio", nil, 130)
+		rightButton(dev, "+3 paliers", C.info, 1, function()
+			request("DevBoost", { Kind = "Pass" })
+		end)
+	end
+
+	heading("Paliers")
+	for index, entry in Pass.Tiers do
+		local reached = index <= tier
+		local r = row(58)
+		if index == #Pass.Tiers then
+			r.BackgroundColor3 = C.Gold:Lerp(C.Row, 0.75)
+		end
+		rowText(
+			r,
+			string.format("%d · Gratuit : %s", index, rewardText(entry.Free)),
+			"👑 " .. rewardText(entry.Premium),
+			130
+		)
+		local status
+		if not reached then
+			status = "🔒"
+		else
+			local free = if freeDone[index] then "✔" else "prêt"
+			local premium = if premiumDone[index] then "✔" elseif isPremium then "prêt" else "👑🔒"
+			status = free .. " / " .. premium
+		end
+		Ui.label({
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, -10, 0.5, 0),
+			Size = UDim2.fromOffset(120, 22),
+			TextXAlignment = Enum.TextXAlignment.Right,
+			TextColor3 = if reached then C.Free else C.Muted,
+			Text = status,
+			Parent = r,
+		})
+	end
+end
+
 local TABS = {
 	{ Id = "Group", Label = "Groupe", Render = renderGroup },
 	{ Id = "Pets", Label = "Compagnons", Render = renderPets },
@@ -1225,6 +1336,7 @@ local TABS = {
 	{ Id = "Rewards", Label = "Cadeaux", Render = renderRewards },
 	{ Id = "Titles", Label = "Titres", Render = renderTitles },
 	{ Id = "Quests", Label = "Quêtes", Render = renderQuests },
+	{ Id = "Pass", Label = "Parcours", Render = renderPass },
 	{ Id = "Shop", Label = "Boutique", Render = renderShop },
 }
 
@@ -1338,10 +1450,6 @@ end
 
 -- Fenêtre d'œuf : ouverte quand le joueur utilise l'invite d'un présentoir --------------------
 
-local productByKey = {}
-for _, item in Products do
-	productByKey[item.Key] = item
-end
 local eggById = {}
 for _, egg in Pets.Eggs do
 	eggById[egg.Id] = egg
@@ -1513,12 +1621,12 @@ end)
 -- (amélioration achetable, compagnon à équiper, renaissance possible, cadeau prêt).
 local iconColumn = Ui.create("Frame", {
 	Position = UDim2.fromOffset(10, 10),
-	Size = UDim2.fromOffset(160, 298),
+	Size = UDim2.fromOffset(160, 304),
 	BackgroundTransparency = 1,
 	Parent = gui,
 })
 Ui.create("UIGridLayout", {
-	CellSize = UDim2.fromOffset(76, 70),
+	CellSize = UDim2.fromOffset(76, 56), -- 2 colonnes x 5 rangées, au-dessus des monnaies
 	CellPadding = UDim2.fromOffset(6, 6),
 	SortOrder = Enum.SortOrder.LayoutOrder,
 	Parent = iconColumn,
@@ -1532,6 +1640,7 @@ local ICONS = {
 	{ Tab = "Group", Icon = "🏰", Label = "Groupe", Color = Color3.fromRGB(60, 110, 200) },
 	{ Tab = "Titles", Icon = "🎖", Label = "Titres", Color = Color3.fromRGB(200, 160, 60) },
 	{ Tab = "Quests", Icon = "📜", Label = "Quêtes", Color = Color3.fromRGB(140, 110, 80) },
+	{ Tab = "Pass", Icon = "🏅", Label = "Parcours", Color = Color3.fromRGB(230, 200, 60) },
 }
 local badges = {}
 for i, entry in ICONS do
@@ -1557,15 +1666,15 @@ for i, entry in ICONS do
 	})
 	Ui.label({
 		Position = UDim2.fromOffset(0, 2),
-		Size = UDim2.new(1, 0, 0, 40),
+		Size = UDim2.new(1, 0, 0, 32),
 		TextScaled = true,
 		TextXAlignment = Enum.TextXAlignment.Center,
 		Text = entry.Icon,
 		Parent = button,
 	})
 	Ui.label({
-		Position = UDim2.new(0, 2, 1, -24),
-		Size = UDim2.new(1, -4, 0, 20),
+		Position = UDim2.new(0, 2, 1, -20),
+		Size = UDim2.new(1, -4, 0, 17),
 		Font = Enum.Font.FredokaOne,
 		TextScaled = true,
 		TextXAlignment = Enum.TextXAlignment.Center,
@@ -1622,9 +1731,21 @@ local function refreshBadges()
 	setBadge("Rewards", if player:GetAttribute("DailyClaimable") then 1 else 0)
 	-- Invitation de groupe en attente
 	setBadge("Group", if groupState and groupState.Invite then 1 else 0)
+	-- Paliers du parcours à récupérer
+	setBadge("Pass", player:GetAttribute("PassClaimable") or 0)
 end
 for _, name in
-	{ "Gold", "Trophies", "TreeOwned", "PetSlots", "Level", "RebirthLevel", "DailyClaimable", "EquippedPets" }
+	{
+		"Gold",
+		"Trophies",
+		"TreeOwned",
+		"PetSlots",
+		"Level",
+		"RebirthLevel",
+		"DailyClaimable",
+		"EquippedPets",
+		"PassClaimable",
+	}
 do
 	player:GetAttributeChangedSignal(name):Connect(refreshBadges)
 end
@@ -1658,6 +1779,14 @@ end
 for _, name in { "DailyDay", "DailyClaimable", "PlaySeconds" } do
 	player:GetAttributeChangedSignal(name):Connect(function()
 		if menuOpen and currentTab == "Rewards" then
+			renderTab()
+		end
+	end)
+end
+
+for _, name in { "PassXp", "PassPremium", "PassClaimable" } do
+	player:GetAttributeChangedSignal(name):Connect(function()
+		if menuOpen and currentTab == "Pass" then
 			renderTab()
 		end
 	end)

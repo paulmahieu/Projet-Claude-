@@ -23,6 +23,8 @@ local RebirthService = require(script.Parent.RebirthService)
 local PetService = require(script.Parent.PetService)
 local BossService = require(script.Parent.BossService)
 local RewardService = require(script.Parent.RewardService)
+local PassService = require(script.Parent.PassService)
+local Pass = require(Shared.Config.Pass)
 local TitleService = require(script.Parent.TitleService)
 local ProfileService = require(script.Parent.ProfileService)
 local Formulas = require(Shared.Formulas)
@@ -76,7 +78,15 @@ local handlers = {
 	end,
 
 	ClaimDaily = function(player)
-		return RewardService.claimDaily(player)
+		local res = RewardService.claimDaily(player)
+		if res.ok then
+			PassService.addXp(player, Pass.Xp.Daily)
+		end
+		return res
+	end,
+
+	ClaimPass = function(player)
+		return PassService.claimAll(player)
 	end,
 
 	GoToBastion = function(player)
@@ -196,6 +206,8 @@ local handlers = {
 			profile.Gold += 10000
 		elseif p.Kind == "NextDay" then
 			return RewardService.devNextDay(player)
+		elseif p.Kind == "Pass" then
+			return PassService.devXp(player)
 		elseif p.Kind == "Trophies" then
 			profile.Trophies += 500
 		elseif p.Kind == "Levels" then

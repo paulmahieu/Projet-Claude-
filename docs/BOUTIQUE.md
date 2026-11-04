@@ -4,13 +4,15 @@ Toutes les ventes sont **désactivées** : les identifiants valent `0` dans
 `src/shared/Config/Products.luau`, et seuls les articles marqués `Ready = true` ont une livraison
 implémentée. Aucun identifiant n'a été inventé.
 
-## Catalogue (14 offres)
+## Catalogue (16 offres)
 
 | Clé | Type | Prix de conception | Contenu | Livraison |
 |---|---|---|---|---|
 | GoldPouchS | Developer Product | 9 R$ | +300 or | ✅ Implémentée |
 | GoldPouchM | Developer Product | 19 R$ | +800 or | ✅ Implémentée |
 | GoldPouchL | Developer Product | 49 R$ | +2 500 or | ✅ Implémentée |
+| RoyalEgg | Developer Product | 99 R$ | Œuf royal : compagnon Légendaire à Céleste (probabilités affichées) | ✅ Implémentée · masquée si `ArePaidRandomItemsRestricted` · aussi offert après 1 h de jeu |
+| CelestialEgg | Developer Product | 249 R$ | Œuf céleste : compagnon Mythique ou Céleste | ✅ Implémentée · mêmes garde-fous |
 | XpBoost15 | Developer Product | 9 R$ | XP x2, 15 min en ligne | ⏳ Inventaire de bonus (étape 4) |
 | XpBoost45 | Developer Product | 19 R$ | XP x2, 45 min en ligne | ⏳ Étape 4 |
 | GoldBoost15 | Developer Product | 9 R$ | Or x2, 15 min en ligne | ⏳ Étape 4 |
@@ -19,8 +21,8 @@ implémentée. Aucun identifiant n'a été inventé.
 | SkinFrostWolf | Pass | 29 R$ | Apparence du loup runique | ⏳ Compagnons (étape 4) |
 | AuraRunic | Pass | 19 R$ | Aura visuelle | ⏳ Étape 4 |
 | StarterPack | Pass | 29 R$ | Bannière + 1 000 or (une seule fois) | ⏳ Étape 4 |
-| PremiumTrack | Pass | 79 R$ | Parcours premium, rétroactif | ⏳ Étapes 3-4 |
-| RoyalTraining | Pass | 149 R$ | Accès à la zone royale x50 du Champ des champions | ✅ Vérifiée par possession du pass (décision de principe en attente) |
+| PremiumTrack | Pass | 79 R$ | Piste premium du Parcours du champion (œufs royaux/célestes, tapis x100 puis x500), paliers déjà atteints inclus | ✅ Vérifiée par possession du pass |
+| RoyalTraining | Pass | 149 R$ | Accès à la zone royale x50 du Champ des champions | ✅ Vérifiée par possession du pass |
 | TitleWarden | Pass | 9 R$ | Titre « Gardien d'Éther » | ⏳ Étape 4 |
 
 Le prix affiché dans le jeu est toujours celui que renvoie Roblox (`GetProductInfo`, côté client,
@@ -42,6 +44,20 @@ le Creator Hub.
 
 ## Tester sans Robux
 
-Dans Studio, l'onglet Boutique affiche **Simuler (Studio)** sur les produits prêts. La simulation
+Dans Studio, l'onglet Boutique affiche **Simuler (Studio)** sur les produits et passes prêts
+(un pass simulé ne vaut que pour la session ; la fenêtre d'un œuf royal et l'onglet Parcours
+ont aussi leur bouton de simulation). La simulation
 passe par le même traitement que `ProcessReceipt` (journal anti-doublon, sauvegarde avant
 confirmation). Ce bouton n'existe pas hors de Studio, et le serveur refuse la demande hors Studio.
+
+## Œufs payants : garde-fous
+
+Décision du porteur du projet : certains œufs sont payants (remplace l'interdiction initiale du
+cahier §9.1). Pour rester conforme aux règles Roblox sur les objets aléatoires payants :
+
+- probabilités affichées dans la fenêtre du présentoir **avant** l'achat ;
+- `PolicyService:GetPolicyInfoForPlayerAsync` : si `ArePaidRandomItemsRestricted` (ou si la
+  vérification échoue), les œufs royaux ne sont ni affichés en boutique ni achetables ; ils
+  restent gagnables en jouant (1 h de jeu par jour, Parcours du champion) ;
+- les œufs à l'or ne donnent que du Commun au Légendaire (vérifié par les tests) ;
+- un œuf payé est toujours livré, même inventaire plein, avec la preuve d'achat dans le même profil.

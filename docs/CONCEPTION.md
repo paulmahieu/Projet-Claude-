@@ -68,17 +68,20 @@ Exemples côté joueur :
 | Arbre d'améliorations, classements, minuteur de boss (3e vidéo) | Arbre en étoile de 7 branches remplaçant Concentration/Robustesse (migrées) ; nouvelle monnaie **trophées** gagnée en combat (Rue des boss, boss) ; nœuds Équiper (emplacements), Chance (œufs), Hors ligne (+1 h, +5 %), Force, Vitesse, Trophées ; 3 panneaux de classement globaux ; minuteur de boss permanent. | Les nœuds Hors ligne relèvent le plafond (8 h → 10 h) et le taux (25 % → 35 %) proposés par le cahier : réglage ajustable. Le « Passer » payant des nœuds n'est pas repris. |
 | Graphismes, packs open source | Terrain Roblox (herbe animée, collines, mare), éclairage, nouveaux modèles, et **remplacement par des modèles de la boutique** sans toucher au code (`docs/ASSETS.md`). | — |
 
-## 6. Décisions qui te reviennent
+## 6. Décisions prises par le créateur (04/11/2026)
 
-0. **Zone royale x50 payante (pass ~149 R$) ?** Elle est prête mais désactivée. Le cahier autorise
-   les achats qui accélèrent les gains sans rendre le contenu obligatoire ; à toi de valider le
-   principe et le multiplicateur.
-0. **Œufs en Robux ?** Je les ai faits en **or**. Le cahier §9.1 interdit les caisses aléatoires
-   payantes, et Roblox impose d'afficher les probabilités des objets aléatoires payants et les
-   interdit dans certains pays. Si tu veux des œufs en Robux, je recommande plutôt des œufs
-   **garantis** (« Œuf rare garanti ») ou des accélérations, à contenu connu.
-1. **R2** : téléportation proposée (avec choix de rester) ou téléportation automatique vers le serveur du bastion ?
-2. **R4** : créditer aussi la présence inactive en ligne à 25 %, ou garder la règle actuelle ?
-3. **P2 / P3** : les retiens-tu pour l'étape 2 ?
+| Sujet | Décision | Mise en œuvre |
+|---|---|---|
+| Œufs | Certains payants, aussi offerts après 1 h de jeu ; les gratuits vont du Commun au Légendaire. | Œuf royal (99 R$) et œuf céleste (249 R$), raretés Mythique et Céleste ; palier « 60 min » du temps de jeu = un œuf royal par jour ; garde-fous dans `docs/BOUTIQUE.md`. |
+| Pass | La piste payante doit être bien plus forte que la gratuite (ex. tapis de ferme x500 au dernier palier). | Parcours du champion : 30 paliers, XP gagnée en jouant ; piste premium avec œufs royaux/célestes, tapis x100 (palier 15) et **x500 (palier 30)** sur le Champ des champions. Zone royale x50 : pass séparé, validé. |
+| Téléportation (R2) | Les amis doivent pouvoir se rejoindre au bastion ; la Rue des boss et les œufs restent communs. | Rejoindre un ami ou le serveur où le bastion du groupe est ouvert (voir ROADMAP). |
+| Hors ligne (R4) | Un joueur hors ligne gagne, mais moins qu'en jouant. | Règle actuelle conservée : 25 % du meilleur rendement durable, 8 h max (relevés par l'arbre). |
+
+> ⚠ Équilibrage : le tapis x500 multiplie aussi le gain hors ligne (25 % de x500). C'est voulu
+> (récompense « cheatée » du pass), mais c'est le premier réglage à revoir si l'économie s'emballe.
+
+## 7. Décisions qui te reviennent
+
+1. **P2 / P3** : les retiens-tu pour l'étape 2 ?
 
 Tant que tu n'as pas répondu, je continue les parties indépendantes.

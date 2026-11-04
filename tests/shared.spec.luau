@@ -29,6 +29,7 @@ local Rewards = require("../src/shared/Config/Rewards")
 local Titles = require("../src/shared/Config/Titles")
 local Quests = require("../src/shared/Config/Quests")
 local Defense = require("../src/shared/Config/Defense")
+local Pass = require("../src/shared/Config/Pass")
 
 local passed, failed = 0, 0
 
@@ -678,7 +679,7 @@ end)
 test("zone royale : uniquement avec le pass", function()
 	local royal
 	for _, zone in Farm.Zones do
-		if zone.PassKey then
+		if zone.PassKey == "RoyalTraining" then
 			royal = zone
 		end
 	end
@@ -713,7 +714,9 @@ test("zones sans chevauchement et lieux séparés (île, rue, arènes, hub)", fu
 			local xj, zj = Formulas.zoneCenter(Farm, j)
 			assert(math.abs(xi - xj) >= Farm.ZoneSize or math.abs(zi - zj) >= Farm.ZoneSize, "zones " .. i .. "/" .. j)
 		end
-		assert(math.abs(xi) + half < 92, "zone hors de l'île")
+		-- Plateau de l'île : Columns x (ZoneSize + Gap) + 16 de large (Models.farmIsland).
+		assert(math.abs(xi) + half < (Farm.Columns * (Farm.ZoneSize + Farm.Gap) + 16) / 2, "zone hors de l'île")
+		assert(zi < 56, "au plus 2 rangées (les classements sont derrière)")
 	end
 	assert(math.abs(Farm.Origin[2] - Street.Origin[2]) > 60, "île et rue à des hauteurs différentes")
 	assert(math.sqrt(Farm.Portal[1] ^ 2 + Farm.Portal[2] ^ 2) < Game.CourtyardApothem - 10, "portail dans la cour")
@@ -1102,6 +1105,85 @@ test("Œufs : gratuits jusqu'à Légendaire, royaux liés à un produit prêt", 
 		end
 	end
 	assert(found, "œuf offert après 1 h de jeu")
+end)
+
+test("Parcours : paliers, récupérations, nouvelle saison", function()
+	eq(Formulas.passTier(Pass, 0), 0)
+	eq(Formulas.passTier(Pass, Pass.XpPerTier - 1), 0)
+	eq(Formulas.passTier(Pass, Pass.XpPerTier * 3 + 5), 3)
+	eq(Formulas.passTier(Pass, 1e9), #Pass.Tiers, "plafonné au dernier palier")
+	local state = Formulas.passState(Pass, nil)
+	eq(state.Season, Pass.Season)
+	state.Xp = Pass.XpPerTier * 2
+	eq(#Formulas.passClaimable(Pass, state, false), 2, "piste gratuite seule")
+	eq(#Formulas.passClaimable(Pass, state, true), 4, "premium : paliers déjà atteints inclus")
+	state.Free["1"] = true
+	state.Premium["1"] = true
+	eq(#Formulas.passClaimable(Pass, state, true), 2, "jamais deux fois")
+	local old = { Season = Pass.Season - 1, Xp = 999999, Free = { ["1"] = true }, Premium = {} }
+	local fresh = Formulas.passState(Pass, old)
+	eq(fresh.Xp, 0, "nouvelle saison : XP remise à zéro")
+	eq(next(fresh.Free), nil)
+end)
+
+test("Parcours : récompenses valides, premium plus fort, tapis x500 au dernier palier", function()
+	local eggs, pets, entitlements = {}, {}, {}
+	for _, egg in Pets.Eggs do
+		eggs[egg.Id] = true
+	end
+	for _, def in Pets.List do
+		pets[def.Id] = true
+	end
+	local function check(reward, where)
+		assert(next(reward) ~= nil, where .. " : vide")
+		for key, value in reward do
+			if key == "Egg" then
+				assert(eggs[value], where .. " : œuf inconnu " .. tostring(value))
+			elseif key == "Pet" then
+				assert(pets[value], where .. " : compagnon inconnu")
+			elseif key == "Entitlement" then
+				assert(value.Key and value.Name, where .. " : droit incomplet")
+				entitlements[value.Key] = true
+			else
+				assert(type(value) == "number" and value > 0, where .. " : " .. key)
+			end
+		end
+	end
+	local freeGold, premiumGold = 0, 0
+	for i, tier in Pass.Tiers do
+		check(tier.Free, "palier " .. i .. " gratuit")
+		check(tier.Premium, "palier " .. i .. " premium")
+		freeGold += tier.Free.Gold or 0
+		premiumGold += tier.Premium.Gold or 0
+	end
+	assert(premiumGold >= freeGold * 5, "la piste premium doit être nettement plus forte")
+	local last = Pass.Tiers[#Pass.Tiers].Premium.Entitlement
+	assert(last and last.Key == "ChampionMat500", "dernier palier premium : tapis x500")
+	-- Chaque droit débloque bien une zone du Champ des champions.
+	for key in entitlements do
+		local zone
+		for _, z in Farm.Zones do
+			if z.PassKey == key then
+				zone = z
+			end
+		end
+		assert(zone, "aucune zone pour " .. key)
+	end
+	local found500 = false
+	for _, z in Farm.Zones do
+		found500 = found500 or (z.PassKey == "ChampionMat500" and z.Mult == 500)
+	end
+	assert(found500, "zone x500")
+	local premiumItem
+	for _, item in Products do
+		if item.Key == Pass.PremiumPass then
+			premiumItem = item
+		end
+	end
+	assert(premiumItem and premiumItem.Kind == "Pass" and premiumItem.Ready, "pass premium vendable")
+	for key, value in Pass.Xp do
+		assert(value > 0, "XP " .. key)
+	end
 end)
 
 print(string.format("\n%d réussi(s), %d échec(s)", passed, failed))

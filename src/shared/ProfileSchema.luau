@@ -35,6 +35,7 @@ function ProfileSchema.template()
 		TitlesSeen = {}, -- titres déjà annoncés { [Id] = true }
 		BestLevel = 1, -- plus haut niveau atteint (ne baisse pas à la renaissance)
 		Playtime = { Day = -1, Seconds = 0, Claimed = {} }, -- temps de jeu actif du jour UTC
+		Pass = { Season = 0, Xp = 0, Free = {}, Premium = {} }, -- parcours du champion (saison)
 		Stats = { FirstJoin = 0, PlaySeconds = 0, Harvests = 0, TrophiesEarned = 0, TrainSeconds = 0 },
 	}
 end

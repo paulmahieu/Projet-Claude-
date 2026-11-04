@@ -145,6 +145,18 @@ Le code vit dans `src/` (fichiers texte versionnés). **Rojo** le synchronise en
 | 45 | Lancer une défense puis quitter le bastion 20 s | « Défense annulée » sans pénalité. |
 | 46 | Un membre sans la permission Construire tente de lancer | « Ton rôle ne permet pas de lancer la défense. » |
 
+### Œufs royaux et Parcours du champion
+
+| # | Action | Attendu |
+|---|---|---|
+| 47 | Point d'accueil : présentoirs dorés à gauche et à droite des œufs | « Œuf royal » et « Œuf céleste » ; la fenêtre affiche les probabilités (Légendaire à Céleste) et « Simuler l'achat (Studio) ». |
+| 48 | Simuler l'achat de l'œuf royal | Compagnon ajouté, message « Œuf royal ouvert : … » ; annonce à tout le serveur si Mythique ou Céleste. |
+| 49 | Œufs à l'or | Aucun Mythique ni Céleste dans les probabilités. |
+| 50 | Cadeaux → temps de jeu | Nouveau palier « 60 min · 🥚 Œuf royal ». Test rapide : Boutique → « Jour suivant » remet le compteur. |
+| 51 | Bouton 🏅 Parcours | 30 paliers « Gratuit » / « 👑 Premium », barre d'XP. Studio : « +3 paliers » puis « Tout récupérer (3) ». |
+| 52 | Parcours → « Simuler (Studio) » la piste premium | Les paliers premium déjà atteints deviennent récupérables (rétroactif). |
+| 53 | Atteindre les paliers 15 et 30 (bouton +3 paliers), récupérer, aller au Champ des champions | Zones dorées « TAPIS DU CHAMPION x100 » et « TAPIS DU HÉROS x500 » accessibles ; sans la récompense : message de verrouillage. |
+
 ### À plusieurs : *Test → Clients and Servers → 2 ou 3 joueurs → Start*
 
 | # | Action | Attendu |

@@ -636,4 +636,33 @@ function Formulas.formatCost(materialDefs, cost): string
 	return table.concat(parts, " · ")
 end
 
+-- Parcours du champion -----------------------------------------------------------------
+
+-- Palier atteint (0 = aucun) pour une XP de parcours.
+function Formulas.passTier(passCfg, xp: number): number
+	return math.clamp(math.floor(xp / passCfg.XpPerTier), 0, #passCfg.Tiers)
+end
+
+-- État du parcours remis à zéro si la saison a changé (les droits du profil sont conservés).
+function Formulas.passState(passCfg, state)
+	if not state or state.Season ~= passCfg.Season then
+		return { Season = passCfg.Season, Xp = 0, Free = {}, Premium = {} }
+	end
+	return state
+end
+
+-- Récompenses récupérables : liste de { Tier, Track ("Free" | "Premium") }.
+function Formulas.passClaimable(passCfg, state, premium: boolean)
+	local list = {}
+	for tier = 1, Formulas.passTier(passCfg, state.Xp) do
+		if not state.Free[tostring(tier)] then
+			table.insert(list, { Tier = tier, Track = "Free" })
+		end
+		if premium and not state.Premium[tostring(tier)] then
+			table.insert(list, { Tier = tier, Track = "Premium" })
+		end
+	end
+	return list
+end
+
 return Formulas

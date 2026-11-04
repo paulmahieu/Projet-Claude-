@@ -29,8 +29,13 @@ local origin = CFrame.new(Farm.Origin[1], Farm.Origin[2], Farm.Origin[3])
 local zones = {}
 local lockedNotified: { [Player]: number } = {}
 
+-- Accès « pass » d'une zone : droit durable du profil (récompense du parcours) ou pass Robux.
 local function ownsPassFor(player: Player)
 	return function(key: string): boolean
+		local profile = ProfileService.get(player)
+		if profile and profile.Entitlements[key] then
+			return true
+		end
 		return MonetizationService.ownsPass(player, key)
 	end
 end
@@ -95,8 +100,9 @@ local function tick(player: Player, dt: number)
 			lockedNotified[player] = now
 			Notifier.send(
 				player,
-				if zone.PassKey
-					then "Zone royale : réservée au pass « Zone royale d'entraînement »."
+				if zone.Name
+					then string.format("%s x%d : récompense de la piste premium du parcours.", zone.Name, zone.Mult)
+					elseif zone.PassKey then "Zone royale : réservée au pass « Zone royale d'entraînement »."
 					else string.format(
 						"Zone x%s : %d renaissance(s) requise(s).",
 						tostring(zone.Mult),
@@ -138,7 +144,7 @@ function FarmService.init()
 		local label = PlotService.makeBillboard(
 			zones[i].Dummies[2],
 			if zone.Royal
-				then "ZONE ROYALE\nx" .. tostring(zone.Mult)
+				then (zone.Name or "ZONE ROYALE") .. "\nx" .. tostring(zone.Mult)
 				else string.format("x%s\nRenaissance %d", tostring(zone.Mult), zone.Rebirths),
 			5,
 			Vector2.new(8, 2.6)
@@ -153,7 +159,7 @@ function FarmService.init()
 		Models.portal(CFrame.lookAt(portalPos, Vector3.new(0, 1, 0)), Color3.fromRGB(110, 210, 255))
 	portalModel.Name = "Portal_Farm"
 	portalModel.Parent = folder
-	PlotService.makeBillboard(veil, "Champ des champions\nZones de farm x1 à x30", 8, Vector2.new(12, 3))
+	PlotService.makeBillboard(veil, "Champ des champions\nZones de farm x1 à x500", 8, Vector2.new(12, 3))
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Aller au Champ"
 	prompt.ObjectText = "Champ des champions"

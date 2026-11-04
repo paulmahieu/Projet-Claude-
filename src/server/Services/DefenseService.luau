@@ -19,6 +19,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Formulas = require(Shared.Formulas)
 local Defense = require(Shared.Config.Defense)
+local Pass = require(Shared.Config.Pass)
 local Street = require(Shared.Config.Street)
 local Structures = require(Shared.Config.Structures)
 local Combat = require(Shared.Config.Combat)
@@ -32,6 +33,7 @@ local ProfileService = require(script.Parent.ProfileService)
 local GroupService = require(script.Parent.GroupService)
 local PlotService = require(script.Parent.PlotService)
 local Notifier = require(script.Parent.Notifier)
+local PassService = require(script.Parent.PassService)
 local Models = require(script.Parent.Parent.Art.Models)
 
 local CombatFx = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("CombatFx") :: RemoteEvent
@@ -178,6 +180,7 @@ local function finish(run: Run, outcome: string)
 			if player and profile and ProfileService.canMutate(player) then
 				profile.Gold = Formulas.clamp(profile.Gold + gold, Economy.GoldCap)
 				local trophies = ProfileService.addTrophies(player, Defense.Rewards.TrophiesPerLevel * level)
+				PassService.addXp(player, Pass.Xp.DefenseWin)
 				ProfileService.sync(player)
 				Notifier.send(
 					player,
