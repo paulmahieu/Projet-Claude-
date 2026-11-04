@@ -149,8 +149,8 @@ local function buildWorld()
 		Shape = Enum.PartType.Cylinder,
 		Size = Vector3.new(1, 56, 56),
 		CFrame = CFrame.new(0, 0.5, 0) * CFrame.Angles(0, 0, math.rad(90)),
-		Material = Enum.Material.Cobblestone,
-		Color = Color3.fromRGB(160, 155, 145),
+		Material = Enum.Material.Slate,
+		Color = Color3.fromRGB(88, 90, 102), -- teinte des joints entre les dalles
 		Parent = world,
 	})
 
@@ -158,15 +158,16 @@ local function buildWorld()
 	spawn.Name = "HubSpawn"
 	spawn.Anchored = true
 	spawn.Neutral = true
-	spawn.Size = Vector3.new(8, 1, 8)
-	spawn.Position = Vector3.new(0, 1.5, 0)
-	spawn.Material = Enum.Material.Marble
+	spawn.Size = Vector3.new(8, 0.2, 8)
+	spawn.Position = Vector3.new(0, 1.95, 0) -- posé sur l'estrade
+	spawn.Transparency = 1 -- l'estrade décorée tient lieu de point d'apparition
 	spawn.Duration = 0
 	spawn.Parent = world
 
 	local decor = Instance.new("Folder")
 	decor.Name = "Decor"
 	decor.Parent = world
+	Models.hubPlaza(decor, 28)
 	Models.hubDecor(decor, 28)
 	-- Quelques buissons entre le hub et les parcelles (positions fixes, rendu reproductible).
 	for i = 1, Game.PlotCount * 2 do

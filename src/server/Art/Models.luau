@@ -42,6 +42,11 @@ local C = {
 }
 Models.Colors = C
 
+-- Marbre et or des éléments « célestes » (portails, point d'accueil).
+local MARBLE = Color3.fromRGB(236, 232, 222)
+local MARBLE_SHADE = Color3.fromRGB(205, 200, 190)
+local GOLD = Color3.fromRGB(222, 176, 64)
+
 -- Utilitaires --------------------------------------------------------------------------
 
 local VERTICAL = CFrame.Angles(0, 0, math.rad(90)) -- l'axe d'un cylindre Roblox est X
@@ -1505,7 +1510,7 @@ end
 function Models.eggStand(base: CFrame, color: Color3): (Model, BasePart)
 	local m = newModel("EggStand")
 	local plinth = column(m, "Plinth", 1.2, 5, base, C.StoneDark, Enum.Material.Cobblestone)
-	column(m, "Cushion", 0.4, 3.6, base * CFrame.new(0, 1.2, 0), C.Cloth, Enum.Material.Fabric)
+	column(m, "Cushion", 0.4, 3.6, base * CFrame.new(0, 1.2, 0), GOLD, Enum.Material.Metal)
 	-- Une boule Roblox reste toujours sphérique : l'ellipsoïde passe par un SpecialMesh.
 	local egg =
 		part(m, "Egg", Vector3.new(2.6, 3.4, 2.6), base * CFrame.new(0, 3.3, 0), color, Enum.Material.SmoothPlastic)
@@ -1540,32 +1545,408 @@ function Models.eggStand(base: CFrame, color: Color3): (Model, BasePart)
 end
 
 -- Portail : arche de pierre et voile lumineux. Retourne model, voile (porte l'invite).
+-- Arc en plein cintre fait de claveaux (blocs disposés sur un demi-cercle).
+-- `center` : CFrame au centre de l'arc (hauteur des naissances). Retourne la liste des blocs.
+local function arch(
+	parent,
+	center: CFrame,
+	radius: number,
+	thickness: number,
+	depth: number,
+	count: number,
+	color,
+	material,
+	props
+)
+	local blocks = {}
+	-- Recouvrement léger entre claveaux : pas de dents visibles sur l'extrados.
+	local length = math.pi * (radius + thickness / 2) / count * 1.06
+	for k = 1, count do
+		local theta = math.pi * (k - 0.5) / count
+		local cf = center
+			* CFrame.new(radius * math.cos(theta), radius * math.sin(theta), 0)
+			* CFrame.Angles(0, 0, theta + math.pi / 2)
+		table.insert(
+			blocks,
+			part(parent, "Voussoir" .. k, Vector3.new(length, thickness, depth), cf, color, material, props)
+		)
+	end
+	return blocks
+end
+Models.arch = arch
+
+-- Portail céleste : emmarchement de marbre, colonnes à base et chapiteau cerclés d'or,
+-- arc en plein cintre à claveaux, filet d'or, clé de voûte à gemme, voile lumineux en deux
+-- couches (rectangle + disque) épousant l'arc. Retourne model, voile (porte l'invite).
 function Models.portal(base: CFrame, color: Color3): (Model, BasePart)
 	local m = newModel("Portal")
-	part(m, "Step", Vector3.new(10, 0.6, 4), base * CFrame.new(0, 0.3, 0), C.StoneDark, Enum.Material.Cobblestone)
-	for _, x in { -4, 4 } do
-		part(m, "Pillar", Vector3.new(1.6, 9, 1.6), base * CFrame.new(x, 4.8, 0), C.Stone, Enum.Material.Cobblestone)
-		part(m, "Cap", Vector3.new(2.2, 0.8, 2.2), base * CFrame.new(x, 9.6, 0), C.StoneLight, Enum.Material.Slate)
-	end
-	part(m, "Lintel", Vector3.new(10, 1.4, 1.8), base * CFrame.new(0, 10.4, 0), C.StoneLight, Enum.Material.Slate)
+	local half = 4.2 -- demi-écartement des colonnes
+	local spring = 8.6 -- hauteur des naissances de l'arc
+	-- Emmarchement
+	part(m, "Step1", Vector3.new(12.5, 0.5, 5.6), base * CFrame.new(0, 0.25, 0), MARBLE_SHADE, Enum.Material.Marble)
+	part(m, "Step2", Vector3.new(11, 0.5, 4.4), base * CFrame.new(0, 0.75, 0), MARBLE, Enum.Material.Marble)
 	part(
 		m,
-		"Keystone",
-		Vector3.new(1.4, 1.4, 1.9),
-		base * CFrame.new(0, 10.4, 0) * CFrame.Angles(0, 0, math.rad(45)),
+		"StepTrim",
+		Vector3.new(11.1, 0.12, 4.5),
+		base * CFrame.new(0, 1.04, 0),
+		GOLD,
+		Enum.Material.Metal,
+		{ NoShadow = true }
+	)
+	for _, side in { -1, 1 } do
+		local col = base * CFrame.new(side * half, 1, 0)
+		part(m, "Plinth", Vector3.new(2.4, 0.9, 2.4), col * CFrame.new(0, 0.45, 0), MARBLE, Enum.Material.Marble)
+		part(
+			m,
+			"PlinthTrim",
+			Vector3.new(2.5, 0.15, 2.5),
+			col * CFrame.new(0, 0.95, 0),
+			GOLD,
+			Enum.Material.Metal,
+			{ NoShadow = true }
+		)
+		column(m, "Shaft", spring - 2.6, 1.6, col * CFrame.new(0, 1, 0), MARBLE, Enum.Material.Marble)
+		for _, y in { 1.4, spring - 2.2 } do
+			column(m, "Ring", 0.25, 1.75, col * CFrame.new(0, y, 0), GOLD, Enum.Material.Metal, { NoShadow = true })
+		end
+		part(
+			m,
+			"Capital",
+			Vector3.new(2.4, 0.7, 2.4),
+			col * CFrame.new(0, spring - 1.25, 0),
+			MARBLE,
+			Enum.Material.Marble
+		)
+		part(
+			m,
+			"Abacus",
+			Vector3.new(2.7, 0.35, 2.7),
+			col * CFrame.new(0, spring - 0.75, 0),
+			GOLD,
+			Enum.Material.Metal,
+			{ NoShadow = true }
+		)
+		-- Applique à cristal sur la face avant de la colonne
+		part(m, "Sconce", Vector3.new(0.5, 0.9, 0.4), col * CFrame.new(0, 4.2, -0.95), GOLD, Enum.Material.Metal)
+		part(
+			m,
+			"SconceGem",
+			Vector3.new(0.45, 0.45, 0.45),
+			col * CFrame.new(0, 4.85, -1) * CFrame.Angles(math.rad(45), 0, math.rad(45)),
+			color,
+			Enum.Material.Neon,
+			{
+				CanCollide = false,
+				NoShadow = true,
+			}
+		)
+	end
+	-- Arc à claveaux de marbre + filet d'or à l'intrados
+	local archCenter = base * CFrame.new(0, spring, 0)
+	arch(m, archCenter, half, 1.6, 2, 15, MARBLE, Enum.Material.Marble)
+	-- Bandeau d'extrados : filet de marbre plus sombre qui adoucit le contour de l'arc
+	arch(m, archCenter, half + 0.95, 0.3, 2.1, 21, MARBLE_SHADE, Enum.Material.Marble)
+	arch(
+		m,
+		archCenter * CFrame.new(0, 0, -1.02),
+		half - 0.72,
+		0.18,
+		0.12,
+		15,
+		GOLD,
+		Enum.Material.Metal,
+		{ NoShadow = true }
+	)
+	arch(
+		m,
+		archCenter * CFrame.new(0, 0, 1.02),
+		half - 0.72,
+		0.18,
+		0.12,
+		15,
+		GOLD,
+		Enum.Material.Metal,
+		{ NoShadow = true }
+	)
+	-- Clé de voûte : cartouche doré et gemme
+	local key = archCenter * CFrame.new(0, half + 0.9, -0.2)
+	part(m, "KeyFrame", Vector3.new(1.5, 1.5, 2.3), key * CFrame.Angles(0, 0, math.rad(45)), GOLD, Enum.Material.Metal)
+	part(
+		m,
+		"KeyGem",
+		Vector3.new(0.95, 0.95, 2.4),
+		key * CFrame.Angles(0, 0, math.rad(45)),
 		color,
+		Enum.Material.Neon,
+		{ NoShadow = true }
+	)
+	-- Voile : rectangle sous les naissances + disque pour la partie cintrée, en deux couches
+	local inner = (half - 0.8) * 2
+	local veil = part(
+		m,
+		"Veil",
+		Vector3.new(inner, spring - 1.1, 0.2),
+		base * CFrame.new(0, 1 + (spring - 1) / 2, 0),
+		color,
+		Enum.Material.Neon,
+		{
+			CanCollide = false,
+			Transparency = 0.35,
+			NoShadow = true,
+		}
+	)
+	part(
+		m,
+		"VeilArch",
+		Vector3.new(0.2, inner, inner),
+		archCenter * CFrame.Angles(0, math.rad(90), 0),
+		color,
+		Enum.Material.Neon,
+		{
+			Shape = Enum.PartType.Cylinder,
+			CanCollide = false,
+			Transparency = 0.35,
+			NoShadow = true,
+		}
+	)
+	part(
+		m,
+		"VeilGlow",
+		Vector3.new(inner * 0.6, spring - 2.2, 0.22),
+		base * CFrame.new(0, 1 + (spring - 1) / 2, 0),
+		color:Lerp(Color3.new(1, 1, 1), 0.6),
+		Enum.Material.Neon,
+		{
+			CanCollide = false,
+			Transparency = 0.55,
+			NoShadow = true,
+		}
+	)
+	m.PrimaryPart = veil
+	return m, veil
+end
+
+-- Point d'accueil : dallage en damier à joints visibles, estrade d'apparition à anneau
+-- d'or et cercle runique, bordure de marbre. `parent` au sol (dessus du disque du hub à y = 1).
+function Models.hubPlaza(parent: Instance, radius: number)
+	local tile = 5.6
+	local n = math.floor(radius * 2 / tile)
+	local start = -n * tile / 2 + tile / 2
+	for ix = 0, n - 1 do
+		for iz = 0, n - 1 do
+			local x, z = start + ix * tile, start + iz * tile
+			if math.sqrt(x * x + z * z) + tile * 0.72 <= radius - 1 then
+				local light = (ix + iz) % 2 == 0
+				local shade = if light then Color3.fromRGB(196, 196, 204) else Color3.fromRGB(168, 170, 182)
+				part(
+					parent,
+					"Tile",
+					Vector3.new(tile - 0.35, 0.16, tile - 0.35),
+					CFrame.new(x, 1.08, z),
+					shade,
+					Enum.Material.Slate
+				)
+			end
+		end
+	end
+	-- Bordure de marbre et filet d'or en anneau (segments)
+	local segments = 28
+	for k = 1, segments do
+		local a = (k / segments) * math.pi * 2
+		local len = 2 * math.pi * radius / segments * 1.02
+		local cf = CFrame.new(math.cos(a) * (radius - 0.6), 1.25, math.sin(a) * (radius - 0.6))
+			* CFrame.Angles(0, -a + math.pi / 2, 0)
+		part(parent, "Curb", Vector3.new(len, 0.5, 1.2), cf, MARBLE, Enum.Material.Marble)
+		part(
+			parent,
+			"CurbTrim",
+			Vector3.new(len, 0.1, 0.25),
+			cf * CFrame.new(0, 0.3, -0.35),
+			GOLD,
+			Enum.Material.Metal,
+			{ NoShadow = true }
+		)
+	end
+	-- Estrade d'apparition à trois degrés
+	column(parent, "Dais1", 0.35, 15, CFrame.new(0, 1, 0), MARBLE_SHADE, Enum.Material.Marble)
+	column(parent, "Dais2", 0.35, 12, CFrame.new(0, 1.35, 0), MARBLE, Enum.Material.Marble)
+	column(parent, "DaisRing", 0.08, 12.3, CFrame.new(0, 1.66, 0), GOLD, Enum.Material.Metal, { NoShadow = true })
+	column(parent, "DaisTop", 0.12, 9, CFrame.new(0, 1.7, 0), Color3.fromRGB(60, 70, 100), Enum.Material.Slate)
+	column(
+		parent,
+		"RuneCircle",
+		0.05,
+		7,
+		CFrame.new(0, 1.82, 0),
+		C.Ether,
+		Enum.Material.Neon,
+		{ NoShadow = true, CanCollide = false }
+	)
+	column(
+		parent,
+		"RuneInner",
+		0.06,
+		6.2,
+		CFrame.new(0, 1.83, 0),
+		Color3.fromRGB(60, 70, 100),
+		Enum.Material.Slate,
+		{ NoShadow = true, CanCollide = false }
+	)
+	for k = 1, 8 do
+		local a = k * math.pi / 4
+		part(
+			parent,
+			"Rune" .. k,
+			Vector3.new(0.5, 0.06, 0.5),
+			CFrame.new(math.cos(a) * 2.4, 1.86, math.sin(a) * 2.4)
+				* CFrame.Angles(0, a, 0)
+				* CFrame.Angles(0, math.rad(45), 0),
+			C.Ether,
+			Enum.Material.Neon,
+			{
+				NoShadow = true,
+				CanCollide = false,
+			}
+		)
+	end
+end
+
+-- Autel de renaissance (sanctuaire) : mur de pierre sombre à trois baies gothiques garnies de
+-- vitraux de cristal bleu, colonnettes, autel central à cristal flottant, degrés.
+-- Retourne model, cristal (porte l'invite).
+function Models.rebirthShrine(base: CFrame): (Model, BasePart)
+	local m = newModel("RebirthShrine")
+	local stone = Color3.fromRGB(92, 104, 120)
+	local stoneLight = Color3.fromRGB(128, 140, 156)
+	local glow = Color3.fromRGB(70, 190, 255)
+	part(m, "Step1", Vector3.new(18, 0.5, 10), base * CFrame.new(0, 0.25, 0), stoneLight, Enum.Material.Slate)
+	part(m, "Step2", Vector3.new(16, 0.5, 8), base * CFrame.new(0, 0.75, 0.6), stone, Enum.Material.Slate)
+	local wallZ = 3.6
+	part(m, "Wall", Vector3.new(16, 10, 1.4), base * CFrame.new(0, 6, wallZ), stone, Enum.Material.Slate)
+	part(m, "Cornice", Vector3.new(16.8, 0.8, 2), base * CFrame.new(0, 11.4, wallZ), stoneLight, Enum.Material.Slate)
+	for k = -3, 3 do
+		part(
+			m,
+			"Merlon",
+			Vector3.new(1.4, 1.2, 1.6),
+			base * CFrame.new(k * 2.4, 12.4, wallZ),
+			stoneLight,
+			Enum.Material.Slate
+		)
+	end
+	-- Trois baies : vitrail lumineux, arc à claveaux, colonnettes
+	for b = -1, 1 do
+		local x = b * 5
+		local h = if b == 0 then 6 else 5
+		local w = if b == 0 then 3.2 else 2.6
+		local sill = 1.6
+		local bay = base * CFrame.new(x, 0, wallZ - 0.75)
+		part(
+			m,
+			"Glass",
+			Vector3.new(w, h, 0.2),
+			bay * CFrame.new(0, sill + h / 2, 0),
+			glow,
+			Enum.Material.Neon,
+			{ NoShadow = true }
+		)
+		part(
+			m,
+			"GlassArch",
+			Vector3.new(0.2, w, w),
+			bay * CFrame.new(0, sill + h, 0) * CFrame.Angles(0, math.rad(90), 0),
+			glow,
+			Enum.Material.Neon,
+			{
+				Shape = Enum.PartType.Cylinder,
+				NoShadow = true,
+			}
+		)
+		part(
+			m,
+			"Mullion",
+			Vector3.new(0.18, h + w / 2, 0.3),
+			bay * CFrame.new(0, sill + (h + w / 2) / 2, -0.05),
+			stone,
+			Enum.Material.Slate,
+			{ NoShadow = true }
+		)
+		part(
+			m,
+			"Transom",
+			Vector3.new(w, 0.18, 0.3),
+			bay * CFrame.new(0, sill + h * 0.55, -0.05),
+			stone,
+			Enum.Material.Slate,
+			{ NoShadow = true }
+		)
+		arch(m, bay * CFrame.new(0, sill + h, -0.15), w / 2 + 0.35, 0.7, 0.6, 9, stoneLight, Enum.Material.Slate)
+		for _, sx in { -1, 1 } do
+			part(
+				m,
+				"Colonnette",
+				Vector3.new(0.6, h, 0.6),
+				bay * CFrame.new(sx * (w / 2 + 0.35), sill + h / 2, -0.15),
+				stoneLight,
+				Enum.Material.Slate
+			)
+		end
+		part(
+			m,
+			"Sill",
+			Vector3.new(w + 1.6, 0.4, 0.9),
+			bay * CFrame.new(0, sill - 0.2, -0.3),
+			stoneLight,
+			Enum.Material.Slate
+		)
+	end
+	-- Autel central et cristal flottant
+	local altar = base * CFrame.new(0, 1, -0.8)
+	part(m, "Altar", Vector3.new(4, 2.2, 2.2), altar * CFrame.new(0, 1.1, 0), stoneLight, Enum.Material.Slate)
+	part(m, "AltarTop", Vector3.new(4.5, 0.35, 2.7), altar * CFrame.new(0, 2.35, 0), stone, Enum.Material.Slate)
+	part(
+		m,
+		"AltarRune",
+		Vector3.new(2.6, 0.5, 0.1),
+		altar * CFrame.new(0, 1.2, -1.12),
+		glow,
+		Enum.Material.Neon,
+		{ NoShadow = true }
+	)
+	local crystal = part(
+		m,
+		"Crystal",
+		Vector3.new(1.4, 2.6, 1.4),
+		altar * CFrame.new(0, 4.4, 0) * CFrame.Angles(0, math.rad(45), 0),
+		glow,
 		Enum.Material.Neon,
 		{
 			NoShadow = true,
 		}
 	)
-	local veil = part(m, "Veil", Vector3.new(6.4, 8.6, 0.3), base * CFrame.new(0, 5, 0), color, Enum.Material.Neon, {
-		CanCollide = false,
-		Transparency = 0.45,
-		NoShadow = true,
-	})
-	m.PrimaryPart = veil
-	return m, veil
+	for k = 1, 4 do
+		local a = k * math.pi / 2
+		part(
+			m,
+			"Shard" .. k,
+			Vector3.new(0.4, 0.9, 0.4),
+			altar * CFrame.new(math.cos(a) * 1.5, 4.1, math.sin(a) * 1.5) * CFrame.Angles(0, a, math.rad(25)),
+			glow:Lerp(Color3.new(1, 1, 1), 0.4),
+			Enum.Material.Neon,
+			{
+				CanCollide = false,
+				NoShadow = true,
+			}
+		)
+	end
+	local light = Instance.new("PointLight")
+	light.Color = glow
+	light.Range = 18
+	light.Brightness = 1.6
+	light.Parent = crystal
+	m.PrimaryPart = crystal
+	return m, crystal
 end
 
 -- Arène circulaire : sol, bordure de pierres levées, torches. `center` au sol.

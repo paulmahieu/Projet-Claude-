@@ -184,6 +184,19 @@ function FarmService.init()
 		end
 	end)
 
+	-- Autel de renaissance, sur le parvis : son invite ouvre l'onglet Renaissance chez le client.
+	local shrine, crystal = Models.rebirthShrine(origin * CFrame.new(-40, 0, 16.5))
+	shrine.Parent = geometry
+	PlotService.makeBillboard(crystal, "Autel de renaissance", 4, Vector2.new(10, 1.6))
+	local shrinePrompt = Instance.new("ProximityPrompt")
+	shrinePrompt.ActionText = "Renaissance"
+	shrinePrompt.ObjectText = "Autel"
+	shrinePrompt.HoldDuration = 0
+	shrinePrompt.MaxActivationDistance = 12
+	shrinePrompt.RequiresLineOfSight = false
+	shrinePrompt:SetAttribute("OpenTab", "Rebirth")
+	shrinePrompt.Parent = crystal
+
 	-- Hors ligne : le meilleur rendement durable entre tapis du bastion et zones accessibles.
 	-- (Enregistré après celui de TrainingService : Main initialise FarmService ensuite.)
 	ProfileService.beforeSave(function(player, profile)

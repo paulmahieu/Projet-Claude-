@@ -1098,6 +1098,12 @@ eggClose.Activated:Connect(function()
 end)
 
 ProximityPromptService.PromptTriggered:Connect(function(prompt)
+	local tab = prompt:GetAttribute("OpenTab")
+	if type(tab) == "string" then
+		currentTab = tab
+		setMenu(true)
+		return
+	end
 	local eggId = prompt:GetAttribute("EggId")
 	if type(eggId) == "string" then
 		openEgg(eggId)

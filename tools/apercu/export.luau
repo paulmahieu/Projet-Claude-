@@ -52,7 +52,29 @@ end
 local scene = process.args[2] or "base"
 local function at(x, z) return roblox.CFrame.new(x, 0, z) end
 local V = roblox.Vector3.new
-if scene == "farm" then
+if scene == "hub" then
+	local holder = roblox.Instance.new("Model")
+	-- disque du hub (joints)
+	local hub = roblox.Instance.new("Part")
+	hub.Shape = roblox.Enum.PartType.Cylinder
+	hub.Size = V(1, 56, 56)
+	hub.CFrame = roblox.CFrame.new(0, 0.5, 0) * roblox.CFrame.Angles(0, 0, math.rad(90))
+	hub.Color = roblox.Color3.fromRGB(88, 90, 102)
+	hub.Parent = holder
+	Models.hubPlaza(holder, 28)
+	dump(holder)
+	local function lookCenter(x, z)
+		return roblox.CFrame.lookAt(V(x, 1, z), V(0, 1, 0))
+	end
+	dump((Models.portal(lookCenter(-12, 22), roblox.Color3.fromRGB(90, 170, 70))))
+	dump((Models.portal(lookCenter(0, 24), roblox.Color3.fromRGB(220, 70, 70))))
+	dump((Models.portal(lookCenter(12, 22), roblox.Color3.fromRGB(120, 210, 255))))
+	for i, egg in PetsCfg.Eggs do
+		local c = egg.Color
+		dump((Models.eggStand(lookCenter(egg.Position[1], egg.Position[2]), roblox.Color3.fromRGB(c[1], c[2], c[3]))))
+	end
+	dump((Models.rebirthShrine(roblox.CFrame.new(40, 0, -10) * roblox.CFrame.Angles(0, math.rad(-90), 0))))
+elseif scene == "farm" then
 	local FarmCfg = loadData("/src/shared/Config/Farm.luau", "Farm")
 	local Formulas = loadData("/src/shared/Formulas.luau", "Formulas")
 	local holder = roblox.Instance.new("Model")
