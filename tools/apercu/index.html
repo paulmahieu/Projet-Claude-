@@ -3,7 +3,7 @@
 import * as THREE from './node_modules/three/build/three.module.js';
 const parts = await (await fetch('parts.json')).json();
 const params = new URLSearchParams(location.search);
-const renderer = new THREE.WebGLRenderer({antialias:true});
+const renderer = new THREE.WebGLRenderer({antialias:true, alpha: params.has('transparent')});
 renderer.setPixelRatio(window.devicePixelRatio || 1); renderer.setSize(1400, 800); renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 // Matières Roblox approximées par des textures procédurales (gris, multipliées par la couleur).
@@ -42,7 +42,7 @@ function scaleUV(geo, u, v){ const uv=geo.attributes.uv; for(let i=0;i<uv.count;
 
 const scene = new THREE.Scene(); scene.background = new THREE.Color(0xa9cbe8);
 scene.fog = new THREE.Fog(0xa9cbe8, 300, 900);
-const cam = new THREE.PerspectiveCamera(40, 1400/800, 0.1, 1000);
+const cam = new THREE.PerspectiveCamera(Number(params.get('fov')||40), 1400/800, 0.1, 1000);
 const [cx,cy,cz,tx,ty,tz] = (params.get('cam')||'0,55,-110,0,4,0').split(',').map(Number);
 cam.position.set(cx,cy,cz); cam.lookAt(tx,ty,tz);
 scene.add(new THREE.HemisphereLight(0xdde8ff, 0x6b5a3a, 1.1));
@@ -50,6 +50,8 @@ const sun = new THREE.DirectionalLight(0xfff1dd, 1.6); sun.position.set(-60,100,
 Object.assign(sun.shadow.camera,{left:-130,right:130,top:130,bottom:-130}); sun.shadow.mapSize.set(4096,4096); scene.add(sun);
 const ground = new THREE.Mesh((()=>{ const g=new THREE.PlaneGeometry(1200,1200); scaleUV(g,100,100); return g; })(), new THREE.MeshLambertMaterial({color:0x6a8c52, map:TEX.Grass}));
 ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; scene.add(ground);
+// Portrait sur fond transparent (cartes de compagnons) : ni ciel, ni brume, ni sol.
+if(params.has('transparent')){ document.body.style.background='transparent'; scene.background=null; scene.fog=null; scene.remove(ground); }
 
 function wedge(){ // Roblox : face verticale à l'arrière (+Z), pente vers l'avant (-Z)
   const g = new THREE.BufferGeometry();

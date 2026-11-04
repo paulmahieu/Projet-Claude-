@@ -72,7 +72,45 @@ local function at(x, z)
 	return roblox.CFrame.new(x, 0, z)
 end
 local V = roblox.Vector3.new
-if scene == "machines" then
+if scene == "portrait" then
+	-- Un compagnon seul (argument 3 = Id), centré ; affiche la caméra de face utilisée par
+	-- les cartes des œufs (même calcul que EggPreview.portrait, champ de vision 30°).
+	local id = process.args[3]
+	for _, def in PetsCfg.List do
+		if def.Id == id then
+			local r = PetsCfg.Rarities[def.Rarity].Color
+			local model = PetModels.build(def, roblox.Color3.fromRGB(r[1], r[2], r[3]))
+			local lo, hi = { math.huge, math.huge, math.huge }, { -math.huge, -math.huge, -math.huge }
+			for _, p in model:GetDescendants() do
+				if p:IsA("BasePart") then
+					local c, h = p.CFrame.Position, p.Size / 2
+					for k, axis in { "X", "Y", "Z" } do
+						lo[k] = math.min(lo[k], c[axis] - h[axis])
+						hi[k] = math.max(hi[k], c[axis] + h[axis])
+					end
+				end
+			end
+			dump(model)
+			local c = { (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2, (lo[3] + hi[3]) / 2 }
+			local sx, sy, sz = hi[1] - lo[1], hi[2] - lo[2], hi[3] - lo[3]
+			local t = math.tan(math.rad(15))
+			local dist = math.max(sy / (2 * t), sx / (2 * t * 1.15)) * 1.08 + sz / 2
+			local d = { math.sin(math.rad(18)), 0.22, -math.cos(math.rad(18)) }
+			local n = math.sqrt(d[1] ^ 2 + d[2] ^ 2 + d[3] ^ 2)
+			print(
+				string.format(
+					"CAM %.3f,%.3f,%.3f,%.3f,%.3f,%.3f",
+					c[1] + d[1] / n * dist,
+					c[2] + d[2] / n * dist,
+					c[3] + d[3] / n * dist,
+					c[1],
+					c[2],
+					c[3]
+				)
+			)
+		end
+	end
+elseif scene == "machines" then
 	-- Les 5 machines (niveau 3, puis 5 pour la dernière) et un socle de construction.
 	local lvl = tonumber(process.args[3]) or 3
 	for i, kind in { "LumberMill", "StoneCrusher", "OreDrill", "EtherCondenser", "RoyalForge" } do

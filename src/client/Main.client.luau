@@ -38,6 +38,7 @@ local FarmUi = require(script.Parent.FarmUi)
 local MachineFx = require(script.Parent.MachineFx)
 local Land = require(Shared.Config.Land)
 local DiagnosticsUi = require(script.Parent.DiagnosticsUi)
+local EggPreview = require(script.Parent.EggPreview)
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local PolicyService = game:GetService("PolicyService")
 
@@ -1568,11 +1569,11 @@ end
 local eggPanel = Ui.create("Frame", {
 	AnchorPoint = Vector2.new(0.5, 0.5),
 	Position = UDim2.fromScale(0.5, 0.5),
-	Size = UDim2.new(0.9, 0, 0, 380),
+	Size = UDim2.fromScale(0.94, 0.88),
 	BackgroundColor3 = C.Panel,
 	Visible = false,
 	Parent = gui,
-}, { Ui.corner(12), Ui.stroke(), Ui.create("UISizeConstraint", { MaxSize = Vector2.new(420, 380) }) })
+}, { Ui.corner(12), Ui.stroke(), Ui.create("UISizeConstraint", { MaxSize = Vector2.new(560, 600) }) })
 local eggTitle = Ui.label({
 	Position = UDim2.fromOffset(14, 10),
 	Size = UDim2.new(1, -70, 0, 30),
@@ -1589,13 +1590,27 @@ local eggClose = Ui.button({
 	Text = "X",
 	Parent = eggPanel,
 })
-local eggList = Ui.create("Frame", {
-	Position = UDim2.fromOffset(14, 58),
-	Size = UDim2.new(1, -28, 0, 220),
+-- Compagnons possibles : cartes avec portrait de face, rareté, multiplicateur et probabilité.
+local eggList = Ui.create("ScrollingFrame", {
+	Position = UDim2.fromOffset(10, 58),
+	Size = UDim2.new(1, -20, 1, -172),
 	BackgroundTransparency = 1,
+	BorderSizePixel = 0,
+	ScrollBarThickness = 6,
+	ScrollingDirection = Enum.ScrollingDirection.Y,
+	AutomaticCanvasSize = Enum.AutomaticSize.Y,
+	CanvasSize = UDim2.new(),
 	Parent = eggPanel,
 })
-Ui.list(eggList, 4)
+local eggCell = EggPreview.cardSize("big")
+Ui.create("UIGridLayout", {
+	CellSize = UDim2.fromOffset(eggCell.X, eggCell.Y),
+	CellPadding = UDim2.fromOffset(8, 8),
+	SortOrder = Enum.SortOrder.LayoutOrder,
+	HorizontalAlignment = Enum.HorizontalAlignment.Center,
+	Parent = eggList,
+})
+Ui.create("UIPadding", { PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4), Parent = eggList })
 local eggResult = Ui.label({
 	Position = UDim2.new(0, 14, 1, -100),
 	Size = UDim2.new(1, -28, 0, 30),
@@ -1621,33 +1636,14 @@ local function openEgg(eggId: string)
 	currentEgg = egg
 	eggTitle.Text = egg.Name
 	eggResult.Text = ""
-	for _, child in eggList:GetChildren() do
-		if child:IsA("TextLabel") then
-			child:Destroy()
-		end
-	end
-	-- Probabilités affichées avant l'achat.
+	-- Probabilités affichées avant l'achat, avec le portrait de chaque compagnon.
 	local luck = player:GetAttribute("Luck") or 0
 	if luck > 0 then
 		eggTitle.Text = egg.Name .. string.format(" (chance +%d %%)", math.floor(luck * 100 + 0.5))
 	end
-	for i, entry in Formulas.eggOdds(Formulas.luckyEgg(egg, Pets, luck)) do
-		local def = petById[entry.Id]
-		Ui.label({
-			LayoutOrder = i,
-			Size = UDim2.new(1, 0, 0, 24),
-			TextColor3 = rarityColor(def.Rarity),
-			Font = Enum.Font.GothamBold,
-			Text = string.format(
-				"%s · %s · +%d %%   —   %s %%",
-				def.Name,
-				Pets.Rarities[def.Rarity].Name,
-				math.floor(def.Bonus * 100 + 0.5),
-				string.format("%.1f", entry.Chance * 100):gsub("%.", ",")
-			),
-			Parent = eggList,
-		})
-	end
+	EggPreview.fill(eggList, egg, "big")
+	eggList.CanvasPosition = Vector2.zero
+	EggPreview.setSuppressed(true)
 	if egg.Cost then
 		eggButton.Text = string.format("Ouvrir (%s or)", Formulas.formatNumber(egg.Cost))
 		eggButton.BackgroundColor3 = C.reward
@@ -1704,6 +1700,7 @@ end
 eggClose.Activated:Connect(function()
 	eggPanel.Visible = false
 	currentEgg = nil
+	EggPreview.setSuppressed(false)
 end)
 
 ProximityPromptService.PromptTriggered:Connect(function(prompt)
@@ -1922,6 +1919,7 @@ CombatUi.start(gui, toast)
 StreetUi.start(gui)
 FarmUi.start()
 MachineFx.start()
+EggPreview.start()
 refreshHud()
 task.spawn(function()
 	local ok, res = pcall(function()

@@ -104,6 +104,28 @@ function Formulas.eggOdds(egg)
 	return list
 end
 
+-- Multiplicateur d'un compagnon seul (bonus additif +x => ×(1 + x)), format français :
+-- 0.1 -> "×1,1" ; 1 -> "×2" ; 0.25 -> "×1,25".
+function Formulas.petMultiplierText(bonus: number): string
+	local value = math.floor((1 + bonus) * 100 + 0.5) / 100
+	local text = string.format("%.2f", value):gsub("0+$", ""):gsub("%.$", "")
+	return "×" .. text:gsub("%.", ",")
+end
+
+-- Probabilité d'éclosion lisible : 0.125 -> "12,5 %" ; 0.004 -> "0,40 %" ; 1 -> "100 %".
+function Formulas.chanceText(chance: number): string
+	local pct = chance * 100
+	local text
+	if pct >= 99.95 then
+		text = "100"
+	elseif pct < 1 then
+		text = string.format("%.2f", pct)
+	else
+		text = string.format("%.1f", pct)
+	end
+	return (text:gsub("%.", ",")) .. " %"
+end
+
 -- Tirage déterministe : r dans [0, 1[ (fourni par le serveur). Retourne l'Id obtenu.
 function Formulas.rollEgg(egg, r: number): string
 	local odds = Formulas.eggOdds(egg)

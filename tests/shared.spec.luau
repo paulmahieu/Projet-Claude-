@@ -782,6 +782,28 @@ test("migration v2 -> v3 : anciennes améliorations converties en nœuds", funct
 	eq(p.Trophies, 0)
 end)
 
+test("aperçu des œufs : multiplicateur et probabilité lisibles", function()
+	eq(Formulas.petMultiplierText(0.1), "×1,1")
+	eq(Formulas.petMultiplierText(0.25), "×1,25")
+	eq(Formulas.petMultiplierText(1), "×2")
+	eq(Formulas.petMultiplierText(5.8), "×6,8")
+	eq(Formulas.chanceText(0.125), "12,5 %")
+	eq(Formulas.chanceText(0.004), "0,40 %")
+	eq(Formulas.chanceText(1), "100 %")
+	-- Chaque compagnon d'un œuf a une fiche (portrait) et une rareté connue.
+	for _, egg in Pets.Eggs do
+		for id in egg.Weights do
+			local found = nil
+			for _, def in Pets.List do
+				if def.Id == id then
+					found = def
+				end
+			end
+			assert(found and Pets.Rarities[found.Rarity], egg.Id .. " : " .. id)
+		end
+	end
+end)
+
 test("chance : favorise Rare et plus, probabilités toujours = 100 %", function()
 	local egg
 	for _, e in Pets.Eggs do
