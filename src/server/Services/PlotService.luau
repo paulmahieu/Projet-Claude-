@@ -195,6 +195,8 @@ local function setupLighting()
 	Lighting.Brightness = 2.2
 	Lighting.GlobalShadows = true
 	Lighting.OutdoorAmbient = Color3.fromRGB(135, 128, 120)
+	-- Lumière des lieux fermés (salles mystiques sous la carte) : jamais noir complet.
+	Lighting.Ambient = Color3.fromRGB(70, 64, 92)
 	Lighting.EnvironmentDiffuseScale = 0.5
 	Lighting.EnvironmentSpecularScale = 0.3
 	local function ensure(className: string, name: string)

@@ -196,6 +196,8 @@ Le code vit dans `src/` (fichiers texte versionnés). **Rojo** le synchronise en
 
 | # | Action | Attendu |
 |---|---|---|
+| 68b | Depuis le château, regarder le ciel | Plus aucune plateforme volante : la Rue des boss et le Champ sont des salles mystiques sous la carte (portails inchangés). |
+| 68c | Entrer dans la Rue / le Champ | Salle fermée : murs sombres à colonnes et runes, cristaux lumineux, plafond en ciel étoilé (nébuleuses, lune). |
 | 69 | Étapes 1 à 4 | Gelées épineuses, araignées des ruines et gobelins ferrailleurs mélangés dans chaque vague. |
 | 70 | Étape 5 puis étape 10 | Patron « Orque brise-bouclier », puis boss « Roi gobelin » (zone d'impact plus large, nom au-dessus de la tête). |
 | 71 | Étapes 11 à 60 | Régions Frontières, Marches sauvages, Cimes gelées, Fournaise, Néant : nouveaux ennemis et boss (Gardien des racines, Hydre des marais, Titan du givre, Dragon de la fournaise, Colosse du néant à l'étape 60). |

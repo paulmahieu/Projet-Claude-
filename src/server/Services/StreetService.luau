@@ -32,6 +32,7 @@ local GroupService = require(script.Parent.GroupService)
 local PlotService = require(script.Parent.PlotService)
 local PetService = require(script.Parent.PetService)
 local Notifier = require(script.Parent.Notifier)
+local Diagnostics = require(script.Parent.Diagnostics)
 local PassService = require(script.Parent.PassService)
 local Pass = require(Shared.Config.Pass)
 local Models = require(script.Parent.Parent.Art.Models)
@@ -962,6 +963,13 @@ function StreetService.init()
 	geometry.Name = "Geometry"
 	geometry.Parent = folder
 	Models.street(origin, Street, geometry)
+	-- Salle mystique fermée (sous la carte) : murs et plafond en faux ciel étoilé.
+	Models.mysticHall(origin, Street.Hall, Color3.fromRGB(255, 110, 90), geometry, 7)
+	local hall = Street.Hall
+	Diagnostics.addSafeZone(
+		origin * CFrame.new(0, (hall.Floor + hall.Height) / 2, (hall.Front + hall.Back) / 2),
+		Vector3.new(hall.HalfWidth * 2 + 8, hall.Height - hall.Floor + 8, hall.Front - hall.Back + 8)
+	)
 	enemiesFolder = Instance.new("Folder")
 	enemiesFolder.Name = "Enemies"
 	enemiesFolder.Parent = folder

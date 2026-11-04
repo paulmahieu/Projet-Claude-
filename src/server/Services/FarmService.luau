@@ -21,6 +21,7 @@ local GroupService = require(script.Parent.GroupService)
 local PlotService = require(script.Parent.PlotService)
 local MonetizationService = require(script.Parent.MonetizationService)
 local Notifier = require(script.Parent.Notifier)
+local Diagnostics = require(script.Parent.Diagnostics)
 local Models = require(script.Parent.Parent.Art.Models)
 
 local FarmService = {}
@@ -140,6 +141,13 @@ function FarmService.init()
 	geometry.Name = "Geometry"
 	geometry.Parent = folder
 	zones = Models.farmIsland(origin, Farm, Formulas.zoneCenter, geometry)
+	-- Salle mystique fermée (sous la carte) : murs et plafond en faux ciel étoilé.
+	Models.mysticHall(origin, Farm.Hall, Color3.fromRGB(110, 210, 255), geometry, 13)
+	local hall = Farm.Hall
+	Diagnostics.addSafeZone(
+		origin * CFrame.new(0, (hall.Floor + hall.Height) / 2, (hall.Front + hall.Back) / 2),
+		Vector3.new(hall.HalfWidth * 2 + 8, hall.Height - hall.Floor + 8, hall.Front - hall.Back + 8)
+	)
 	for i, zone in Farm.Zones do
 		local label = PlotService.makeBillboard(
 			zones[i].Dummies[2],

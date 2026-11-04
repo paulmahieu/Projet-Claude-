@@ -256,6 +256,7 @@ elseif scene == "farm" then
 	local Formulas = loadData("/src/shared/Formulas.luau", "Formulas")
 	local holder = roblox.Instance.new("Model")
 	Models.farmIsland(roblox.CFrame.new(0, 0, 0), FarmCfg, Formulas.zoneCenter, holder)
+	Models.mysticHall(roblox.CFrame.new(0, 0, 0), FarmCfg.Hall, roblox.Color3.fromRGB(110, 210, 255), holder, 13)
 	-- Couleurs telles qu'un joueur à 3 renaissances les voit (vert / rouge / or).
 	for _, p in holder:GetDescendants() do
 		local i = p:GetAttribute("ZoneIndex")
@@ -274,6 +275,9 @@ elseif scene == "street" then
 	local origin = roblox.CFrame.lookAt(V(0, 0, 0), V(0, 0, -1)) -- la rue part vers -Z
 	local holder = roblox.Instance.new("Model")
 	Models.street(origin, cfg, holder)
+	local hallCfg = table.clone(StreetCfg.Hall)
+	hallCfg.Back = -(cfg.Sections * cfg.SectionLength) - 4
+	Models.mysticHall(origin, hallCfg, roblox.Color3.fromRGB(255, 110, 90), holder, 7)
 	dump(holder)
 	for i, kind in StreetCfg.Kinds do
 		dump((Models.enemy(kind, origin * roblox.CFrame.new(-9 + i * 4, 0, -24) * roblox.CFrame.Angles(0, math.pi, 0), kind.Scale, false)))

@@ -7,7 +7,9 @@
 ]]
 
 return {
-	Origin = { 0, 420, 0 }, -- début de la rue (dans le ciel : aucun conflit avec la carte)
+	-- Salle mystique SOUS la carte (invisible depuis la surface) : murs et plafond en faux ciel.
+	Origin = { 0, -160, 0 }, -- début de la rue
+	Hall = { HalfWidth = 19, Front = 26, Back = -404, Height = 34, Floor = -10 },
 	Sections = 10,
 	SectionLength = 40,
 	Width = 26,

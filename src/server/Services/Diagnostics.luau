@@ -53,6 +53,23 @@ function Diagnostics.init()
 end
 
 -- Replace les personnages tombés sous le monde (sécurité contre le vide).
+-- Zones situées sous la carte où le joueur a le droit d'être (salles mystiques).
+local safeZones: { { CFrame: CFrame, Half: Vector3 } } = {}
+
+function Diagnostics.addSafeZone(cf: CFrame, size: Vector3)
+	table.insert(safeZones, { CFrame = cf, Half = size / 2 })
+end
+
+local function inSafeZone(position: Vector3): boolean
+	for _, zone in safeZones do
+		local rel = zone.CFrame:PointToObjectSpace(position)
+		if math.abs(rel.X) <= zone.Half.X and math.abs(rel.Y) <= zone.Half.Y and math.abs(rel.Z) <= zone.Half.Z then
+			return true
+		end
+	end
+	return false
+end
+
 function Diagnostics.startVoidRescue()
 	task.spawn(function()
 		while true do
@@ -60,7 +77,7 @@ function Diagnostics.startVoidRescue()
 			for _, player in Players:GetPlayers() do
 				local character = player.Character
 				local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
-				if root and root.Position.Y < -40 then
+				if root and root.Position.Y < -40 and not inSafeZone(root.Position) then
 					root.AssemblyLinearVelocity = Vector3.zero
 					character:PivotTo(CFrame.new(0, 6, 0))
 				end

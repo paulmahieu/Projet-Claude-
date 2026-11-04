@@ -7,7 +7,9 @@
 ]]
 
 return {
-	Origin = { 0, 300, -260 }, -- île suspendue (aucun conflit avec la carte ni la Rue des boss)
+	-- Salle mystique SOUS la carte (invisible depuis la surface), sous la Rue des boss.
+	Origin = { 0, -260, -260 },
+	Hall = { HalfWidth = 112, Front = 28, Back = -76, Height = 42, Floor = -26 },
 	Portal = { 18.5, 28.5 }, -- portail dans la cour royale, devant le donjon
 	ZoneSize = 22,
 	Gap = 6,

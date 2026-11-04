@@ -644,11 +644,15 @@ test("butin du patron : chances respectées", function()
 	end
 end)
 
-test("rue : dans le ciel, au-dessus des arènes et de la carte", function()
-	assert(Street.Origin[2] > 200, "rue suspendue")
-	for _, boss in Bosses do
-		assert(Street.Origin[2] - 0 > 60, "hors de la hauteur des arènes " .. boss.Id)
+test("rue et champ : salles fermées sous la carte, invisibles depuis la surface", function()
+	for _, cfg in { Street, Farm } do
+		local top = cfg.Origin[2] + cfg.Hall.Height + 2
+		assert(top < -20, "plafond de la salle sous le sol de la carte")
+		assert(cfg.Origin[2] + cfg.Hall.Floor > -480, "au-dessus de la limite de destruction")
 	end
+	local streetBottom = Street.Origin[2] + Street.Hall.Floor - 2
+	local farmTop = Farm.Origin[2] + Farm.Hall.Height + 2
+	assert(farmTop < streetBottom, "les deux salles ne se chevauchent pas")
 	local portal = math.sqrt(Street.Portal[1] ^ 2 + Street.Portal[2] ^ 2)
 	assert(portal < Game.CourtyardApothem - 10, "portail de la rue dans la cour royale")
 	for _, boss in Bosses do

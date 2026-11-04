@@ -7165,4 +7165,271 @@ function Models.machine(kind: string, base: CFrame, level: number): (Model, Base
 	return m, anchor
 end
 
+-- Salle mystique -------------------------------------------------------------------------------
+-- Enveloppe fermée autour de la Rue des boss et du Champ des champions (sous la carte) :
+-- sol d'abîme à cercles runiques, murs de pierre sombre à colonnes, niches lumineuses et
+-- cristaux, plafond en FAUX CIEL (voûte nocturne étoilée, nébuleuses, lune).
+-- `frame` : repère de l'origine (sol de la plateforme à y = 0), -Z = sens de progression.
+-- cfg : { HalfWidth, Front, Back, Height, Floor } ; accent : couleur des runes et cristaux.
+function Models.mysticHall(frame: CFrame, cfg, accent: Color3, parent: Instance, seed: number)
+	local rand = rng(seed)
+	local hw, front, back, height, floorY = cfg.HalfWidth, cfg.Front, cfg.Back, cfg.Height, cfg.Floor
+	local length = front - back
+	local midZ = (front + back) / 2
+	local t = 3
+	local stone = Color3.fromRGB(58, 52, 74)
+	local stoneLight = Color3.fromRGB(86, 78, 108)
+	local trim = Color3.fromRGB(150, 120, 70)
+	local skyColor = Color3.fromRGB(22, 20, 54)
+
+	-- Sol d'abîme et cercles runiques
+	part(
+		parent,
+		"HallFloor",
+		Vector3.new(hw * 2 + t * 2, 2, length + t * 2),
+		frame * CFrame.new(0, floorY - 1, midZ),
+		Color3.fromRGB(26, 22, 40),
+		Enum.Material.Slate
+	)
+	for z = front - 30, back + 20, -60 do
+		for _, x in (if hw > 40 then { -hw * 0.5, 0, hw * 0.5 } else { 0 }) do
+			local c = frame * CFrame.new(x, floorY + 0.06, z)
+			part(
+				parent,
+				"RuneCircle",
+				Vector3.new(0.12, 14, 14),
+				c * VERTICAL,
+				accent,
+				Enum.Material.Neon,
+				{ Shape = Enum.PartType.Cylinder, CanCollide = false, NoShadow = true, Transparency = 0.55 }
+			)
+			part(
+				parent,
+				"RuneCircleCore",
+				Vector3.new(0.14, 12.6, 12.6),
+				c * CFrame.new(0, 0.07, 0) * VERTICAL,
+				Color3.fromRGB(26, 22, 40),
+				Enum.Material.Slate,
+				{ Shape = Enum.PartType.Cylinder, CanCollide = false, NoShadow = true }
+			)
+			for k = 0, 5 do
+				part(
+					parent,
+					"RuneMark",
+					Vector3.new(0.8, 0.16, 2.2),
+					c * CFrame.Angles(0, k * math.pi / 3, 0) * CFrame.new(0, 0.05, -4.2),
+					accent,
+					Enum.Material.Neon,
+					{ CanCollide = false, NoShadow = true }
+				)
+			end
+		end
+	end
+
+	-- Murs (gauche, droite, avant, arrière)
+	local wallH = height - floorY
+	local wallY = floorY + wallH / 2
+	for _, side in { -1, 1 } do
+		part(
+			parent,
+			"HallWall",
+			Vector3.new(t, wallH, length + t * 2),
+			frame * CFrame.new(side * (hw + t / 2), wallY, midZ),
+			stone,
+			Enum.Material.Slate
+		)
+	end
+	for _, z in { front + t / 2, back - t / 2 } do
+		part(
+			parent,
+			"HallWall",
+			Vector3.new(hw * 2 + t * 2 - 0.2, wallH - 0.1, t),
+			frame * CFrame.new(0, wallY, z),
+			stone,
+			Enum.Material.Slate
+		)
+	end
+
+	-- Colonnes, arcs de niche, runes et cristaux le long des murs latéraux
+	local spacing = 24
+	local lightEvery = 2
+	local index = 0
+	for z = front - 8, back + 8, -spacing do
+		index += 1
+		for _, side in { -1, 1 } do
+			local face = frame * CFrame.new(side * hw, 0, z)
+			-- Colonne engagée à chapiteau doré
+			part(
+				parent,
+				"HallColumn",
+				Vector3.new(2.6, wallH - 0.4, 2.2),
+				face * CFrame.new(-side * 1.0, wallY, 0),
+				stoneLight,
+				Enum.Material.Slate
+			)
+			part(
+				parent,
+				"HallColumnCap",
+				Vector3.new(3.2, 1.0, 2.8),
+				face * CFrame.new(-side * 1.15, height - 2.5, 0),
+				trim,
+				Enum.Material.Metal
+			)
+			part(
+				parent,
+				"HallColumnBase",
+				Vector3.new(3.2, 1.2, 2.8),
+				face * CFrame.new(-side * 1.15, 0.6 + (if floorY < -2 then floorY else 0), 0),
+				trim,
+				Enum.Material.Metal
+			)
+			-- Rune verticale lumineuse entre deux colonnes
+			local mid = face * CFrame.new(-side * 0.08, height * 0.45, -spacing / 2)
+			part(
+				parent,
+				"WallRune",
+				Vector3.new(0.12, height * 0.5, 0.5),
+				mid,
+				accent,
+				Enum.Material.Neon,
+				{ CanCollide = false, NoShadow = true }
+			)
+			for k = -1, 1 do
+				part(
+					parent,
+					"WallRuneMark",
+					Vector3.new(0.14, 0.4, 1.6),
+					mid * CFrame.new(0, k * height * 0.14, 0) * CFrame.Angles(math.rad(45), 0, 0),
+					accent,
+					Enum.Material.Neon,
+					{ CanCollide = false, NoShadow = true }
+				)
+			end
+			-- Cristal lumineux sur console (une colonne sur deux)
+			if index % lightEvery == 0 then
+				local console = face * CFrame.new(-side * 2.6, height * 0.62, 0)
+				part(parent, "Console", Vector3.new(2.2, 0.6, 2.2), console, trim, Enum.Material.Metal)
+				local crystal = part(
+					parent,
+					"WallCrystal",
+					Vector3.new(0.9, 2.2, 0.9),
+					console * CFrame.new(0, 1.4, 0) * CFrame.Angles(0, math.rad(45), 0),
+					accent,
+					Enum.Material.Neon,
+					{ CanCollide = false, NoShadow = true }
+				)
+				local light = Instance.new("PointLight")
+				light.Color = accent:Lerp(Color3.new(1, 1, 1), 0.35)
+				light.Range = 30
+				light.Brightness = 1.6
+				light.Shadows = false
+				light.Parent = crystal
+			end
+		end
+	end
+	-- Grands vitraux lumineux aux deux extrémités
+	for _, z in { front, back } do
+		local dir = if z == front then -1 else 1
+		local win = frame * CFrame.new(0, height * 0.5, z + dir * 0.1)
+		part(
+			parent,
+			"EndWindow",
+			Vector3.new(math.min(hw, 14), height * 0.55, 0.2),
+			win,
+			accent:Lerp(Color3.fromRGB(255, 255, 255), 0.2),
+			Enum.Material.Neon,
+			{ CanCollide = false, NoShadow = true, Transparency = 0.35 }
+		)
+		part(
+			parent,
+			"EndWindowFrame",
+			Vector3.new(math.min(hw, 14) + 1.6, height * 0.55 + 1.6, 0.4),
+			win * CFrame.new(0, 0, -dir * 0.15),
+			trim,
+			Enum.Material.Metal
+		)
+	end
+
+	-- Plafond : faux ciel nocturne, bordé d'une corniche dorée (4 bandes, sans superposition)
+	part(
+		parent,
+		"FalseSky",
+		Vector3.new(hw * 2 + t * 2, 2, length + t * 2),
+		frame * CFrame.new(0, height + 1, midZ),
+		skyColor,
+		Enum.Material.SmoothPlastic
+	)
+	for _, side in { -1, 1 } do
+		part(
+			parent,
+			"SkyCornice",
+			Vector3.new(1.4, 1, length),
+			frame * CFrame.new(side * (hw - 0.7), height - 0.5, midZ),
+			trim,
+			Enum.Material.Metal,
+			{ CanCollide = false }
+		)
+		part(
+			parent,
+			"SkyCornice",
+			Vector3.new(hw * 2 - 2.8, 1.1, 1.4),
+			frame * CFrame.new(0, height - 0.55, if side < 0 then back + 0.7 else front - 0.7),
+			trim,
+			Enum.Material.Metal,
+			{ CanCollide = false }
+		)
+	end
+	local starCount = math.floor(hw * 2 * length / 18)
+	for _ = 1, starCount do
+		local x = (rand() - 0.5) * (hw * 2 - 4)
+		local z = back + 2 + rand() * (length - 4)
+		local d = 0.2 + rand() * 0.45
+		part(
+			parent,
+			"Star",
+			Vector3.new(d, d, d),
+			frame * CFrame.new(x, height - 0.05 - rand() * 0.4, z),
+			if rand() < 0.75 then Color3.fromRGB(255, 250, 235) else accent:Lerp(Color3.new(1, 1, 1), 0.5),
+			Enum.Material.Neon,
+			{ Shape = Enum.PartType.Ball, CanCollide = false, NoShadow = true }
+		)
+	end
+	-- Nébuleuses (voiles colorés translucides) et lune
+	for n = 1, math.max(3, math.floor(length / 60)) do
+		local x = (rand() - 0.5) * hw * 1.2
+		local z = back + rand() * length
+		local nebula = part(
+			parent,
+			"Nebula",
+			Vector3.new(14 + rand() * 18, 0.2, 10 + rand() * 14),
+			frame * CFrame.new(x, height - 1.2 - n % 3 * 0.15, z) * CFrame.Angles(0, rand() * math.pi, 0),
+			if n % 2 == 0 then Color3.fromRGB(150, 80, 220) else Color3.fromRGB(60, 170, 200),
+			Enum.Material.Neon,
+			{ CanCollide = false, NoShadow = true, Transparency = 0.82 }
+		)
+		local mesh = Instance.new("SpecialMesh")
+		mesh.MeshType = Enum.MeshType.Sphere
+		mesh.Parent = nebula
+	end
+	local moon = frame * CFrame.new(hw * 0.35, height - 0.6, front - length * 0.3)
+	part(
+		parent,
+		"Moon",
+		Vector3.new(0.3, 9, 9),
+		moon * VERTICAL,
+		Color3.fromRGB(235, 232, 210),
+		Enum.Material.Neon,
+		{ Shape = Enum.PartType.Cylinder, CanCollide = false, NoShadow = true }
+	)
+	part(
+		parent,
+		"MoonShade",
+		Vector3.new(0.32, 7.6, 7.6),
+		moon * CFrame.new(1.4, -0.14, 1.2) * VERTICAL,
+		skyColor,
+		Enum.Material.SmoothPlastic,
+		{ Shape = Enum.PartType.Cylinder, CanCollide = false, NoShadow = true }
+	)
+end
+
 return Models
