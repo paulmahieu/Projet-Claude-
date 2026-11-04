@@ -59,7 +59,7 @@ end
 
 type LandState = {
 	Folder: Folder,
-	Floors: { [string]: { Floor: BasePart, Fallow: Folder } },
+	Floors: { [string]: { Floor: BasePart, Fallow: Folder, Paving: Folder? } },
 	Barriers: { [number]: Model },
 	SlotsFolder: Folder,
 	Slots: { [string]: { Model: Model, Level: number, Label: TextLabel, Prompt: ProximityPrompt, Gem: BasePart? } },
@@ -67,6 +67,7 @@ type LandState = {
 }
 
 local states: { [any]: LandState } = {} -- par parcelle
+local paveArea -- défini plus bas
 local lastAction: { [Player]: number } = {}
 
 local function slotCFrame(plot, slot): CFrame
@@ -134,6 +135,43 @@ local function buildLand(plot)
 		state.Barriers[i] = barrier
 	end
 	states[plot] = state
+end
+
+-- Dalles de pavés du pack importé (« 02_Sol_pave ») sur une extension achetée : modules de 8
+-- studs alignés sur l'extension. Ignoré si le décor n'est pas importé ou s'il coûterait trop de
+-- pièces (pack non fusionné : voir docs/IMPORT_DECORS.md).
+local PAVING_BUDGET = 700
+
+function paveArea(plot, rect, parent: Instance): Folder?
+	if not Models.hasDecor("02_Sol_pave") then
+		return nil
+	end
+	local sx, sz = rect[2] - rect[1], rect[4] - rect[3]
+	local nx, nz = math.max(1, math.floor(sx / 8 + 0.5)), math.max(1, math.floor(sz / 8 + 0.5))
+	local perTile = Models.decorPartCount("02_Sol_pave") + 1
+	if nx * nz * perTile > PAVING_BUDGET then
+		warn(
+			string.format(
+				"[LandService] Pavés : %d pièces pour une extension, trop coûteux (fusionner le modèle).",
+				nx * nz * perTile
+			)
+		)
+		return nil
+	end
+	local folder = Instance.new("Folder")
+	folder.Name = "Paving"
+	folder.Parent = parent
+	local stepX, stepZ = sx / nx, sz / nz
+	for i = 0, nx - 1 do
+		for j = 0, nz - 1 do
+			local cf = plot.CFrame * CFrame.new(rect[1] + (i + 0.5) * stepX, 0, rect[3] + (j + 0.5) * stepZ)
+			local tile = Models.decor("02_Sol_pave", cf, { Scale = stepZ / 8, StretchX = stepX / stepZ })
+			if tile then
+				tile.Parent = folder
+			end
+		end
+	end
+	return folder
 end
 
 local function clearSlots(state: LandState)
@@ -225,6 +263,12 @@ local function render(plot, data)
 		entry.Floor.Color = if isOwned then PAVED else FALLOW
 		entry.Floor.Material = if isOwned then Enum.Material.Cobblestone else Enum.Material.Grass
 		entry.Fallow.Parent = if isOwned then nil else entry.Floor.Parent
+		if isOwned and not entry.Paving then
+			entry.Paving = paveArea(plot, area.Rect, entry.Floor.Parent :: Instance)
+		elseif not isOwned and entry.Paving then
+			entry.Paving:Destroy()
+			entry.Paving = nil
+		end
 	end
 	for i, opening in Land.Openings do
 		local open = owned[opening.A] and owned[opening.B]

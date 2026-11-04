@@ -1,0 +1,3 @@
+Dossier des modèles importés dans Roblox Studio (fichiers .rbxm).
+Chaque fichier « Nom.rbxm » devient ServerStorage > Assets > Nom dans le jeu construit par Rojo.
+Exemple : 01_Mur_pierre.rbxm. Voir docs/IMPORT_DECORS.md.

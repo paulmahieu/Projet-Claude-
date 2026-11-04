@@ -30,6 +30,16 @@ return {
 			Model = "Willow",
 		},
 		Rock = { Material = "Stone", Amount = 2, RespawnSeconds = 35, HoldDuration = 1.0, Label = "Rocher" },
+		-- Minerai de cristal (pack de décors) : source régulière de cristal, rare et lente.
+		CrystalOre = {
+			Material = "Crystal",
+			Amount = 2,
+			Bonus = { Stone = 1 },
+			RespawnSeconds = 90,
+			HoldDuration = 1.6,
+			Label = "Minerai de cristal",
+			Model = "CrystalOre",
+		},
 	},
 
 	-- Zone de récolte : entre chaque paire de parcelles, à cette distance du centre.
@@ -47,5 +57,7 @@ return {
 	Specials = {
 		{ "AncientTree", { 1, 3, 5, 7 }, 0, -17 },
 		{ "ArcaneWillow", { 2, 6 }, 0, -18 },
+		{ "CrystalOre", { 4, 8 }, 0, -16 },
+		{ "CrystalOre", { 1, 5 }, 15, 1 },
 	},
 }

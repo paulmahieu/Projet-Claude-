@@ -1376,7 +1376,9 @@ test("Arbres : rares plus précieux, moins nombreux, matériaux connus", functio
 	for _, special in Harvest.Specials do
 		local node = Harvest.Nodes[special[1]]
 		assert(node and node.Model, special[1] .. " : nœud ou modèle manquant")
-		assert(node.Amount > common.Amount, special[1] .. " : doit rapporter plus qu'un arbre commun")
+		if node.Material == common.Material then
+			assert(node.Amount > common.Amount, special[1] .. " : doit rapporter plus qu'un arbre commun")
+		end
 		assert(node.RespawnSeconds > common.RespawnSeconds, special[1] .. " : doit repousser plus lentement")
 		assert(#special[2] < Game.PlotCount, special[1] .. " : doit être plus rare qu'un bosquet sur deux")
 		for _, grove in special[2] do
@@ -1502,6 +1504,45 @@ test("Projet Rojo : pas de propriété Position (ignorée par Rojo, cause de sol
 	local ground = project.tree.Workspace.Ground["$properties"]
 	local y = ground.CFrame.CFrame.position[2] + ground.Size[2] / 2
 	eq(y, 0, "dessus du sol à y = 0")
+end)
+
+test("Pack de décors : dimensions du manifeste, collisions, battants du portail", function()
+	local Decors = require("../src/shared/Config/Decors")
+	local expected = {
+		["01_Mur_pierre"] = { 12, 7, 2 },
+		["02_Sol_pave"] = { 8, 0.5, 8 },
+		["03_Rocher"] = { 5, 4, 4 },
+		["04_Palissade"] = { 8, 6, 1 },
+		["05_Portail"] = { 10, 9, 2 },
+		["06_Caisse"] = { 3, 3, 3 },
+		["07_Tonneau"] = { 3, 4, 3 },
+		["08_Torche"] = { 2, 6, 2 },
+		["09_Buisson"] = { 4, 3, 3 },
+		["10_Minerai_cristal"] = { 4, 4, 3 },
+	}
+	eq(#Decors.List, 10)
+	for _, def in Decors.List do
+		local e = expected[def.Id]
+		assert(e, def.Id .. " : absent du manifeste")
+		eq(def.Size[1], e[1], def.Id .. " largeur")
+		eq(def.Size[2], e[2], def.Id .. " hauteur")
+		eq(def.Size[3], e[3], def.Id .. " profondeur")
+		assert(def.Collision and (def.Collision.None or #def.Collision.Boxes > 0), def.Id .. " : collision")
+		for _, box in (def.Collision.Boxes or {}) do
+			for axis = 1, 3 do
+				assert(box.Size[axis] <= e[axis] + 0.01, def.Id .. " : boîte plus grande que le décor")
+			end
+		end
+	end
+	-- Mur et pavés : modules entiers (alignement sans décalage) ; battants séparés du portail.
+	for _, def in Decors.List do
+		if def.Id == "05_Portail" then
+			eq(#def.Doors, 2)
+			eq(def.Doors[1].Part, "Porte_gauche")
+			eq(def.Doors[2].Part, "Porte_droite")
+			assert(def.Doors[1].OpenAngle * def.Doors[2].OpenAngle < 0, "battants opposés")
+		end
+	end
 end)
 
 print(string.format("\n%d réussi(s), %d échec(s)", passed, failed))

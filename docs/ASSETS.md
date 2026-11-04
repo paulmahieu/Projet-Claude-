@@ -1,5 +1,7 @@
 # Utiliser des modèles de la boutique Roblox (Creator Store)
 
+> Pack de décors Blender du créateur : voir **docs/IMPORT_DECORS.md**.
+
 Le jeu fonctionne entièrement avec des modèles générés par le code. Tu peux remplacer
 n'importe lequel par un modèle importé (arbres, rochers, bâtiments, boss) **sans toucher au code** :
 il suffit de respecter un nom.

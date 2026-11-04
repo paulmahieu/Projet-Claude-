@@ -215,6 +215,15 @@ Le code vit dans `src/` (fichiers texte versionnés). **Rojo** le synchronise en
 | 78 | Orque / Golem / Chevalier | L'orque traverse l'Esquive ; le golem te repousse ; le chevalier fait pousser des ronces qui ralentissent. |
 | 79 | Boss (étapes 10, 20…60) | Roi gobelin : renforts ; Gardien : champ de racines ; Hydre : 3 crachats ; Titan : pluie de glace ; Dragon : souffle en ligne ; Colosse : onde du néant (s'éloigner) + rochers. |
 
+### Pack de décors (avant et après import, voir docs/IMPORT_DECORS.md)
+
+| # | Action | Attendu |
+|---|---|---|
+| 80 | Devant l'entrée de ton bastion, maintenir **E** sur « Fermer la porte » | Les deux battants pivotent et ferment l'entrée ; un joueur d'un autre groupe ne peut pas l'utiliser. |
+| 81 | Cour du château | 12 torches sur pied éclairent les allées. |
+| 82 | Bosquets 1, 4, 5, 8 | Minerai de cristal : maintenir E → +2 Cristal, +1 Pierre ; les cristaux repoussent en 90 s. |
+| 83 | Après import du pack dans ServerStorage > Assets | Caisses, tonneaux, rochers, buissons, torches, portail, palissade, murets et pavés des extensions remplacés par les modèles Blender, à la bonne taille. |
+
 ### À plusieurs : *Test → Clients and Servers → 2 ou 3 joueurs → Start*
 
 | # | Action | Attendu |

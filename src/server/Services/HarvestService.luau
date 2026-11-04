@@ -97,8 +97,9 @@ local nodeCount = 0
 local function buildNode(kindName: string, cf: CFrame, parent: Instance)
 	local kind = Harvest.Nodes[kindName]
 	nodeCount += 1
-	local node = if kind.Model
-		then Models.tree(cf, kind.Model, nodeCount) -- arbre rare (ancestral, saule arcanique)
+	local node = if kind.Model == "CrystalOre"
+		then Models.crystalOre(cf, nodeCount)
+		elseif kind.Model then Models.tree(cf, kind.Model, nodeCount) -- arbre rare (ancestral, saule arcanique)
 		elseif
 			kindName == "Tree"
 		then Models.tree(cf, (nodeCount % 4) + 1, nodeCount) -- chêne, sapin, bouleau, érable

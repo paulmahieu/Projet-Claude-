@@ -58,8 +58,28 @@
           ],
           "CFrame": {
             "CFrame": {
-              "position": [0, 0.5, 0],
-              "orientation": [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+              "position": [
+                0,
+                0.5,
+                0
+              ],
+              "orientation": [
+                [
+                  1,
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  1,
+                  0
+                ],
+                [
+                  0,
+                  0,
+                  1
+                ]
+              ]
             }
           },
           "Neutral": true,
@@ -79,8 +99,28 @@
           ],
           "CFrame": {
             "CFrame": {
-              "position": [0, -1, 0],
-              "orientation": [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+              "position": [
+                0,
+                -1,
+                0
+              ],
+              "orientation": [
+                [
+                  1,
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  1,
+                  0
+                ],
+                [
+                  0,
+                  0,
+                  1
+                ]
+              ]
             }
           },
           "Material": "Grass",
@@ -92,6 +132,12 @@
           "TopSurface": "Smooth",
           "BottomSurface": "Smooth"
         }
+      }
+    },
+    "ServerStorage": {
+      "$className": "ServerStorage",
+      "Assets": {
+        "$path": "assets"
       }
     }
   }

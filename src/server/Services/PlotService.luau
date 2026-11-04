@@ -13,6 +13,7 @@
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Game = require(Shared.Config.Game)
 local Structures = require(Shared.Config.Structures)
+local Decors = require(Shared.Config.Decors)
 local Materials = require(Shared.Config.Materials)
 local Formulas = require(Shared.Formulas)
 
@@ -43,11 +44,15 @@ export type Plot = {
 	StationsFolder: Folder,
 	Core: Model,
 	Pedestals: { [string]: { Part: BasePart, Gem: BasePart, Prompt: ProximityPrompt, Label: TextLabel } },
+	Doors: { any },
+	DoorsOpen: boolean,
+	DoorPrompt: ProximityPrompt?,
 }
 
 local plots: { Plot } = {}
 local plotByGroup: { [string]: Plot } = {}
 local buildHandler: ((Player, string) -> ())? = nil
+local gateHandler: ((Player, any) -> ())? = nil
 local refreshHooks = {} -- fn(plot, groupData) après chaque mise à jour (terrain, machines)
 local releaseHooks = {} -- fn(plot) quand une parcelle est libérée
 local world: Folder
@@ -181,6 +186,16 @@ local function buildWorld()
 	decor.Parent = world
 	Models.hubPlaza(decor, 28)
 	Models.hubDecor(decor, 28)
+	-- Torches sur pied le long des allées de la cour (hors œufs et portails).
+	for _, spot in { { 0, 20 }, { 0, 40 }, { 180, 20 }, { 180, 40 }, { 90, 20 }, { 270, 40 } } do
+		local a = math.rad(spot[1])
+		local dir = Vector3.new(math.cos(a), 0, math.sin(a))
+		local perp = Vector3.new(-dir.Z, 0, dir.X)
+		for _, side in { -1, 1 } do
+			local pos = dir * spot[2] + perp * side * 5.2 + Vector3.new(0, 1, 0)
+			Models.torch(CFrame.lookAt(pos, Vector3.new(0, 1, 0)), decor)
+		end
+	end
 	-- Quelques buissons entre le hub et les parcelles (positions fixes, rendu reproductible).
 	for i = 1, Game.PlotCount * 2 do
 		local angle = (i / (Game.PlotCount * 2)) * math.pi * 2 + 0.2
@@ -280,6 +295,34 @@ local function buildPlot(index: number, parent: Instance): Plot
 	decor.Name = "Decor"
 	decor.Parent = model
 	Models.plotDecor(cf * CFrame.new(0, FLOOR_TOP, 0), Game.PlotSize, decor)
+	-- Portail d'entrée à deux battants : décor importé « 05_Portail » (agrandi à la largeur de
+	-- l'entrée) ou battants générés dans le portail existant. Ouverts par défaut.
+	local gateBase = cf * CFrame.new(0, FLOOR_TOP, -HALF + 0.7)
+	local gateModel, doors = Models.decor("05_Portail", gateBase, { Scale = 1.2 })
+	if gateModel then
+		gateModel.Parent = decor
+	else
+		doors = Models.gateDoors(gateBase, 12, 7, decor)
+	end
+	doors = doors or {}
+	Models.setDoors(doors, 1)
+	local doorAnchor = makePart({
+		Name = "GatePromptAnchor",
+		Size = Vector3.new(0.4, 0.4, 0.4),
+		CFrame = gateBase * CFrame.new(0, 3.5, 0),
+		Transparency = 1,
+		CanCollide = false,
+		CanQuery = false,
+		Parent = model,
+	})
+	local doorPrompt = Instance.new("ProximityPrompt")
+	doorPrompt.ActionText = "Fermer la porte"
+	doorPrompt.ObjectText = "Portail du bastion"
+	doorPrompt.HoldDuration = 0.3
+	doorPrompt.MaxActivationDistance = 9
+	doorPrompt.RequiresLineOfSight = false
+	doorPrompt.Enabled = false -- activée quand un groupe occupe la parcelle
+	doorPrompt.Parent = doorAnchor
 
 	-- Noyau d'Éther : cœur protégé du bastion, affiché seulement quand la parcelle est occupée.
 	local core, crystal = Models.etherCore(cf * CFrame.new(0, FLOOR_TOP, 8))
@@ -304,6 +347,9 @@ local function buildPlot(index: number, parent: Instance): Plot
 		PedestalsFolder = folder("Pedestals"),
 		StationsFolder = folder("Stations"),
 		Pedestals = {},
+		Doors = doors,
+		DoorsOpen = true,
+		DoorPrompt = doorPrompt,
 	}
 end
 
@@ -412,6 +458,40 @@ function PlotService.setBuildHandler(fn: (Player, string) -> ())
 	buildHandler = fn
 end
 
+-- fn(player, plot) : demande d'ouvrir / fermer le portail (permissions vérifiées par l'appelant).
+function PlotService.setGateHandler(fn: (Player, any) -> ())
+	gateHandler = fn
+end
+
+-- Ouvre ou ferme le portail d'un bastion (rotation des battants autour de leurs charnières).
+function PlotService.setGate(plot: Plot, open: boolean)
+	if plot.DoorsOpen == open then
+		return
+	end
+	plot.DoorsOpen = open
+	if plot.DoorPrompt then
+		plot.DoorPrompt.ActionText = if open then "Fermer la porte" else "Ouvrir la porte"
+	end
+	local from = if open then 0 else 1
+	local to = if open then 1 else 0
+	task.spawn(function()
+		local start = os.clock()
+		local duration = 0.7
+		while true do
+			local t = math.clamp((os.clock() - start) / duration, 0, 1)
+			if plot.DoorsOpen ~= open then
+				return -- inversé entre-temps
+			end
+			local eased = 1 - (1 - t) ^ 2
+			Models.setDoors(plot.Doors, from + (to - from) * eased)
+			if t >= 1 then
+				return
+			end
+			task.wait()
+		end
+	end)
+end
+
 function PlotService.all(): { Plot }
 	return plots
 end
@@ -443,6 +523,9 @@ function PlotService.claim(groupId: string, groupData): Plot?
 			plot.Sign.Text = groupData.Name
 			plot.Core.Parent = plot.Model
 			plotByGroup[groupId] = plot
+			if plot.DoorPrompt then
+				plot.DoorPrompt.Enabled = true
+			end
 			PlotService.refresh(groupId, groupData)
 			return plot
 		end
@@ -461,6 +544,10 @@ function PlotService.release(groupId: string)
 	plot.Sign.Text = "Parcelle libre"
 	plot.CoreLabel.Text = ""
 	plot.Core.Parent = nil -- conservé pour la prochaine attribution
+	PlotService.setGate(plot, true)
+	if plot.DoorPrompt then
+		plot.DoorPrompt.Enabled = false
+	end
 	plot.StructuresFolder:ClearAllChildren()
 	plot.PedestalsFolder:ClearAllChildren()
 	plot.StationsFolder:ClearAllChildren()
@@ -487,6 +574,7 @@ function PlotService.init()
 	if not ok then
 		warn("[PlotService] Éclairage : " .. tostring(err))
 	end
+	Models.setDecors(Decors) -- décors importés (ServerStorage > Assets), sinon décors générés
 	buildWorld()
 	-- Le point d'apparition du hub existe : celui de secours ne sert plus. Le sol
 	-- (Workspace.Ground, fichier du projet) existe toujours, même si un script échoue.
@@ -498,7 +586,15 @@ function PlotService.init()
 	plotsFolder.Name = "Plots"
 	plotsFolder.Parent = world
 	for i = 1, Game.PlotCount do
-		table.insert(plots, buildPlot(i, plotsFolder))
+		local plot = buildPlot(i, plotsFolder)
+		table.insert(plots, plot)
+		if plot.DoorPrompt then
+			plot.DoorPrompt.Triggered:Connect(function(player)
+				if gateHandler and plot.GroupId then
+					gateHandler(player, plot)
+				end
+			end)
+		end
 	end
 end
 

@@ -82,7 +82,23 @@ function BuildService.tryBuild(player: Player, structureId: string)
 	end
 end
 
+-- Portail du bastion : un membre autorisé à construire l'ouvre ou le ferme.
+function BuildService.toggleGate(player: Player, plot)
+	local now = os.clock()
+	if (lastAttempt[player] or 0) + 0.5 > now then
+		return
+	end
+	lastAttempt[player] = now
+	local group, err = GroupService.authorize(player, "Build")
+	if not group or plot.GroupId ~= group.Id then
+		Notifier.send(player, err or "Seuls les membres du bastion peuvent ouvrir ou fermer ce portail.", "error")
+		return
+	end
+	PlotService.setGate(plot, not plot.DoorsOpen)
+end
+
 function BuildService.init()
+	PlotService.setGateHandler(BuildService.toggleGate)
 	PlotService.setBuildHandler(BuildService.tryBuild)
 	game:GetService("Players").PlayerRemoving:Connect(function(player)
 		lastAttempt[player] = nil

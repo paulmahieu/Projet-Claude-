@@ -42,6 +42,9 @@ local C = {
 }
 Models.Colors = C
 
+-- Fiches du pack de décors importé (Config/Decors), transmises par Models.setDecors.
+local decorDefs: { [string]: any } = {}
+
 -- Marbre et or des éléments « célestes » (portails, point d'accueil).
 local MARBLE = Color3.fromRGB(236, 232, 222)
 local MARBLE_SHADE = Color3.fromRGB(205, 200, 190)
@@ -628,6 +631,20 @@ function Models.tree(base: CFrame, variant: number | string, seed: number): Mode
 end
 
 function Models.rock(base: CFrame, seed: number): Model
+	-- Rocher du pack importé : tout disparaît à la récolte sauf des gravats générés.
+	local decor = Models.decor("03_Rocher", base * CFrame.Angles(0, seed * 2.3, 0), { Depletable = true })
+	if decor then
+		local rubble = part(
+			decor,
+			"Rubble",
+			Vector3.new(1.4, 0.7, 1.2),
+			base * CFrame.new(-2, 0.35, 1.4),
+			C.StoneDark,
+			Enum.Material.Rock
+		)
+		decor.PrimaryPart = rubble
+		return decor
+	end
 	local imported = Models.override("Rock", base * CFrame.Angles(0, seed * 2.3, 0))
 	if imported then
 		for _, inst in imported:GetDescendants() do
@@ -953,8 +970,37 @@ end
 
 -- Palissade : rondins aux pointes taillées, hauteurs alternées, traverses cloutées à
 -- l'extérieur et chemin de ronde à l'intérieur (-Z = vers le centre de la parcelle).
+-- Rangée de modules d'un décor répété (mur, palissade) de `from` à `to` sur l'axe X de `base` :
+-- nombre entier de modules, légèrement étirés pour tomber juste (aucun décalage). Retourne
+-- false si le décor n'est pas importé.
+local function decorRow(id: string, parent: Instance, base: CFrame, from: number, to: number, scale: number?): boolean
+	if not Models.hasDecor(id) then
+		return false
+	end
+	local def = decorDefs[id]
+	local moduleW = def.Size[1] * (scale or 1)
+	local length = to - from
+	local count = math.max(1, math.floor(length / moduleW + 0.5))
+	local stretch = length / (count * moduleW)
+	for i = 0, count - 1 do
+		local x = from + (i + 0.5) * moduleW * stretch
+		local piece = Models.decor(id, base * CFrame.new(x, 0, 0), { Scale = scale, StretchX = stretch })
+		if piece then
+			piece.Parent = parent
+		end
+	end
+	return true
+end
+Models.decorRow = decorRow
+
 builders.Palisade = function(m: Model, base: CFrame, size: Vector3)
 	local sx, h = size.X, size.Y
+	-- Palissade du pack importé : modules de 8 studs, passage central conservé.
+	if Models.hasDecor("04_Palissade") then
+		decorRow("04_Palissade", m, base, -sx / 2, -6, size.Y / 6)
+		decorRow("04_Palissade", m, base, 6, sx / 2, size.Y / 6)
+		return
+	end
 	local d = 2.4
 	local count = math.floor(sx / d)
 	local gap = 6 -- passage central vers les extensions de terrain (Config/Land)
@@ -1631,6 +1677,11 @@ end
 
 function Models.bush(base: CFrame, parent: Instance, seed: number)
 	local s = 1 + jitter(seed, 0.25)
+	local decor = Models.decor("09_Buisson", base * CFrame.Angles(0, seed * 1.9, 0), { Scale = s })
+	if decor then
+		decor.Parent = parent
+		return
+	end
 	ball(parent, "Bush", 3 * s, base * CFrame.new(0, 1 * s, 0), C.Leaf2, Enum.Material.Grass)
 	ball(parent, "Bush", 2.2 * s, base * CFrame.new(1.2, 0.8 * s, 0.6), C.Leaf1, Enum.Material.Grass)
 end
@@ -1770,6 +1821,319 @@ function Models.override(assetName: string, base: CFrame, footprint: Vector3?): 
 	local cf, size = m:GetBoundingBox()
 	local offset = base.Position - cf.Position
 	m:PivotTo(m:GetPivot() + Vector3.new(offset.X, offset.Y + size.Y / 2, offset.Z))
+	return m
+end
+
+-- Pack de décors importé (Blender) ---------------------------------------------------------------
+-- Les fiches (Config/Decors) sont transmises par le serveur (Models.setDecors). Un décor n'est
+-- utilisé que s'il a été importé dans ServerStorage > Assets ; sinon chaque fonction garde son
+-- modèle généré. Aucun identifiant d'asset n'est écrit dans le code.
+
+function Models.setDecors(cfg)
+	decorDefs = { __tolerance = cfg.Tolerance }
+	for _, def in cfg.List do
+		decorDefs[def.Id] = def
+	end
+end
+
+local function decorSource(id: string): Model?
+	local folder = assetFolder()
+	local source = folder and folder:FindFirstChild(id)
+	if source and source:IsA("Model") and decorDefs[id] then
+		return source
+	end
+	return nil
+end
+
+function Models.hasDecor(id: string): boolean
+	return decorSource(id) ~= nil
+end
+
+-- Nombre de pièces d'un décor importé (pour limiter les répétitions coûteuses).
+function Models.decorPartCount(id: string): number
+	local source = decorSource(id)
+	local n = 0
+	if source then
+		for _, inst in source:GetDescendants() do
+			if inst:IsA("BasePart") then
+				n += 1
+			end
+		end
+	end
+	return n
+end
+
+local function matchesAny(name: string, prefixes: { string }?): boolean
+	for _, prefix in prefixes or {} do
+		if name:sub(1, #prefix) == prefix then
+			return true
+		end
+	end
+	return false
+end
+
+--[[
+	Place un décor importé, le dessous centré sur `base` (-Z de `base` = face avant).
+	opts : { Scale = nombre (taille relative), StretchX = nombre (étirement d'un module répété),
+	         Depletable = true (pièces marquées pour la récolte) }
+	Retourne le modèle et, pour le portail, la liste des battants { Hinge, Parts, OpenAngle }.
+	Contrôles : scripts supprimés ; taille comparée au manifeste et corrigée ; maillages ancrés et
+	non collisionnables ; collisions par boîtes invisibles ; lumière de la torche.
+]]
+function Models.decor(id: string, base: CFrame, opts): (Model?, { any }?)
+	local source = decorSource(id)
+	if not source then
+		return nil, nil
+	end
+	opts = opts or {}
+	local def = decorDefs[id]
+	local m = source:Clone()
+	for _, inst in m:GetDescendants() do
+		if inst:IsA("LuaSourceContainer") then
+			inst:Destroy()
+		elseif inst:IsA("BasePart") then
+			inst.Anchored = true
+			inst.CanCollide = false
+			inst.CanTouch = false
+			if opts.Depletable and (def.Depletable == nil or matchesAny(inst.Name, def.Depletable)) then
+				inst:SetAttribute("Depletable", true)
+			end
+		end
+	end
+	-- Échelle : la largeur attendue fait foi (unités FBX parfois mal interprétées à l'import).
+	local _, size = m:GetBoundingBox()
+	local expected = Vector3.new(def.Size[1], def.Size[2], def.Size[3])
+	local fix = expected.X / math.max(size.X, 0.01)
+	local scale = (opts.Scale or 1) * (if math.abs(fix - 1) > (decorDefs.__tolerance or 0.12) then fix else 1)
+	if math.abs(scale - 1) > 0.001 then
+		m:ScaleTo(m:GetScale() * scale)
+	end
+	local unit = (opts.Scale or 1) -- échelle des données du manifeste (charnières, boîtes)
+	-- Étirement horizontal d'un module répété (murs, palissades, pavés) : aligne les modules.
+	local stretch = opts.StretchX or 1
+	local boxCf, boxSize = m:GetBoundingBox()
+	if math.abs(stretch - 1) > 0.001 then
+		for _, inst in m:GetDescendants() do
+			if inst:IsA("BasePart") then
+				local rel = boxCf:ToObjectSpace(inst.CFrame)
+				inst.Size = Vector3.new(inst.Size.X * stretch, inst.Size.Y, inst.Size.Z)
+				inst.CFrame = boxCf * (CFrame.new(rel.X * stretch, rel.Y, rel.Z) * (rel - rel.Position))
+			end
+		end
+		boxCf, boxSize = m:GetBoundingBox()
+	end
+	-- Pose : le dessous du décor sur `base`.
+	local bottom = boxCf * CFrame.new(0, -boxSize.Y / 2, 0)
+	local delta = base * bottom:Inverse()
+	for _, inst in m:GetDescendants() do
+		if inst:IsA("BasePart") then
+			inst.CFrame = delta * inst.CFrame
+		end
+	end
+	local scaleV = Vector3.new(unit * stretch, unit, unit)
+	-- Collisions simples (boîtes invisibles)
+	for i, box in (def.Collision and def.Collision.Boxes) or {} do
+		local collider = part(
+			m,
+			"Collision" .. i,
+			Vector3.new(box.Size[1], box.Size[2], box.Size[3]) * scaleV,
+			base * CFrame.new(Vector3.new(box.Offset[1], box.Offset[2], box.Offset[3]) * scaleV),
+			C.Stone,
+			nil,
+			{ Transparency = 1 }
+		)
+		collider.CastShadow = false
+	end
+	-- Lumière (torche)
+	if def.Light then
+		local holder = part(
+			m,
+			"LightAnchor",
+			Vector3.new(0.2, 0.2, 0.2),
+			base * CFrame.new(0, def.Light.Height * unit, 0),
+			C.Stone,
+			nil,
+			{
+				Transparency = 1,
+				CanCollide = false,
+			}
+		)
+		local light = Instance.new("PointLight")
+		light.Color = Color3.fromRGB(def.Light.Color[1], def.Light.Color[2], def.Light.Color[3])
+		light.Range = def.Light.Range
+		light.Brightness = 1.6
+		light.Parent = holder
+	end
+	-- Battants du portail : chaque battant tourne autour de sa charnière avec sa boîte.
+	local doors = nil
+	if def.Doors then
+		doors = {}
+		for _, d in def.Doors do
+			local leaf = m:FindFirstChild(d.Part, true)
+			if leaf and leaf:IsA("BasePart") then
+				local hinge = base * CFrame.new(Vector3.new(d.Hinge[1], d.Hinge[2], d.Hinge[3]) * scaleV)
+				local w = d.Size[1] * unit * stretch
+				local towards = if d.Hinge[1] < 0 then 1 else -1
+				local collider = part(
+					m,
+					"DoorCollision",
+					Vector3.new(w, d.Size[2] * unit, d.Size[3] * unit),
+					hinge * CFrame.new(towards * w / 2, d.Size[2] * unit / 2, 0),
+					C.Wood,
+					nil,
+					{ Transparency = 1 }
+				)
+				table.insert(doors, {
+					Hinge = hinge,
+					OpenAngle = d.OpenAngle,
+					Parts = {
+						{ Part = leaf, Offset = hinge:ToObjectSpace(leaf.CFrame) },
+						{ Part = collider, Offset = hinge:ToObjectSpace(collider.CFrame) },
+					},
+				})
+			end
+		end
+	end
+	m.Name = def.Name
+	return m, doors
+end
+
+-- Ouvre (t = 1) ou ferme (t = 0) des battants rendus par Models.decor ou Models.gateDoors.
+function Models.setDoors(doors, t: number)
+	for _, door in doors do
+		local rot = door.Hinge * CFrame.Angles(0, math.rad(door.OpenAngle * t), 0)
+		for _, entry in door.Parts do
+			entry.Part.CFrame = rot * entry.Offset
+		end
+	end
+end
+
+-- Battants générés (sans pack importé) pour une ouverture de largeur `width` centrée sur `base`.
+function Models.gateDoors(base: CFrame, width: number, height: number, parent: Instance)
+	local doors = {}
+	for _, side in { -1, 1 } do
+		local hinge = base * CFrame.new(side * width / 2, 0, 0)
+		local w = width / 2 - 0.1
+		local towards = -side
+		local leaf = part(
+			parent,
+			"GateLeaf",
+			Vector3.new(w, height, 0.45),
+			hinge * CFrame.new(towards * w / 2, height / 2, 0),
+			C.Wood,
+			Enum.Material.WoodPlanks
+		)
+		local entries = { { Part = leaf, Offset = hinge:ToObjectSpace(leaf.CFrame) } }
+		for _, y in { height * 0.25, height * 0.75 } do
+			local band = part(
+				parent,
+				"GateLeafBand",
+				Vector3.new(w - 0.2, 0.35, 0.6),
+				hinge * CFrame.new(towards * w / 2, y, 0),
+				C.Metal,
+				Enum.Material.Metal,
+				{ NoShadow = true }
+			)
+			table.insert(entries, { Part = band, Offset = hinge:ToObjectSpace(band.CFrame) })
+		end
+		table.insert(doors, { Hinge = hinge, OpenAngle = side * 70, Parts = entries })
+	end
+	return doors
+end
+
+-- Torche sur pied : décor importé « 08_Torche » ou version générée (socle, manche, brasero,
+-- flammes, lumière).
+function Models.torch(base: CFrame, parent: Instance): Model
+	local imported = Models.decor("08_Torche", base)
+	if imported then
+		imported.Parent = parent
+		return imported
+	end
+	local m = newModel("Torche")
+	part(m, "Socle", Vector3.new(1.8, 0.7, 1.8), base * CFrame.new(0, 0.35, 0), C.StoneDark, Enum.Material.Slate)
+	column(m, "Manche", 4.2, 0.45, base * CFrame.new(0, 0.7, 0), C.WoodDark, Enum.Material.Wood)
+	part(m, "Brasero", Vector3.new(1.2, 0.45, 1.2), base * CFrame.new(0, 5.1, 0), C.StoneDark, Enum.Material.Metal)
+	for i, f in
+		{
+			{ 0.15, 0, -0.1, Color3.fromRGB(230, 60, 40), 1.1 },
+			{ -0.15, 0, 0.05, Color3.fromRGB(255, 140, 40), 0.9 },
+			{ 0, 0, 0.2, Color3.fromRGB(255, 210, 70), 0.6 },
+		}
+	do
+		local flame = part(
+			m,
+			"Flamme" .. i,
+			Vector3.new(0.35, f[5], 0.35),
+			base * CFrame.new(f[1], 5.35 + f[5] / 2, f[3]) * CFrame.Angles(0, math.rad(45), 0),
+			f[4],
+			Enum.Material.Neon,
+			{ CanCollide = false, NoShadow = true }
+		)
+		if i == 1 then
+			local light = Instance.new("PointLight")
+			light.Color = Color3.fromRGB(255, 170, 90)
+			light.Range = 18
+			light.Brightness = 1.6
+			light.Parent = flame
+		end
+	end
+	m.Parent = parent
+	return m
+end
+
+-- Minerai de cristal (ressource) : décor importé « 10_Minerai_cristal » ou version générée.
+-- Les cristaux disparaissent à la récolte ; le socle de roche reste.
+function Models.crystalOre(base: CFrame, seed: number): Model
+	local turn = base * CFrame.Angles(0, seed * 1.3, 0)
+	local imported = Models.decor("10_Minerai_cristal", turn, { Depletable = true })
+	if imported then
+		local anchorPart =
+			part(imported, "OreAnchor", Vector3.new(0.4, 0.4, 0.4), turn * CFrame.new(0, 1, 0), C.Stone, nil, {
+				Transparency = 1,
+				CanCollide = false,
+			})
+		imported.PrimaryPart = anchorPart
+		return imported
+	end
+	local m = newModel("Minerai de cristal")
+	local rock = part(
+		m,
+		"Roche",
+		Vector3.new(3.6, 1.2, 2.8),
+		turn * CFrame.new(0, 0.6, 0) * CFrame.Angles(0, 0.3, 0),
+		C.StoneDark,
+		Enum.Material.Slate
+	)
+	part(
+		m,
+		"RocheHaut",
+		Vector3.new(2.6, 0.6, 2),
+		turn * CFrame.new(0.2, 1.3, 0) * CFrame.Angles(0, -0.4, 0.06),
+		C.StoneDark:Lerp(C.Stone, 0.3),
+		Enum.Material.Slate
+	)
+	for i, c in { { 0.1, -0.15, 2.7, 0 }, { -0.95, 0.12, 1.8, -0.32 }, { 1.16, 0.08, 1.6, 0.35 } } do
+		local crystal = turn * CFrame.new(c[1], 1.2, c[2]) * CFrame.Angles(0, 0, c[4])
+		part(
+			m,
+			"Cristal" .. i,
+			Vector3.new(0.55, c[3], 0.55),
+			crystal * CFrame.new(0, c[3] / 2, 0) * CFrame.Angles(0, math.rad(45), 0),
+			Color3.fromRGB(70, 190, 210),
+			Enum.Material.Neon,
+			{ CanCollide = false, NoShadow = true, Depletable = true }
+		)
+		part(
+			m,
+			"CristalPointe" .. i,
+			Vector3.new(0.4, 0.4, 0.4),
+			crystal * CFrame.new(0, c[3], 0) * CFrame.Angles(math.rad(45), math.rad(45), 0),
+			Color3.fromRGB(150, 235, 245),
+			Enum.Material.Neon,
+			{ CanCollide = false, NoShadow = true, Depletable = true }
+		)
+	end
+	m.PrimaryPart = rock
 	return m
 end
 
@@ -5512,6 +5876,11 @@ end
 -- Accessoires ------------------------------------------------------------------------------
 
 function Models.barrel(parent, base: CFrame, color: Color3?)
+	local decor = Models.decor("07_Tonneau", base, { Scale = 0.65 })
+	if decor then
+		decor.Parent = parent
+		return
+	end
 	local wood = color or C.Wood
 	column(parent, "Barrel", 2.4, 1.9, base, wood, Enum.Material.WoodPlanks)
 	column(
@@ -5548,6 +5917,11 @@ function Models.barrel(parent, base: CFrame, color: Color3?)
 end
 
 function Models.crate(parent, base: CFrame, size: number)
+	local decor = Models.decor("06_Caisse", base, { Scale = size / 3 })
+	if decor then
+		decor.Parent = parent
+		return
+	end
 	-- Arêtes et cerclages légèrement en saillie (aucune face au même niveau que la caisse).
 	part(
 		parent,
@@ -6617,52 +6991,64 @@ function Models.plotDecor(base: CFrame, plotSize: number, parent: Instance)
 			end
 		end
 	end
-	-- Portail : piliers à chapiteau doré, arc de claveaux, torches
-	for _, sx in { -1, 1 } do
-		local pillar = base * CFrame.new(sx * (gate / 2 + 1), 0, -half + t / 2)
-		part(
+	-- Portail : piliers à chapiteau doré, arc de claveaux, torches (remplacé par le portail du
+	-- pack importé « 05_Portail » quand il existe : voir PlotService).
+	if not Models.hasDecor("05_Portail") then
+		for _, sx in { -1, 1 } do
+			local pillar = base * CFrame.new(sx * (gate / 2 + 1), 0, -half + t / 2)
+			part(
+				parent,
+				"GatePillar",
+				Vector3.new(2, 7.5, 2),
+				pillar * CFrame.new(0, 3.75, 0),
+				WALL_DARK,
+				Enum.Material.Cobblestone
+			)
+			part(
+				parent,
+				"GatePillarCap",
+				Vector3.new(2.6, 0.5, 2.6),
+				pillar * CFrame.new(0, 7.75, 0),
+				GOLD,
+				Enum.Material.Metal
+			)
+			local torch = pillar * CFrame.new(0, 5, -1.2)
+			part(parent, "Sconce", Vector3.new(0.5, 1, 0.5), torch, C.WoodDark, Enum.Material.Wood)
+			part(
+				parent,
+				"Flame",
+				Vector3.new(0.6, 0.8, 0.6),
+				torch * CFrame.new(0, 0.9, 0),
+				Color3.fromRGB(255, 160, 70),
+				Enum.Material.Neon,
+				{
+					CanCollide = false,
+					NoShadow = true,
+				}
+			)
+		end
+		arch(
 			parent,
-			"GatePillar",
-			Vector3.new(2, 7.5, 2),
-			pillar * CFrame.new(0, 3.75, 0),
-			WALL_DARK,
-			Enum.Material.Cobblestone
+			base * CFrame.new(0, 7.2, -half + t / 2),
+			gate / 2 + 1,
+			1.4,
+			2,
+			11,
+			WALL_LIGHT,
+			Enum.Material.Slate
 		)
 		part(
 			parent,
-			"GatePillarCap",
-			Vector3.new(2.6, 0.5, 2.6),
-			pillar * CFrame.new(0, 7.75, 0),
+			"GateKeystone",
+			Vector3.new(1.4, 1.4, 2.2),
+			base * CFrame.new(0, 7.2 + gate / 2 + 1.9, -half + t / 2) * CFrame.Angles(0, 0, math.rad(45)),
 			GOLD,
-			Enum.Material.Metal
-		)
-		local torch = pillar * CFrame.new(0, 5, -1.2)
-		part(parent, "Sconce", Vector3.new(0.5, 1, 0.5), torch, C.WoodDark, Enum.Material.Wood)
-		part(
-			parent,
-			"Flame",
-			Vector3.new(0.6, 0.8, 0.6),
-			torch * CFrame.new(0, 0.9, 0),
-			Color3.fromRGB(255, 160, 70),
-			Enum.Material.Neon,
+			Enum.Material.Metal,
 			{
-				CanCollide = false,
 				NoShadow = true,
 			}
 		)
 	end
-	arch(parent, base * CFrame.new(0, 7.2, -half + t / 2), gate / 2 + 1, 1.4, 2, 11, WALL_LIGHT, Enum.Material.Slate)
-	part(
-		parent,
-		"GateKeystone",
-		Vector3.new(1.4, 1.4, 2.2),
-		base * CFrame.new(0, 7.2 + gate / 2 + 1.9, -half + t / 2) * CFrame.Angles(0, 0, math.rad(45)),
-		GOLD,
-		Enum.Material.Metal,
-		{
-			NoShadow = true,
-		}
-	)
 	-- Allée dallée de l'entrée au Noyau d'Éther, bordée de pierre
 	local alleyLength = half + 2
 	local alley = base * CFrame.new(0, 0.06, -half + alleyLength / 2)
@@ -6753,6 +7139,17 @@ end
 
 -- Muret d'une extension entre deux points locaux (même style que l'enceinte du bastion).
 function Models.landWall(base: CFrame, x1: number, z1: number, x2: number, z2: number, parent: Instance)
+	-- Mur du pack importé : modules de 12 studs alignés sur le segment.
+	if Models.hasDecor("01_Mur_pierre") then
+		local length = math.max(math.abs(x2 - x1), math.abs(z2 - z1))
+		local mid = base * CFrame.new((x1 + x2) / 2, 0, (z1 + z2) / 2)
+		local cf = if math.abs(x2 - x1) >= math.abs(z2 - z1) then mid else mid * CFrame.Angles(0, math.rad(90), 0)
+		local folder = Instance.new("Folder")
+		folder.Name = "MurPierre"
+		folder.Parent = parent
+		decorRow("01_Mur_pierre", folder, cf, -length / 2, length / 2, 0.55)
+		return
+	end
 	-- Hauteur et épaisseur légèrement différentes selon le pan : aux angles, les murs qui se
 	-- croisent n'ont aucune face au même niveau (pas de scintillement).
 	local variant = math.floor(math.abs(x1 * 3 + z1 * 7 + x2 + z2 * 5)) % 3

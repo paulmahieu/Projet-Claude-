@@ -54,7 +54,27 @@ end
 local scene = process.args[2] or "base"
 local function at(x, z) return roblox.CFrame.new(x, 0, z) end
 local V = roblox.Vector3.new
-if scene == "enemies" then
+if scene == "decors" then
+	-- Nouveautés liées au pack : torche, minerai de cristal, portail du bastion à battants.
+	local GameCfg = loadData("/src/shared/Config/Game.luau", "Game")
+	local holder = roblox.Instance.new("Model")
+	local floor = roblox.Instance.new("Part")
+	floor.Size = V(GameCfg.PlotSize, 1, GameCfg.PlotSize)
+	floor.CFrame = roblox.CFrame.new(0, 0.5, 0)
+	floor.Color = roblox.Color3.fromRGB(150, 142, 128)
+	floor.Parent = holder
+	local base = roblox.CFrame.new(0, 1, 0)
+	Models.plotDecor(base, GameCfg.PlotSize, holder)
+	local gateBase = base * roblox.CFrame.new(0, 0, -GameCfg.PlotSize / 2 + 0.7)
+	local doors = Models.gateDoors(gateBase, 12, 7, holder)
+	Models.setDoors(doors, tonumber(process.args[3] or "1") or 1)
+	dump(holder)
+	local t = roblox.Instance.new("Model")
+	Models.torch(base * roblox.CFrame.new(-8, 0, -36), t)
+	Models.torch(base * roblox.CFrame.new(8, 0, -36), t)
+	dump(t)
+	dump(Models.crystalOre(base * roblox.CFrame.new(-14, 0, -30), 3))
+elseif scene == "enemies" then
 	-- Un groupe d'ennemis par image (argument 3) : petits, frontieres, elites, regionaux, majeurs.
 	local StreetCfg = loadData("/src/shared/Config/Street.luau", "Street")
 	local groups = {
