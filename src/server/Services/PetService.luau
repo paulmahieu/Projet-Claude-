@@ -12,7 +12,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Formulas = require(Shared.Formulas)
 local Pets = require(Shared.Config.Pets)
-local Rebirth = require(Shared.Config.Rebirth)
 local Texts = require(Shared.Config.Texts)
 
 local ProfileService = require(script.Parent.ProfileService)
@@ -46,7 +45,7 @@ function PetService.snapshot(player: Player)
 	return {
 		Pets = profile.Pets,
 		Equipped = profile.EquippedPets,
-		Slots = Formulas.petSlots(profile.Rebirths, Rebirth),
+		Slots = ProfileService.petSlots(player),
 		Size = Pets.InventorySize,
 	}
 end
@@ -102,11 +101,13 @@ function PetService.hatch(player: Player, eggId: string)
 
 	-- Débit et ajout dans la même modification du profil (aucune attente entre les deux).
 	profile.Gold -= egg.Cost
-	local petId = Formulas.rollEgg(egg, rng:NextNumber())
+	-- Chance de l'arbre : favorise les raretés Rare et plus (probabilités affichées en conséquence).
+	local luck = ProfileService.treeStat(player, "Luck")
+	local petId = Formulas.rollEgg(Formulas.luckyEgg(egg, Pets, luck), rng:NextNumber())
 	local uid = profile.NextPetUid
 	profile.NextPetUid += 1
 	table.insert(profile.Pets, { Uid = uid, PetId = petId })
-	if #profile.EquippedPets < Formulas.petSlots(profile.Rebirths, Rebirth) then
+	if #profile.EquippedPets < ProfileService.petSlots(player) then
 		table.insert(profile.EquippedPets, uid)
 	end
 	push(player)
@@ -132,7 +133,7 @@ function PetService.grant(player: Player, petId: string): boolean
 	local uid = profile.NextPetUid
 	profile.NextPetUid += 1
 	table.insert(profile.Pets, { Uid = uid, PetId = petId })
-	if #profile.EquippedPets < Formulas.petSlots(profile.Rebirths, Rebirth) then
+	if #profile.EquippedPets < ProfileService.petSlots(player) then
 		table.insert(profile.EquippedPets, uid)
 	end
 	push(player)
@@ -151,7 +152,7 @@ function PetService.toggleEquip(player: Player, uid: number)
 	if index then
 		table.remove(profile.EquippedPets, index)
 	else
-		if #profile.EquippedPets >= Formulas.petSlots(profile.Rebirths, Rebirth) then
+		if #profile.EquippedPets >= ProfileService.petSlots(player) then
 			return { ok = false, msg = "Tous les emplacements sont pris (la renaissance en débloque)." }
 		end
 		table.insert(profile.EquippedPets, uid)
@@ -160,12 +161,22 @@ function PetService.toggleEquip(player: Player, uid: number)
 	return { ok = true }
 end
 
+function PetService.unequipAll(player: Player)
+	local profile, err = guard(player)
+	if not profile then
+		return err
+	end
+	table.clear(profile.EquippedPets)
+	push(player)
+	return { ok = true, msg = "Compagnons retirés." }
+end
+
 function PetService.equipBest(player: Player)
 	local profile, err = guard(player)
 	if not profile then
 		return err
 	end
-	profile.EquippedPets = Formulas.bestPets(Pets, profile.Pets, Formulas.petSlots(profile.Rebirths, Rebirth))
+	profile.EquippedPets = Formulas.bestPets(Pets, profile.Pets, ProfileService.petSlots(player))
 	push(player)
 	return { ok = true, msg = "Meilleurs compagnons équipés." }
 end

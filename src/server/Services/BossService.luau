@@ -21,7 +21,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Formulas = require(Shared.Formulas)
 local Bosses = require(Shared.Config.Bosses)
 local Combat = require(Shared.Config.Combat)
-local Pets = require(Shared.Config.Pets)
+local Tree = require(Shared.Config.Tree)
 local Training = require(Shared.Config.Training)
 local Economy = require(Shared.Config.Economy)
 local Materials = require(Shared.Config.Materials)
@@ -121,10 +121,6 @@ local function arenaOf(player: Player): Arena?
 	return nil
 end
 
-local function petMult(player: Player): number
-	return Formulas.petMultiplier(Pets, ProfileService.equippedPetIds(player))
-end
-
 local function formatTime(seconds: number): string
 	seconds = math.max(0, math.ceil(seconds))
 	return string.format("%d:%02d", seconds // 60, seconds % 60)
@@ -203,14 +199,16 @@ local function grantRewards(arena: Arena)
 			profile.Level, profile.TrainXp =
 				Formulas.addXp(profile.Level, profile.TrainXp, def.Rewards.Personal.Xp, Training)
 			profile.BossKills[def.Id] = (profile.BossKills[def.Id] or 0) + 1
+			local trophies = ProfileService.addTrophies(player, Tree.TrophyRewards.BossVictory[def.Id] or 20)
 			ProfileService.sync(player)
 			Notifier.send(
 				player,
 				string.format(
-					"Victoire contre %s ! +%s or, +%s XP",
+					"Victoire contre %s ! +%s or, +%s XP, +%d trophées",
 					def.Name,
 					Formulas.formatNumber(def.Rewards.Personal.Gold),
-					Formulas.formatNumber(def.Rewards.Personal.Xp)
+					Formulas.formatNumber(def.Rewards.Personal.Xp),
+					trophies
 				),
 				"reward"
 			)
@@ -398,7 +396,11 @@ local function tickArena(arena: Arena, now: number)
 			applyDamage(
 				arena,
 				player,
-				Formulas.hitDamage(ProfileService.power(player), Combat.AutoAttack.DamageMult, petMult(player))
+				Formulas.hitDamage(
+					ProfileService.power(player),
+					Combat.AutoAttack.DamageMult,
+					ProfileService.damageMultiplier(player)
+				)
 			)
 			if arena.State ~= "Fighting" then
 				return
@@ -469,7 +471,11 @@ function BossService.useSkill(player: Player, skillId: string)
 		return { ok = false, msg = "Trop loin du boss." }
 	end
 	ready[skillId] = now + skill.Cooldown
-	applyDamage(arena, player, Formulas.hitDamage(ProfileService.power(player), skill.DamageMult, petMult(player)))
+	applyDamage(
+		arena,
+		player,
+		Formulas.hitDamage(ProfileService.power(player), skill.DamageMult, ProfileService.damageMultiplier(player))
+	)
 	return { ok = true, cooldown = skill.Cooldown }
 end
 

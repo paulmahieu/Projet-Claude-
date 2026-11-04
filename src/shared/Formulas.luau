@@ -162,18 +162,6 @@ function Formulas.validParticipants(damageByUser, maxHealth: number, ratio: numb
 	return list
 end
 
--- Niveau d'une amélioration personnelle (0 si absente).
-function Formulas.upgradeLevel(profile, upgradeId: string): number
-	return (profile.Upgrades and profile.Upgrades[upgradeId]) or 0
-end
-
-function Formulas.upgradeCost(def, currentLevel: number): number?
-	if currentLevel >= def.MaxLevel then
-		return nil
-	end
-	return math.floor(def.BaseCost * def.Growth ^ currentLevel)
-end
-
 -- Bonus du bastion sur les tapis (somme des TrainingMult des constructions possédées).
 function Formulas.groupTrainingMult(structureDefs, owned): number
 	local bonus = 0
@@ -306,6 +294,98 @@ function Formulas.harvestBonus(structureDefs, owned, materialId: string): number
 		end
 	end
 	return bonus
+end
+
+-- Arbre d'améliorations ----------------------------------------------------------------
+
+-- Somme d'une statistique sur les nœuds possédés. owned : { [NodeId] = true }.
+function Formulas.treeStat(treeCfg, owned, stat: string): number
+	local total = 0
+	if not owned then
+		return 0
+	end
+	for _, node in treeCfg.Nodes do
+		if owned[node.Id] and node.Stat == stat then
+			total += node.Value
+		end
+	end
+	return total
+end
+
+-- Nœud précédent dans la branche (nil = premier nœud, accessible directement).
+function Formulas.treePrevious(treeCfg, nodeId: string): string?
+	local previous = nil
+	for _, node in treeCfg.Nodes do
+		if node.Id == nodeId then
+			for _, other in treeCfg.Nodes do
+				if other.Branch == node.Branch and other.Id == nodeId then
+					return previous
+				elseif other.Branch == node.Branch then
+					previous = other.Id
+				end
+			end
+		end
+	end
+	return nil
+end
+
+-- Peut-on acheter ce nœud ? wallet : { Gold, Trophies }. Retourne ok, raison.
+function Formulas.canBuyNode(treeCfg, owned, nodeId: string, wallet): (boolean, string?)
+	local node = nil
+	for _, n in treeCfg.Nodes do
+		if n.Id == nodeId then
+			node = n
+		end
+	end
+	if not node then
+		return false, "Unknown"
+	end
+	if owned[nodeId] then
+		return false, "Owned"
+	end
+	local previous = Formulas.treePrevious(treeCfg, nodeId)
+	if previous and not owned[previous] then
+		return false, "Requires"
+	end
+	for currency, amount in node.Cost do
+		if (wallet[currency] or 0) < amount then
+			return false, "Cost"
+		end
+	end
+	return true, nil
+end
+
+-- Paramètres hors ligne effectifs (plafond et taux augmentés par l'arbre).
+function Formulas.offlineConfig(baseCfg, treeCfg, owned)
+	return {
+		MaxSeconds = baseCfg.MaxSeconds + Formulas.treeStat(treeCfg, owned, "OfflineHours") * 3600,
+		Rate = baseCfg.Rate + Formulas.treeStat(treeCfg, owned, "OfflineRate"),
+		RecapMinSeconds = baseCfg.RecapMinSeconds,
+	}
+end
+
+-- Œuf avec la chance appliquée : poids des raretés Rare et plus multipliés par (1 + luck).
+function Formulas.luckyEgg(egg, petsCfg, luck: number)
+	if luck <= 0 then
+		return egg
+	end
+	local rarityOf = {}
+	for _, def in petsCfg.List do
+		rarityOf[def.Id] = def.Rarity
+	end
+	local weights = {}
+	for id, w in egg.Weights do
+		local order = petsCfg.Rarities[rarityOf[id]].Order
+		weights[id] = if order >= 2 then w * (1 + luck) else w
+	end
+	local copy = table.clone(egg)
+	copy.Weights = weights
+	return copy
+end
+
+-- Trophées gagnés (arrondis vers le haut) avec le bonus de l'arbre.
+function Formulas.trophies(base: number, trophyMult: number): number
+	return math.ceil(base * (1 + trophyMult))
 end
 
 -- Champ des champions ------------------------------------------------------------------

@@ -5,7 +5,7 @@
 
 local ProfileSchema = {}
 
-ProfileSchema.VERSION = 2
+ProfileSchema.VERSION = 3
 
 function ProfileSchema.template()
 	return {
@@ -14,7 +14,8 @@ function ProfileSchema.template()
 		Gold = 0,
 		Level = 1,
 		TrainXp = 0,
-		Upgrades = {}, -- { [UpgradeId] = niveau }
+		Tree = {}, -- arbre d'améliorations : { [NodeId] = true }
+		Trophies = 0, -- monnaie de combat (Rue des boss, boss)
 		-- Rendement AFK durable (par seconde) au dernier instant comptabilisé, hors bonus temporaires.
 		-- Sert au calcul hors ligne : les améliorations obtenues pendant l'absence ne s'appliquent pas.
 		AfkRate = { Xp = 0, Gold = 0 },
@@ -28,7 +29,7 @@ function ProfileSchema.template()
 		NextPetUid = 1,
 		BossKills = {}, -- { [BossId] = nombre de victoires validées }
 		Street = { Stage = 1, Best = 0, Kills = 0 }, -- Rue des boss : étape en cours, meilleure, ennemis vaincus
-		Stats = { FirstJoin = 0, PlaySeconds = 0, Harvests = 0 },
+		Stats = { FirstJoin = 0, PlaySeconds = 0, Harvests = 0, TrophiesEarned = 0 },
 	}
 end
 
@@ -69,6 +70,19 @@ local MIGRATIONS = {
 		data.Receipts = nil
 		data.Buildings = nil -- les bâtiments appartiennent désormais au groupe
 		data.Version = 2
+	end,
+	-- v2 -> v3 : améliorations « Concentration » / « Robustesse » converties en nœuds de l'arbre.
+	[2] = function(data)
+		data.Tree = data.Tree or {}
+		local upgrades = data.Upgrades or {}
+		for i = 1, math.min(upgrades.Focus or 0, 5) do
+			data.Tree["Focus" .. i] = true
+		end
+		for i = 1, math.min(upgrades.Toughness or 0, 3) do
+			data.Tree["Tough" .. i] = true
+		end
+		data.Upgrades = nil
+		data.Version = 3
 	end,
 }
 

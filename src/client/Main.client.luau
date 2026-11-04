@@ -20,7 +20,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Formulas = require(Shared.Formulas)
 local Structures = require(Shared.Config.Structures)
 local Materials = require(Shared.Config.Materials)
-local Upgrades = require(Shared.Config.Upgrades)
+local Tree = require(Shared.Config.Tree)
 local Products = require(Shared.Config.Products)
 local Texts = require(Shared.Config.Texts)
 local Pets = require(Shared.Config.Pets)
@@ -205,7 +205,11 @@ local function refreshHud()
 	goldLabel.Text = "Or : " .. Formulas.formatNumber(player:GetAttribute("Gold") or 0)
 	levelLabel.Text =
 		string.format("Niveau %d · %s / %s XP", level, Formulas.formatNumber(xp), Formulas.formatNumber(xpNext))
-	powerLabel.Text = "Puissance " .. tostring(player:GetAttribute("Power") or 10)
+	powerLabel.Text = string.format(
+		"Puissance %s · Trophées %s",
+		Formulas.formatNumber(player:GetAttribute("Power") or 10),
+		Formulas.formatNumber(player:GetAttribute("Trophies") or 0)
+	)
 	TweenService:Create(xpFill, TweenInfo.new(0.25), { Size = UDim2.fromScale(math.clamp(xp / xpNext, 0, 1), 1) })
 		:Play()
 	objectiveLabel.Text = objectiveText()
@@ -253,6 +257,7 @@ for _, name in
 		"ProfileState",
 		"GroupState",
 		"FarmZone",
+		"Trophies",
 	}
 do
 	player:GetAttributeChangedSignal(name):Connect(refreshHud)
@@ -520,25 +525,159 @@ local function renderGroup()
 end
 
 -- Onglet Améliorations
+-- Onglet Arbre d'améliorations (or + trophées)
+local selectedNode = nil
+
+local function ownedNodes()
+	local set = {}
+	for id in string.gmatch(tostring(player:GetAttribute("TreeOwned") or ""), "[^,]+") do
+		set[id] = true
+	end
+	return set
+end
+
+local function nodeEffect(node): string
+	local value = if Tree.PercentStats[node.Stat] then math.floor(node.Value * 100 + 0.5) else node.Value
+	return string.format(Tree.StatText[node.Stat], value)
+end
+
+local function costText(cost): string
+	local parts = {}
+	if cost.Gold then
+		table.insert(parts, Formulas.formatNumber(cost.Gold) .. " or")
+	end
+	if cost.Trophies then
+		table.insert(parts, Formulas.formatNumber(cost.Trophies) .. " trophées")
+	end
+	return table.concat(parts, " + ")
+end
+
 local function renderUpgrades()
-	heading("Améliorations personnelles (or)")
-	for _, def in Upgrades do
-		local level = player:GetAttribute("Upg_" .. def.Id) or 0
-		local cost = Formulas.upgradeCost(def, level)
-		local r = row(64)
-		rowText(r, string.format("%s · niv. %d/%d", def.Name, level, def.MaxLevel), def.Effect, 130)
-		rightButton(
-			r,
-			if cost then Formulas.formatNumber(cost) .. " or" else "Maximum",
-			if cost then C.Free else C.Disabled,
-			1,
-			if cost
-				then function()
-					request("BuyUpgrade", { Id = def.Id })
-					renderTab()
-				end
-				else nil
+	local owned = ownedNodes()
+	heading(
+		string.format(
+			"Or : %s · Trophées : %s",
+			Formulas.formatNumber(player:GetAttribute("Gold") or 0),
+			Formulas.formatNumber(player:GetAttribute("Trophies") or 0)
 		)
+	)
+
+	-- Arbre en étoile : une branche par direction, du centre vers l'extérieur.
+	order += 1
+	local size = 520
+	local holder = Ui.create("Frame", {
+		LayoutOrder = order,
+		Size = UDim2.new(1, -8, 0, size),
+		BackgroundColor3 = Color3.fromRGB(22, 18, 30),
+		ClipsDescendants = true,
+		Parent = content,
+	}, { Ui.corner(10) })
+	local canvas = Ui.create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(size, size),
+		BackgroundTransparency = 1,
+		Parent = holder,
+	})
+	-- Mise à l'échelle sur les écrans étroits (téléphone en portrait).
+	local scale = Ui.create("UIScale", { Parent = canvas })
+	local function fit()
+		scale.Scale = math.min(1, holder.AbsoluteSize.X / size)
+	end
+	holder:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
+	task.defer(fit)
+
+	local center = size / 2
+	Ui.create("TextLabel", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromOffset(center, center),
+		Size = UDim2.fromOffset(64, 64),
+		BackgroundColor3 = Color3.fromRGB(200, 40, 50),
+		Font = Enum.Font.FredokaOne,
+		TextScaled = true,
+		TextColor3 = C.Text,
+		Text = "Arbre",
+		Parent = canvas,
+	}, { Ui.corner(32), Ui.padding(6) })
+
+	local romans = { "I", "II", "III", "IV", "V" }
+	local firstButton = nil
+	for _, branch in Tree.Branches do
+		local color = Color3.fromRGB(branch.Color[1], branch.Color[2], branch.Color[3])
+		local angle = math.rad(branch.Angle)
+		local index = 0
+		for _, node in Tree.Nodes do
+			if node.Branch == branch.Id then
+				index += 1
+				local dist = 30 + index * 42
+				local x, y = center + math.cos(angle) * dist, center + math.sin(angle) * dist
+				local isOwned = owned[node.Id] == true
+				local previous = Formulas.treePrevious(Tree, node.Id)
+				local available = not isOwned and (previous == nil or owned[previous] == true)
+				local button = Ui.button({
+					AnchorPoint = Vector2.new(0.5, 0.5),
+					Position = UDim2.fromOffset(x, y),
+					Size = UDim2.fromOffset(38, 38),
+					BackgroundColor3 = if isOwned
+						then color
+						elseif available then color:Lerp(C.Panel, 0.55)
+						else C.Disabled,
+					TextSize = 13,
+					Text = if isOwned then "✔" elseif available then romans[index] or "+" else "?",
+					Parent = canvas,
+				}, function()
+					selectedNode = node.Id
+					renderTab()
+				end)
+				button:FindFirstChildOfClass("UICorner").CornerRadius = UDim.new(0.5, 0)
+				if selectedNode == node.Id then
+					Ui.create("UIStroke", { Color = Color3.new(1, 1, 1), Thickness = 3, Parent = button })
+				end
+				firstButton = firstButton or button
+			end
+		end
+		-- Nom de la branche au bout
+		local dist = 30 + (index + 1) * 42
+		Ui.label({
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromOffset(center + math.cos(angle) * dist, center + math.sin(angle) * dist),
+			Size = UDim2.fromOffset(90, 18),
+			Font = Enum.Font.GothamBold,
+			TextSize = 12,
+			TextXAlignment = Enum.TextXAlignment.Center,
+			TextColor3 = color,
+			Text = branch.Name,
+			Parent = canvas,
+		})
+	end
+
+	-- Détail du nœud sélectionné
+	local node = nil
+	for _, n in Tree.Nodes do
+		if n.Id == selectedNode then
+			node = n
+		end
+	end
+	local r = row(70)
+	if not node then
+		rowText(
+			r,
+			"Choisis une amélioration dans l'arbre.",
+			"Or : branches de progression · Trophées : gagnés en combat (Rue des boss, boss).",
+			0
+		)
+		return
+	end
+	local previous = Formulas.treePrevious(Tree, node.Id)
+	local status = if owned[node.Id]
+		then "Acquis"
+		elseif previous and not owned[previous] then "Verrouillé : achète d'abord l'amélioration précédente"
+		else "Coût : " .. costText(node.Cost)
+	rowText(r, node.Name .. " · " .. nodeEffect(node), status, 130)
+	if not owned[node.Id] and (previous == nil or owned[previous]) then
+		rightButton(r, "Acheter", C.Free, 1, function()
+			request("BuyNode", { Id = node.Id })
+		end)
 	end
 end
 
@@ -577,6 +716,11 @@ local function renderShop()
 		end)
 		rightButton(r, "+10 000 or", C.info, 2, function()
 			request("DevBoost", { Kind = "Gold" })
+		end)
+		local r2 = row(56)
+		rowText(r2, "Trophées", nil, 120)
+		rightButton(r2, "+500 trophées", C.info, 1, function()
+			request("DevBoost", { Kind = "Trophies" })
 		end)
 	end
 	heading("Boutique du royaume")
@@ -635,9 +779,12 @@ local function renderPets()
 		)
 	)
 	local top = row(52)
-	rowText(top, "Les œufs sont au point d'accueil.", "Renaissance 1 et 3 : emplacements supplémentaires.", 130)
+	rowText(top, "Œufs au point d'accueil.", "Emplacements : renaissances 1 et 3, arbre « Équiper ».", 236)
 	rightButton(top, "Équiper le meilleur", C.Robux, 1, function()
 		request("EquipBestPets", {})
+	end)
+	rightButton(top, "Tout retirer", C.Danger, 2, function()
+		request("UnequipAllPets", {})
 	end)
 
 	local list = table.clone(state.Pets)
@@ -723,7 +870,7 @@ end
 local TABS = {
 	{ Id = "Group", Label = "Groupe", Render = renderGroup },
 	{ Id = "Pets", Label = "Compagnons", Render = renderPets },
-	{ Id = "Upgrades", Label = "Améliorer", Render = renderUpgrades },
+	{ Id = "Upgrades", Label = "Arbre", Render = renderUpgrades },
 	{ Id = "Rebirth", Label = "Renaissance", Render = renderRebirth },
 	{ Id = "Shop", Label = "Boutique", Render = renderShop },
 }
@@ -828,9 +975,9 @@ local function rerenderGroupTab()
 end
 Players.PlayerAdded:Connect(rerenderGroupTab)
 Players.PlayerRemoving:Connect(rerenderGroupTab)
-for _, name in { "Upg_Focus", "Upg_Toughness", "Gold" } do
+for _, name in { "TreeOwned", "Trophies" } do
 	player:GetAttributeChangedSignal(name):Connect(function()
-		if menuOpen and currentTab == "Upgrades" and name ~= "Gold" then
+		if menuOpen and currentTab == "Upgrades" then
 			renderTab()
 		end
 	end)
@@ -905,7 +1052,11 @@ local function openEgg(eggId: string)
 		end
 	end
 	-- Probabilités affichées avant l'achat.
-	for i, entry in Formulas.eggOdds(egg) do
+	local luck = player:GetAttribute("Luck") or 0
+	if luck > 0 then
+		eggTitle.Text = egg.Name .. string.format(" (chance +%d %%)", math.floor(luck * 100 + 0.5))
+	end
+	for i, entry in Formulas.eggOdds(Formulas.luckyEgg(egg, Pets, luck)) do
 		local def = petById[entry.Id]
 		Ui.label({
 			LayoutOrder = i,

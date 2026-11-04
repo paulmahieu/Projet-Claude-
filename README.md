@@ -48,7 +48,7 @@ Le code vit dans `src/` (fichiers texte versionnés). **Rojo** le synchronise en
 | Commande | Rôle |
 |---|---|
 | `rojo build -o build/BastionsDEther.rbxl` | Régénère la place |
-| `lune run tests/shared.spec` | 53 tests automatiques (formules, verrous, groupes, hors ligne, configuration) |
+| `lune run tests/shared.spec` | 57 tests automatiques (formules, verrous, groupes, hors ligne, configuration) |
 | `selene src tests` | Analyse statique (variables non définies, erreurs courantes) |
 | `stylua src tests` | Formatage |
 
@@ -106,6 +106,18 @@ Le code vit dans `src/` (fichiers texte versionnés). **Rojo** le synchronise en
 | 32 | Faire une renaissance (menu) puis revenir | La zone x2 passe au vert et rapporte deux fois plus. |
 | 33 | Zone royale | « réservée au pass » (le pass n'est pas encore créé : décision en attente). |
 
+### Arbre d'améliorations, trophées, classements
+
+| # | Action | Attendu |
+|---|---|---|
+| 34 | Menu → **Arbre** | Arbre en étoile : 7 branches (Concentration, Force, Compagnons, Hors ligne, Trophées, Vitesse, Robustesse). Vert/couleur = acquis (✔), chiffre = achetable, « ? » = verrouillé. |
+| 35 | Toucher un nœud | Détail en bas : effet, coût (or ou trophées), bouton « Acheter ». |
+| 36 | Gagner des trophées dans la Rue des boss | Trophées affichés à côté de la Puissance ; « +N trophées » à chaque étape. Test rapide : Boutique → « +500 trophées ». |
+| 37 | Acheter « Équiper I » | Un emplacement de compagnon de plus (onglet Compagnons). |
+| 38 | Acheter « Chance I » puis ouvrir un œuf | Le titre de la fenêtre affiche « chance +10 % » et les probabilités Rare et plus augmentent. |
+| 39 | Champ des champions, au fond de l'île | 3 panneaux : TROPHÉES, PUISSANCE, RUE DES BOSS (top 10 ; dans Studio : joueurs du serveur). |
+| 40 | En haut de l'écran, hors combat | « Prochaine bataille contre le boss dans 1:12 · Gardien sylvestre » ou « … attend des combattants ! ». |
+
 ### À plusieurs : *Test → Clients and Servers → 2 ou 3 joueurs → Start*
 
 | # | Action | Attendu |
@@ -127,7 +139,7 @@ Le code vit dans `src/` (fichiers texte versionnés). **Rojo** le synchronise en
 
 | Élément | Statut |
 |---|---|
-| Formules, hors ligne (5 min / 8 h / 48 h, reconnexion immédiate), verrou à deux serveurs, appartenance, achats concurrents, validation des entrées, cohérence de la configuration | **Testé** (Lune, 53 tests, dont renaissance, tirages d'œufs, compagnons, boss, Rue des boss, zones de farm) — simulation hors Roblox |
+| Formules, hors ligne (5 min / 8 h / 48 h, reconnexion immédiate), verrou à deux serveurs, appartenance, achats concurrents, validation des entrées, cohérence de la configuration | **Testé** (Lune, 57 tests, dont renaissance, œufs, compagnons, boss, Rue des boss, zones de farm, arbre) — simulation hors Roblox |
 | Syntaxe, variables non définies, structure de la place | **Vérifié** (StyLua, Selene, `rojo build`) |
 | Comportement en jeu : monde, groupes, récolte, constructions, tapis, interface, manette, tactile | **À vérifier dans Studio** (scénario ci-dessus) |
 | DataStores réels, achats Robux, prix régionaux, téléportations | **À vérifier** dans une expérience de test publiée |

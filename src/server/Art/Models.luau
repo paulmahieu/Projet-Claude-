@@ -1762,4 +1762,65 @@ function Models.farmIsland(origin: CFrame, cfg, zoneCenter, parent: Instance)
 	return zones
 end
 
+-- Panneau de classement : cadre en bois + SurfaceGui. Retourne titre et lignes (10).
+function Models.leaderboard(base: CFrame, title: string, accent: Color3, parent: Instance): (TextLabel, { TextLabel })
+	local w, h = 14, 16
+	for _, x in { -w / 2 - 0.6, w / 2 + 0.6 } do
+		column(parent, "BoardPost", h + 2, 1, base * CFrame.new(x, 0, 0), C.WoodDark, Enum.Material.Wood)
+	end
+	local board = part(
+		parent,
+		"Board",
+		Vector3.new(w, h, 0.6),
+		base * CFrame.new(0, h / 2 + 1.5, 0),
+		Color3.fromRGB(245, 240, 225),
+		Enum.Material.SmoothPlastic
+	)
+	part(
+		parent,
+		"BoardTop",
+		Vector3.new(w + 2.4, 1.2, 1.2),
+		base * CFrame.new(0, h + 2.3, 0),
+		accent,
+		Enum.Material.Neon,
+		{ NoShadow = true }
+	)
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 30
+	gui.LightInfluence = 0.3
+	gui.Parent = board
+	local layout = Instance.new("UIListLayout")
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Padding = UDim.new(0, 4)
+	layout.Parent = gui
+	local function line(order: number, height: number, font, color: Color3): TextLabel
+		local label = Instance.new("TextLabel")
+		label.LayoutOrder = order
+		label.Size = UDim2.new(1, -20, 0, height)
+		label.BackgroundTransparency = 1
+		label.Font = font
+		label.TextScaled = true
+		label.TextColor3 = color
+		label.TextXAlignment = Enum.TextXAlignment.Left
+		label.Text = ""
+		label.Parent = gui
+		return label
+	end
+	local titleLabel = line(0, 60, Enum.Font.FredokaOne, accent:Lerp(Color3.new(0, 0, 0), 0.25))
+	titleLabel.TextXAlignment = Enum.TextXAlignment.Center
+	titleLabel.Text = title
+	local rows = {}
+	for i = 1, 10 do
+		rows[i] = line(
+			i,
+			36,
+			Enum.Font.GothamBold,
+			if i <= 3 then Color3.fromRGB(150, 100, 20) else Color3.fromRGB(50, 45, 40)
+		)
+	end
+	return titleLabel, rows
+end
+
 return Models

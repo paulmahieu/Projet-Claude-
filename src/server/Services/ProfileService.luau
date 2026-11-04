@@ -19,7 +19,7 @@ local ProfileSchema = require(Shared.ProfileSchema)
 local Formulas = require(Shared.Formulas)
 local Economy = require(Shared.Config.Economy)
 local Training = require(Shared.Config.Training)
-local Upgrades = require(Shared.Config.Upgrades)
+local Tree = require(Shared.Config.Tree)
 local Rebirth = require(Shared.Config.Rebirth)
 local Pets = require(Shared.Config.Pets)
 local Texts = require(Shared.Config.Texts)
@@ -46,7 +46,9 @@ end
 
 -- Crédit hors ligne appliqué au profil (fonction pure, rejouable).
 local function applyOffline(data, now: number)
-	local credit = Formulas.offlineCredit(data.AfkRate, data.LastAccounted, now, data.OfflineCarry, Economy.Offline)
+	-- Plafond et taux augmentés par les nœuds « Hors ligne » de l'arbre (déjà possédés).
+	local offlineCfg = Formulas.offlineConfig(Economy.Offline, Tree, data.Tree)
+	local credit = Formulas.offlineCredit(data.AfkRate, data.LastAccounted, now, data.OfflineCarry, offlineCfg)
 	if credit.Xp > 0 then
 		data.Level, data.TrainXp = Formulas.addXp(data.Level, data.TrainXp, credit.Xp, Training)
 	end
@@ -137,6 +139,37 @@ function ProfileService.personalMultiplier(player: Player): number
 		* Formulas.petMultiplier(Pets, ProfileService.equippedPetIds(player))
 end
 
+function ProfileService.treeStat(player: Player, stat: string): number
+	local data = profiles[player]
+	return if data then Formulas.treeStat(Tree, data.Tree, stat) else 0
+end
+
+function ProfileService.petSlots(player: Player): number
+	local data = profiles[player]
+	if not data then
+		return 1
+	end
+	return Formulas.petSlots(data.Rebirths, Rebirth) + Formulas.treeStat(Tree, data.Tree, "PetSlots")
+end
+
+-- Multiplicateur de dégâts : compagnons x nœuds « Force ».
+function ProfileService.damageMultiplier(player: Player): number
+	return Formulas.petMultiplier(Pets, ProfileService.equippedPetIds(player))
+		* (1 + ProfileService.treeStat(player, "Damage"))
+end
+
+-- Ajoute des trophées (bonus de l'arbre inclus). Retourne le montant crédité.
+function ProfileService.addTrophies(player: Player, base: number): number
+	local data = profiles[player]
+	if not data or base <= 0 then
+		return 0
+	end
+	local amount = Formulas.trophies(base, Formulas.treeStat(Tree, data.Tree, "TrophyMult"))
+	data.Trophies += amount
+	data.Stats.TrophiesEarned += amount -- total gagné (classement), indépendant des dépenses
+	return amount
+end
+
 function ProfileService.power(player: Player): number
 	local data = profiles[player]
 	if not data then
@@ -158,13 +191,17 @@ function ProfileService.sync(player: Player)
 	player:SetAttribute("Power", ProfileService.power(player))
 	player:SetAttribute("Rebirths", data.Rebirths)
 	player:SetAttribute("RebirthLevel", Formulas.rebirthRequiredLevel(data.Rebirths, Rebirth))
-	player:SetAttribute("PetSlots", Formulas.petSlots(data.Rebirths, Rebirth))
+	player:SetAttribute("PetSlots", ProfileService.petSlots(player))
 	player:SetAttribute("PetMult", Formulas.petMultiplier(Pets, ProfileService.equippedPetIds(player)))
 	-- Lu par tous les clients pour afficher les compagnons qui suivent ce joueur.
 	player:SetAttribute("EquippedPets", table.concat(ProfileService.equippedPetIds(player), ","))
-	for _, def in Upgrades do
-		player:SetAttribute("Upg_" .. def.Id, Formulas.upgradeLevel(data, def.Id))
+	player:SetAttribute("Trophies", data.Trophies)
+	player:SetAttribute("Luck", Formulas.treeStat(Tree, data.Tree, "Luck"))
+	local owned = {}
+	for id in data.Tree do
+		table.insert(owned, id)
 	end
+	player:SetAttribute("TreeOwned", table.concat(owned, ","))
 	local leaderstats = player:FindFirstChild("leaderstats")
 	if leaderstats then
 		(leaderstats :: any).Niveau.Value = data.Level

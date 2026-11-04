@@ -19,7 +19,6 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Formulas = require(Shared.Formulas)
 local Training = require(Shared.Config.Training)
 local Structures = require(Shared.Config.Structures)
-local Upgrades = require(Shared.Config.Upgrades)
 local Economy = require(Shared.Config.Economy)
 local Texts = require(Shared.Config.Texts)
 
@@ -45,13 +44,6 @@ type Station = {
 local stationsByGroup: { [string]: { [string]: Station } } = {}
 local training: { [Player]: Station } = {}
 
-local focusDef
-for _, def in Upgrades do
-	if def.Id == "Focus" then
-		focusDef = def
-	end
-end
-
 -- Rendement durable (sans bonus temporaire) d'un joueur sur un palier de tapis.
 local function durableRates(player: Player, tier: number)
 	local profile = ProfileService.get(player)
@@ -62,8 +54,8 @@ local function durableRates(player: Player, tier: number)
 	return Formulas.trainingRates(
 		tier,
 		Formulas.groupTrainingMult(Structures, group.Data.Structures),
-		Formulas.upgradeLevel(profile, "Focus"),
-		focusDef.PerLevel,
+		ProfileService.treeStat(player, "TrainingMult"), -- nœuds « Concentration »
+		1,
 		Training,
 		ProfileService.personalMultiplier(player) -- renaissances x compagnons
 	)

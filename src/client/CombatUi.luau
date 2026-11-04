@@ -65,6 +65,25 @@ function CombatUi.start(gui: ScreenGui, toast: (string, string?) -> ())
 		Parent = barBack,
 	})
 
+	-- Minuteur des boss (visible hors arène et hors rue), comme « Prochaine bataille dans 9:00 ».
+	local bossTimer = Ui.label({
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 50),
+		Size = UDim2.new(0.6, 0, 0, 24),
+		Font = Enum.Font.FredokaOne,
+		TextScaled = true,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		TextColor3 = Color3.fromRGB(255, 235, 200),
+		TextStrokeTransparency = 0.2,
+		Parent = gui,
+	})
+	Ui.create("UISizeConstraint", { MaxSize = Vector2.new(520, 24) }).Parent = bossTimer
+
+	local function formatTime(seconds: number): string
+		seconds = math.max(0, math.floor(seconds))
+		return string.format("%d:%02d", seconds // 60, seconds % 60)
+	end
+
 	-- Boutons de compétences (bas droite, au-dessus du bouton Menu ; grands pour le tactile)
 	local skillFrame = Ui.create("Frame", {
 		AnchorPoint = Vector2.new(1, 1),
@@ -182,7 +201,34 @@ function CombatUi.start(gui: ScreenGui, toast: (string, string?) -> ())
 	player:GetAttributeChangedSignal("InArena"):Connect(refreshMode)
 	player:GetAttributeChangedSignal("InStreet"):Connect(refreshMode)
 
+	local lastTimerUpdate = 0
 	RunService.Heartbeat:Connect(function()
+		local clock = os.clock()
+		if clock - lastTimerUpdate > 0.5 then
+			lastTimerUpdate = clock
+			local text = ""
+			local world = workspace:FindFirstChild("World")
+			local arenas = world and world:FindFirstChild("Arenas")
+			if arenas and not skillsShown then
+				for _, folder in arenas:GetChildren() do
+					local state = folder:GetAttribute("State")
+					local name = tostring(folder:GetAttribute("BossName") or "Boss")
+					if state == "Fighting" then
+						text = "Combat contre le boss en cours : " .. name
+						break
+					elseif state == "Idle" then
+						text = name .. " attend des combattants ! (portails du point d'accueil)"
+					elseif state == "Dead" and text == "" then
+						text = "Prochaine bataille contre le boss dans "
+							.. formatTime(folder:GetAttribute("RespawnIn") or 0)
+							.. " · "
+							.. name
+					end
+				end
+			end
+			bossTimer.Text = text
+			bossTimer.Visible = text ~= ""
+		end
 		if not skillsShown then
 			return
 		end

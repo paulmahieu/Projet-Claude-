@@ -14,7 +14,6 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Formulas = require(Shared.Formulas)
 local Farm = require(Shared.Config.Farm)
 local Training = require(Shared.Config.Training)
-local Upgrades = require(Shared.Config.Upgrades)
 local Economy = require(Shared.Config.Economy)
 
 local ProfileService = require(script.Parent.ProfileService)
@@ -30,13 +29,6 @@ local origin = CFrame.new(Farm.Origin[1], Farm.Origin[2], Farm.Origin[3])
 local zones = {}
 local lockedNotified: { [Player]: number } = {}
 
-local focusPerLevel = 0
-for _, def in Upgrades do
-	if def.Id == "Focus" then
-		focusPerLevel = def.PerLevel
-	end
-end
-
 local function ownsPassFor(player: Player)
 	return function(key: string): boolean
 		return MonetizationService.ownsPass(player, key)
@@ -50,8 +42,8 @@ local function rates(player: Player, zoneMult: number)
 	end
 	return Formulas.zoneRates(
 		zoneMult,
-		Formulas.upgradeLevel(profile, "Focus"),
-		focusPerLevel,
+		ProfileService.treeStat(player, "TrainingMult"),
+		1,
 		Training,
 		ProfileService.personalMultiplier(player)
 	)

@@ -16,7 +16,7 @@ local Validate = require(Shared.Validate)
 local Texts = require(Shared.Config.Texts)
 
 local GroupService = require(script.Parent.GroupService)
-local UpgradeService = require(script.Parent.UpgradeService)
+local TreeService = require(script.Parent.TreeService)
 local TrainingService = require(script.Parent.TrainingService)
 local MonetizationService = require(script.Parent.MonetizationService)
 local RebirthService = require(script.Parent.RebirthService)
@@ -111,11 +111,15 @@ local handlers = {
 		end)
 	end,
 
-	BuyUpgrade = function(player, p)
+	BuyNode = function(player, p)
 		if not Validate.id(p.Id, 32) then
 			return bad()
 		end
-		return UpgradeService.buy(player, p.Id)
+		return TreeService.buy(player, p.Id)
+	end,
+
+	UnequipAllPets = function(player)
+		return PetService.unequipAll(player)
 	end,
 
 	StopTraining = function(player)
@@ -173,6 +177,8 @@ local handlers = {
 		end
 		if p.Kind == "Gold" then
 			profile.Gold += 10000
+		elseif p.Kind == "Trophies" then
+			profile.Trophies += 500
 		elseif p.Kind == "Levels" then
 			local target = profile.Level + 10
 			while profile.Level < target and profile.Level < Training.MaxLevel do

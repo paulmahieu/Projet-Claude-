@@ -14,7 +14,7 @@ local Structures = require("../src/shared/Config/Structures")
 local Materials = require("../src/shared/Config/Materials")
 local Economy = require("../src/shared/Config/Economy")
 local Training = require("../src/shared/Config/Training")
-local Upgrades = require("../src/shared/Config/Upgrades")
+local Tree = require("../src/shared/Config/Tree")
 local Products = require("../src/shared/Config/Products")
 local Groups = require("../src/shared/Config/Groups")
 local Game = require("../src/shared/Config/Game")
@@ -100,16 +100,6 @@ test("meilleur palier et bonus du bastion", function()
 	eq(Formulas.bestStationTier(Structures, { TrainingGround = true }), 1)
 	eq(Formulas.bestStationTier(Structures, { TrainingGround = true, RuneMats = true }), 2)
 	near(Formulas.groupTrainingMult(Structures, { Watchtower = true }), 1.1)
-end)
-
-test("coût des améliorations croissant et plafonné", function()
-	local focus = Upgrades[1]
-	eq(Formulas.upgradeCost(focus, 0), focus.BaseCost)
-	assert(
-		Formulas.upgradeCost(focus, 1) > Formulas.upgradeCost(focus, 0),
-		"Formulas.upgradeCost(focus, 1) > Formulas.upgradeCost(focus, 0)"
-	)
-	eq(Formulas.upgradeCost(focus, focus.MaxLevel), nil)
 end)
 
 ----------------------------------------------------------------------------------------
@@ -349,7 +339,7 @@ test("profil neuf et migration du prototype v1", function()
 	eq(ProfileSchema.load(nil).Version, ProfileSchema.VERSION)
 	local v1 = { Gold = 120, Level = 3, Xp = 7, LastOnline = 500, Receipts = { "abc" }, Buildings = { Forge = true } }
 	local p = ProfileSchema.load(v1)
-	eq(p.Version, 2)
+	eq(p.Version, ProfileSchema.VERSION)
 	eq(p.TrainXp, 7)
 	eq(p.LastAccounted, 500)
 	eq(p.Buildings, nil)
@@ -724,6 +714,77 @@ test("zones sans chevauchement et lieux séparés (île, rue, arènes, hub)", fu
 		local dx, dz = Farm.Portal[1] - egg.Position[1], Farm.Portal[2] - egg.Position[2]
 		assert(math.sqrt(dx * dx + dz * dz) >= 7, "portail trop proche de " .. egg.Id)
 	end
+end)
+
+----------------------------------------------------------------------------------------
+print("Arbre d'améliorations")
+
+test("arbre : Id uniques, stats connues, coûts positifs, chaque branche existe", function()
+	local seen, branches = {}, {}
+	for _, b in Tree.Branches do
+		branches[b.Id] = true
+	end
+	for _, node in Tree.Nodes do
+		assert(not seen[node.Id], "Id en double " .. node.Id)
+		seen[node.Id] = true
+		assert(branches[node.Branch], node.Id .. " : branche inconnue")
+		assert(Tree.StatText[node.Stat], node.Id .. " : stat inconnue")
+		for _, amount in node.Cost do
+			assert(amount > 0, node.Id .. " : coût")
+		end
+	end
+end)
+
+test("arbre : ordre de déblocage dans une branche", function()
+	local owned = {}
+	local wallet = { Gold = 1e9, Trophies = 1e9 }
+	eq(Formulas.treePrevious(Tree, "Focus1"), nil)
+	eq(Formulas.treePrevious(Tree, "Focus2"), "Focus1")
+	eq(select(2, Formulas.canBuyNode(Tree, owned, "Focus2", wallet)), "Requires")
+	assert(Formulas.canBuyNode(Tree, owned, "Focus1", wallet), "premier nœud")
+	owned.Focus1 = true
+	eq(select(2, Formulas.canBuyNode(Tree, owned, "Focus1", wallet)), "Owned")
+	assert(Formulas.canBuyNode(Tree, owned, "Focus2", wallet), "suivant débloqué")
+	eq(select(2, Formulas.canBuyNode(Tree, {}, "Str1", { Gold = 1e9, Trophies = 0 })), "Cost", "trophées requis")
+end)
+
+test("arbre : statistiques cumulées et effets hors ligne", function()
+	local owned = { Focus1 = true, Focus2 = true, Off1 = true, Off2 = true }
+	near(Formulas.treeStat(Tree, owned, "TrainingMult"), 0.20)
+	local offline = Formulas.offlineConfig(Economy.Offline, Tree, owned)
+	eq(offline.MaxSeconds, Economy.Offline.MaxSeconds + 3600)
+	near(offline.Rate, Economy.Offline.Rate + 0.05)
+	eq(Formulas.treeStat(Tree, nil, "Damage"), 0)
+end)
+
+test("migration v2 -> v3 : anciennes améliorations converties en nœuds", function()
+	local p = ProfileSchema.load({ Version = 2, Upgrades = { Focus = 7, Toughness = 2 } })
+	eq(p.Version, ProfileSchema.VERSION)
+	assert(p.Tree.Focus5 and not p.Tree.Focus6, "Concentration plafonnée à 5 nœuds")
+	assert(p.Tree.Tough2 and not p.Tree.Tough3, "Robustesse 2 nœuds")
+	eq(p.Upgrades, nil)
+	eq(p.Trophies, 0)
+end)
+
+test("chance : favorise Rare et plus, probabilités toujours = 100 %", function()
+	local egg = Pets.Eggs[1]
+	local base, lucky = Formulas.eggOdds(egg), Formulas.eggOdds(Formulas.luckyEgg(egg, Pets, 0.5))
+	local function chanceOf(list, id)
+		for _, e in list do
+			if e.Id == id then
+				return e.Chance
+			end
+		end
+		return 0
+	end
+	assert(chanceOf(lucky, "RuneWolf") > chanceOf(base, "RuneWolf"), "Rare favorisé")
+	assert(chanceOf(lucky, "Sprout") < chanceOf(base, "Sprout"), "Commun moins fréquent")
+	local total = 0
+	for _, e in lucky do
+		total += e.Chance
+	end
+	near(total, 1)
+	eq(Formulas.trophies(10, 0.25), 13)
 end)
 
 print(string.format("\n%d réussi(s), %d échec(s)", passed, failed))

@@ -22,6 +22,7 @@ local Formulas = require(Shared.Formulas)
 local Street = require(Shared.Config.Street)
 local Combat = require(Shared.Config.Combat)
 local Pets = require(Shared.Config.Pets)
+local Tree = require(Shared.Config.Tree)
 local Training = require(Shared.Config.Training)
 local Economy = require(Shared.Config.Economy)
 local Materials = require(Shared.Config.Materials)
@@ -250,6 +251,7 @@ local function clearStage(player: Player, run: Run)
 	local bonusXp = stats.Xp * Street.StageClearMultiplier
 	profile.Gold = Formulas.clamp(profile.Gold + bonusGold, Economy.GoldCap)
 	profile.Level, profile.TrainXp = Formulas.addXp(profile.Level, profile.TrainXp, bonusXp, Training)
+	local trophies = ProfileService.addTrophies(player, stage * Tree.TrophyRewards.StreetStagePerStage)
 	profile.Street.Best = math.max(profile.Street.Best, stage)
 	profile.Street.Stage = stage + 1
 	ProfileService.sync(player)
@@ -257,10 +259,11 @@ local function clearStage(player: Player, run: Run)
 	Notifier.send(
 		player,
 		string.format(
-			"Étape %d terminée ! +%s or, +%s XP. Étape %d : Puissance conseillée %d",
+			"Étape %d terminée ! +%s or, +%s XP, +%d trophées. Étape %d : Puissance conseillée %d",
 			stage,
 			Formulas.formatNumber(bonusGold),
 			Formulas.formatNumber(bonusXp),
+			trophies,
 			stage + 1,
 			Formulas.streetRecommendedPower(stage + 1, Street)
 		),
@@ -301,6 +304,16 @@ local function damageEnemy(player: Player, run: Run, enemy: Enemy, amount: numbe
 		profile.Gold = Formulas.clamp(profile.Gold + enemy.Gold, Economy.GoldCap)
 		profile.Level, profile.TrainXp = Formulas.addXp(profile.Level, profile.TrainXp, enemy.Xp, Training)
 		profile.Street.Kills += 1
+		local stage = profile.Street.Stage
+		ProfileService.addTrophies(
+			player,
+			stage
+				* (
+					if enemy.Patron
+						then Tree.TrophyRewards.StreetPatronPerStage
+						else Tree.TrophyRewards.StreetKillPerStage
+				)
+		)
 		ProfileService.sync(player)
 		CombatFx:FireClient(
 			player,
@@ -414,7 +427,7 @@ local function tickPlayer(player: Player, now: number, dt: number)
 		and (lastAuto[player] or 0) + Combat.AutoAttack.Cooldown <= now
 	then
 		lastAuto[player] = now
-		local mult = Formulas.petMultiplier(Pets, ProfileService.equippedPetIds(player))
+		local mult = ProfileService.damageMultiplier(player)
 		damageEnemy(
 			player,
 			run,
@@ -443,7 +456,7 @@ function StreetService.strike(player: Player, damageMult: number, range: number)
 	if not target or best > range then
 		return false
 	end
-	local mult = Formulas.petMultiplier(Pets, ProfileService.equippedPetIds(player))
+	local mult = ProfileService.damageMultiplier(player)
 	damageEnemy(player, run, target, Formulas.hitDamage(ProfileService.power(player), damageMult, mult))
 	return true
 end
