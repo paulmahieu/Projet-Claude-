@@ -5833,7 +5833,7 @@ function Models.farmIsland(origin: CFrame, cfg, zoneCenter, parent: Instance)
 		local dummies = {}
 		for d = -1, 1 do
 			local body = Models.dummy(
-				center * CFrame.new(d * 6, 0.2, -5),
+				center * CFrame.new(d * 6, 0.2, -5) * CFrame.Angles(0, math.pi, 0), -- face aux joueurs
 				parent,
 				if zone.Royal
 					then Color3.fromRGB(212, 160, 50)
