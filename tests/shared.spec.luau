@@ -452,7 +452,7 @@ test("catalogue : au moins 13 offres, clés uniques, identifiants non inventés"
 		assert(item.Name and item.Description and item.Preview, item.Key .. " : textes manquants")
 		if item.Ready then
 			assert(
-				item.Delivery.Type == "Gold" or item.Delivery.Type == "Entitlement",
+				item.Delivery.Type == "Gold" or item.Delivery.Type == "Entitlement" or item.Delivery.Type == "Egg",
 				item.Key .. " : livraison non implémentée"
 			)
 		end
@@ -512,7 +512,7 @@ test("œufs : probabilités totales = 100 %, compagnons existants, coût positif
 		assert(Pets.Rarities[def.Rarity], def.Id .. " : rareté inconnue")
 	end
 	for _, egg in Pets.Eggs do
-		assert(egg.Cost > 0, egg.Id .. " : coût")
+		assert((egg.Cost and egg.Cost > 0) or egg.Product, egg.Id .. " : coût ou produit Robux")
 		local total = 0
 		for _, entry in Formulas.eggOdds(egg) do
 			assert(ids[entry.Id], egg.Id .. " : compagnon inconnu " .. entry.Id)
@@ -867,7 +867,7 @@ test("temps de jeu : paliers franchis une seule fois, sessions additionnées", f
 	eq(first[1], 1)
 	eq(#Formulas.playtimeReached(tiers, 300, 305), 0, "pas de second crédit")
 	-- Une longue avance d'un coup franchit plusieurs paliers.
-	eq(#Formulas.playtimeReached(tiers, 0, 31 * 60), #tiers)
+	eq(#Formulas.playtimeReached(tiers, 0, tiers[#tiers].Minutes * 60 + 1), #tiers)
 	local last = 0
 	for _, tier in tiers do
 		assert(tier.Minutes > last, "paliers croissants")
@@ -884,6 +884,12 @@ test("récompenses : compagnons existants, valeurs positives", function()
 		for key, value in reward do
 			if key == "Pet" then
 				assert(ids[value], "compagnon inconnu " .. tostring(value))
+			elseif key == "Egg" then
+				local known = false
+				for _, egg in Pets.Eggs do
+					known = known or egg.Id == value
+				end
+				assert(known, "œuf inconnu " .. tostring(value))
 			else
 				assert(value > 0, key .. " doit être positif")
 			end
@@ -1049,6 +1055,53 @@ test("Défense : configuration cohérente", function()
 	assert(Defense.Waves >= 1 and Defense.PrepSeconds >= 5, "vagues et préavis")
 	assert(Defense.CooldownSeconds > 0 and Defense.AbandonSeconds > 0, "délais")
 	assert(Defense.CoreHealthPerLevel > 0 and Defense.Rewards.TrophiesPerLevel > 0, "noyau et trophées")
+end)
+
+test("Œufs : gratuits jusqu'à Légendaire, royaux liés à un produit prêt", function()
+	local rarityOf = {}
+	for _, def in Pets.List do
+		rarityOf[def.Id] = def.Rarity
+	end
+	local productByKey = {}
+	for _, item in Products do
+		productByKey[item.Key] = item
+	end
+	local paid = 0
+	for _, egg in Pets.Eggs do
+		if egg.Cost then
+			assert(egg.Product == nil, egg.Id .. " : or ET Robux")
+			for id in egg.Weights do
+				assert(
+					Pets.Rarities[rarityOf[id]].Order <= Pets.FreeMaxOrder,
+					egg.Id .. " : " .. id .. " trop rare pour un œuf gratuit"
+				)
+			end
+		else
+			paid += 1
+			local item = productByKey[egg.Product]
+			assert(item and item.Kind == "Product" and item.Ready, egg.Id .. " : produit manquant")
+			eq(item.Delivery.Type, "Egg")
+			eq(item.Delivery.Egg, egg.Id)
+		end
+		for id in egg.Weights do
+			assert(rarityOf[id], egg.Id .. " : compagnon inconnu " .. id)
+		end
+	end
+	assert(paid >= 1, "au moins un œuf royal")
+	local found = false
+	for _, tier in Rewards.Playtime do
+		if tier.Minutes == 60 and tier.Reward.Egg then
+			found = true
+			local egg
+			for _, e in Pets.Eggs do
+				if e.Id == tier.Reward.Egg then
+					egg = e
+				end
+			end
+			assert(egg and egg.Product, "l'œuf d'1 h est un œuf royal")
+		end
+	end
+	assert(found, "œuf offert après 1 h de jeu")
 end)
 
 print(string.format("\n%d réussi(s), %d échec(s)", passed, failed))

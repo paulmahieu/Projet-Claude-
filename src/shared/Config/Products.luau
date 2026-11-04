@@ -46,6 +46,28 @@ return {
 		Ready = true,
 	},
 	{
+		Key = "RoyalEgg",
+		Kind = "Product",
+		Id = 0,
+		SuggestedPrice = 99,
+		Name = "Œuf royal",
+		Description = "Un compagnon Légendaire à Céleste (probabilités affichées au présentoir). Aussi offert après 1 h de jeu par jour.",
+		Preview = "Légendaire+",
+		Delivery = { Type = "Egg", Egg = "RoyalEgg" },
+		Ready = true,
+	},
+	{
+		Key = "CelestialEgg",
+		Kind = "Product",
+		Id = 0,
+		SuggestedPrice = 249,
+		Name = "Œuf céleste",
+		Description = "Un compagnon Mythique ou Céleste (probabilités affichées au présentoir).",
+		Preview = "Mythique+",
+		Delivery = { Type = "Egg", Egg = "CelestialEgg" },
+		Ready = true,
+	},
+	{
 		Key = "XpBoost15",
 		Kind = "Product",
 		Id = 0,
@@ -139,10 +161,10 @@ return {
 		Id = 0,
 		SuggestedPrice = 79,
 		Name = "Parcours du champion",
-		Description = "Récompenses premium du parcours de progression, y compris les étapes déjà atteintes.",
+		Description = "Débloque la piste premium du parcours (œufs royaux, tapis x100 puis x500…), y compris les paliers déjà atteints.",
 		Preview = "Parcours premium",
-		Delivery = { Type = "PremiumTrack" },
-		Ready = false, -- parcours de progression : étapes 3-4
+		Delivery = { Type = "Entitlement", Key = "PremiumTrack" },
+		Ready = true, -- vérifié par possession du pass (UserOwnsGamePassAsync)
 	},
 	{
 		Key = "RoyalTraining",

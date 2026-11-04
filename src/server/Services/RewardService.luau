@@ -34,6 +34,10 @@ local TICK = 5
 local lastPosition: { [Player]: Vector3 } = {}
 local lastActivity: { [Player]: number } = {}
 
+local eggName = {}
+for _, egg in Pets.Eggs do
+	eggName[egg.Id] = egg.Name
+end
 local petName = {}
 for _, def in Pets.List do
 	petName[def.Id] = def.Name
@@ -58,6 +62,9 @@ function RewardService.describe(reward): string
 	if reward.Pet then
 		table.insert(parts, "compagnon " .. (petName[reward.Pet] or reward.Pet))
 	end
+	if reward.Egg then
+		table.insert(parts, eggName[reward.Egg] or reward.Egg)
+	end
 	return table.concat(parts, ", ")
 end
 
@@ -75,6 +82,9 @@ local function grant(player: Player, profile, reward)
 	end
 	if reward.Pet then
 		PetService.grant(player, reward.Pet)
+	end
+	if reward.Egg then
+		PetService.openEgg(player, reward.Egg) -- annonce le compagnon obtenu
 	end
 end
 

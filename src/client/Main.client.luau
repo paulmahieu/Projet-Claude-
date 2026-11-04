@@ -36,6 +36,7 @@ local StreetUi = require(script.Parent.StreetUi)
 local FarmUi = require(script.Parent.FarmUi)
 local DiagnosticsUi = require(script.Parent.DiagnosticsUi)
 local ProximityPromptService = game:GetService("ProximityPromptService")
+local PolicyService = game:GetService("PolicyService")
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local Request = Remotes:WaitForChild("Request") :: RemoteFunction
@@ -827,7 +828,17 @@ local function renderUpgrades()
 end
 
 -- Onglet Boutique
+-- Pays où les objets aléatoires payants sont interdits : les œufs royaux ne sont pas vendus
+-- (ils restent gagnables en jouant). En cas d'erreur, on applique la règle la plus stricte.
+local paidRandomRestricted = true
+task.spawn(function()
+	local ok, info = pcall(function()
+		return PolicyService:GetPolicyInfoForPlayerAsync(player)
+	end)
+	paidRandomRestricted = not (ok and info and info.ArePaidRandomItemsRestricted == false)
+end)
 local priceCache = {}
+local onPriceLoaded: (() -> ())? = nil -- rafraîchit la fenêtre d'œuf ouverte
 local function priceText(item): string?
 	if item.Id == 0 then
 		return nil
@@ -845,6 +856,9 @@ local function priceText(item): string?
 			priceCache[item.Key] = if ok and info and info.PriceInRobux then tostring(info.PriceInRobux) else false
 			if menuOpen and currentTab == "Shop" then
 				renderTab()
+			end
+			if onPriceLoaded then
+				onPriceLoaded()
 			end
 		end)
 	end
@@ -870,9 +884,12 @@ local function renderShop()
 	end
 	heading("Boutique du royaume")
 	for _, item in Products do
+		if item.Delivery.Type == "Egg" and paidRandomRestricted then
+			continue -- objets aléatoires payants interdits pour ce joueur (PolicyService)
+		end
 		local sellable = item.Id ~= 0 and item.Ready
 		local price = if sellable then priceText(item) else nil
-		local devButton = devTools and item.Ready and item.Kind == "Product"
+		local devButton = devTools and item.Ready
 		local r = row(70)
 		rowText(r, item.Name .. " · " .. item.Preview, item.Description, if devButton then 236 else 120)
 		if price then
@@ -1026,6 +1043,13 @@ local function rewardText(reward): string
 	end
 	if reward.Pet and petById[reward.Pet] then
 		table.insert(parts, petById[reward.Pet].Name)
+	end
+	if reward.Egg then
+		for _, egg in Pets.Eggs do
+			if egg.Id == reward.Egg then
+				table.insert(parts, "🥚 " .. egg.Name)
+			end
+		end
 	end
 	return table.concat(parts, " · ")
 end
@@ -1314,6 +1338,10 @@ end
 
 -- Fenêtre d'œuf : ouverte quand le joueur utilise l'invite d'un présentoir --------------------
 
+local productByKey = {}
+for _, item in Products do
+	productByKey[item.Key] = item
+end
 local eggById = {}
 for _, egg in Pets.Eggs do
 	eggById[egg.Id] = egg
@@ -1402,7 +1430,23 @@ local function openEgg(eggId: string)
 			Parent = eggList,
 		})
 	end
-	eggButton.Text = string.format("Ouvrir (%s or)", Formulas.formatNumber(egg.Cost))
+	if egg.Cost then
+		eggButton.Text = string.format("Ouvrir (%s or)", Formulas.formatNumber(egg.Cost))
+		eggButton.BackgroundColor3 = C.reward
+	else
+		local item = productByKey[egg.Product]
+		local price = if item and item.Id ~= 0 and not paidRandomRestricted then priceText(item) else nil
+		if price then
+			eggButton.Text = "Ouvrir (R$ " .. price .. ")"
+			eggButton.BackgroundColor3 = C.Robux
+		elseif devTools and not paidRandomRestricted then
+			eggButton.Text = "Simuler l'achat (Studio)"
+			eggButton.BackgroundColor3 = C.info
+		else
+			eggButton.Text = "Offert après 1 h de jeu (Cadeaux)"
+			eggButton.BackgroundColor3 = C.Disabled
+		end
+	end
 	eggPanel.Visible = true
 	if UserInputService:GetLastInputType().Name:sub(1, 7) == "Gamepad" then
 		GuiService.SelectedObject = eggButton
@@ -1413,6 +1457,19 @@ eggButton.Activated:Connect(function()
 	if not currentEgg then
 		return
 	end
+	if not currentEgg.Cost then
+		-- Œuf royal : paiement Robux après ce clic explicite ; le serveur livre et annonce.
+		local item = productByKey[currentEgg.Product]
+		if not item or paidRandomRestricted then
+			return
+		end
+		if item.Id ~= 0 then
+			MarketplaceService:PromptProductPurchase(player, item.Id)
+		elseif devTools then
+			request("DevSimulatePurchase", { Key = item.Key })
+		end
+		return
+	end
 	local res = request("HatchEgg", { EggId = currentEgg.Id })
 	if res.ok and res.pet then
 		local def = petById[res.pet.PetId]
@@ -1421,6 +1478,11 @@ eggButton.Activated:Connect(function()
 		Effects.float(def.Name .. " !", rarityColor(def.Rarity), true)
 	end
 end)
+onPriceLoaded = function()
+	if eggPanel.Visible and currentEgg and not currentEgg.Cost then
+		openEgg(currentEgg.Id)
+	end
+end
 eggClose.Activated:Connect(function()
 	eggPanel.Visible = false
 	currentEgg = nil

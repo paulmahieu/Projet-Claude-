@@ -1,5 +1,6 @@
 --[[
-	PetService : œufs (achetés en OR), inventaire et compagnons équipés.
+	PetService : œufs (OR pour les œufs gratuits, Robux ou récompenses pour les œufs royaux),
+	inventaire et compagnons équipés.
 
 	- Tirage côté serveur (Random), probabilités issues de Config/Pets (affichées au joueur).
 	- Débit de l'or et ajout du compagnon dans la même modification du profil.
@@ -15,6 +16,7 @@ local Pets = require(Shared.Config.Pets)
 local Texts = require(Shared.Config.Texts)
 
 local ProfileService = require(script.Parent.ProfileService)
+local Notifier = require(script.Parent.Notifier)
 local PlotService = require(script.Parent.PlotService)
 local Models = require(script.Parent.Parent.Art.Models)
 
@@ -92,6 +94,9 @@ function PetService.hatch(player: Player, eggId: string)
 	if not root or (root.Position - eggPos).Magnitude > HATCH_DISTANCE then
 		return { ok = false, msg = Texts.TooFar }
 	end
+	if egg.Product or not egg.Cost then
+		return { ok = false, msg = "Œuf royal : s'achète en Robux ou s'obtient en récompense." }
+	end
 	if #profile.Pets >= Pets.InventorySize then
 		return { ok = false, msg = "Inventaire plein : libère de la place dans Compagnons." }
 	end
@@ -119,6 +124,36 @@ function PetService.hatch(player: Player, eggId: string)
 		pet = { Uid = uid, PetId = petId },
 		msg = string.format("%s (%s) : +%d %%", def.Name, rarity.Name, math.floor(def.Bonus * 100 + 0.5)),
 	}
+end
+
+-- Ouvre un œuf sans paiement en or (achat Robux, temps de jeu, parcours). Le compagnon est
+-- toujours livré, même inventaire plein : un œuf payé ou gagné ne se perd jamais.
+-- Retourne l'Id du compagnon obtenu (nil si le profil n'est pas modifiable).
+function PetService.openEgg(player: Player, eggId: string): string?
+	local profile = ProfileService.get(player)
+	local egg = eggById[eggId]
+	if not profile or not egg or not ProfileService.canMutate(player) then
+		return nil
+	end
+	local luck = ProfileService.treeStat(player, "Luck")
+	local petId = Formulas.rollEgg(Formulas.luckyEgg(egg, Pets, luck), rng:NextNumber())
+	local uid = profile.NextPetUid
+	profile.NextPetUid += 1
+	table.insert(profile.Pets, { Uid = uid, PetId = petId })
+	if #profile.EquippedPets < ProfileService.petSlots(player) then
+		table.insert(profile.EquippedPets, uid)
+	end
+	push(player)
+	local def = petById[petId]
+	local rarity = Pets.Rarities[def.Rarity]
+	Notifier.send(player, string.format("%s ouvert : %s (%s) !", egg.Name, def.Name, rarity.Name), "reward")
+	if rarity.Order >= 5 then
+		Notifier.broadcast(
+			string.format("✨ %s a obtenu %s (%s) !", player.DisplayName, def.Name, rarity.Name),
+			"reward"
+		)
+	end
+	return petId
 end
 
 -- Donne un compagnon gratuitement (butin de patron). Retourne false si l'inventaire est plein.
@@ -211,7 +246,9 @@ function PetService.init()
 		model.Parent = folder
 		PlotService.makeBillboard(
 			plinth,
-			string.format("%s\n%s or", egg.Name, Formulas.formatNumber(egg.Cost)),
+			if egg.Cost
+				then string.format("%s\n%s or", egg.Name, Formulas.formatNumber(egg.Cost))
+				else egg.Name .. "\n👑 Robux · offert après 1 h de jeu",
 			7,
 			Vector2.new(9, 2.4)
 		)

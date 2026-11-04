@@ -7,7 +7,7 @@
 
 	Temps de jeu : paliers de jeu ACTIF cumulé dans la journée UTC (sessions additionnées),
 	crédités automatiquement et une seule fois à l'atteinte. Le temps hors ligne ne compte pas.
-	Récompense : { Gold, Trophies, Xp, Pet }.
+	Récompense : { Gold, Trophies, Xp, Pet, Egg }.
 ]]
 
 return {
@@ -38,6 +38,7 @@ return {
 		{ Minutes = 10, Reward = { Trophies = 10 } },
 		{ Minutes = 20, Reward = { Gold = 300, Xp = 200 } },
 		{ Minutes = 30, Reward = { Trophies = 30 } },
+		{ Minutes = 60, Reward = { Egg = "RoyalEgg" } }, -- œuf payant offert : 1 h de jeu actif par jour
 	},
 
 	-- Un joueur est « actif » s'il a bougé ou agi dans ce délai (secondes).

@@ -1,9 +1,12 @@
 --[[
 	Compagnons et œufs. Module pur.
 
-	- Les œufs s'achètent avec de l'OR gagné en jeu. Les probabilités sont affichées.
-	  (Œufs payants en Robux : décision en attente, voir docs/CONCEPTION.md — le cahier §9.1
-	  interdit les caisses aléatoires payantes dans cette version.)
+	- Œufs GRATUITS (or gagné en jeu) : uniquement Commun à Légendaire.
+	- Œufs ROYAUX (Robux, champ Product -> Config/Products) : Légendaire à Céleste. Décision du
+	  porteur du projet (remplace l'interdiction initiale du cahier §9.1). Garde-fous :
+	  probabilités affichées AVANT l'achat ; achat masqué là où les objets aléatoires payants
+	  sont interdits (PolicyService) ; l'œuf royal s'obtient aussi gratuitement (1 h de jeu
+	  par jour, parcours du champion) ; un œuf payé est toujours livré, même inventaire plein.
 	- Bonus d'un compagnon : multiplicateur additif sur l'XP et l'or des tapis et sur les dégâts.
 	  Total plafonné (MaxTotalBonus) : pas de multiplicateur infini (cahier §9).
 	- Visuel : forme simple générée par code (Kind), couleur de rareté.
@@ -11,7 +14,8 @@
 
 return {
 	InventorySize = 40,
-	MaxTotalBonus = 6, -- +600 % au maximum, tous compagnons équipés confondus
+	MaxTotalBonus = 15, -- +1 500 % au maximum, tous compagnons équipés confondus
+	FreeMaxOrder = 4, -- les œufs à l'or s'arrêtent à Légendaire (vérifié par les tests)
 
 	Rarities = {
 		Common = { Name = "Commun", Color = { 190, 190, 190 }, Order = 1 },
@@ -19,6 +23,7 @@ return {
 		Epic = { Name = "Épique", Color = { 180, 90, 255 }, Order = 3 },
 		Legendary = { Name = "Légendaire", Color = { 255, 190, 40 }, Order = 4 },
 		Mythic = { Name = "Mythique", Color = { 255, 70, 120 }, Order = 5 },
+		Celestial = { Name = "Céleste", Color = { 120, 255, 230 }, Order = 6 },
 	},
 
 	-- Bonus = +x (0.10 = +10 %)
@@ -95,6 +100,30 @@ return {
 			Kind = "Bird",
 			Color = { 140, 230, 255 },
 		},
+		{
+			Id = "AstralUnicorn",
+			Name = "Licorne astrale",
+			Rarity = "Mythic",
+			Bonus = 3.6,
+			Kind = "Beast",
+			Color = { 235, 200, 255 },
+		},
+		{
+			Id = "SunGuardian",
+			Name = "Gardien solaire",
+			Rarity = "Celestial",
+			Bonus = 5.0,
+			Kind = "Golem",
+			Color = { 255, 215, 90 },
+		},
+		{
+			Id = "CelestialDragon",
+			Name = "Dragon céleste",
+			Rarity = "Celestial",
+			Bonus = 6.5,
+			Kind = "Bird",
+			Color = { 120, 255, 230 },
+		},
 	},
 
 	-- Position {x, z} des présentoirs, autour du hub. Weights : poids relatifs (probabilités affichées).
@@ -121,7 +150,24 @@ return {
 			Cost = 15000,
 			Color = { 110, 210, 255 },
 			Position = { 0, -22 },
-			Weights = { LittleGolem = 40, LightWisp = 33, CrystalFox = 17, EmberDrake = 9, EtherPhoenix = 1 },
+			Weights = { LittleGolem = 40, LightWisp = 33, CrystalFox = 17, EmberDrake = 10 },
+		},
+		-- Œufs royaux : Robux (Product), aussi offerts par le temps de jeu et le parcours.
+		{
+			Id = "RoyalEgg",
+			Name = "Œuf royal",
+			Product = "RoyalEgg",
+			Color = { 255, 200, 70 },
+			Position = { -14.5, -16.2 },
+			Weights = { CrystalFox = 35, EmberDrake = 30, EtherPhoenix = 22, AstralUnicorn = 10, SunGuardian = 3 },
+		},
+		{
+			Id = "CelestialEgg",
+			Name = "Œuf céleste",
+			Product = "CelestialEgg",
+			Color = { 120, 255, 230 },
+			Position = { 14.5, -16.2 },
+			Weights = { EtherPhoenix = 40, AstralUnicorn = 34, SunGuardian = 18, CelestialDragon = 8 },
 		},
 	},
 }

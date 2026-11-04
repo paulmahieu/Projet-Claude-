@@ -24,6 +24,7 @@ local OpLog = require(Shared.OpLog)
 local Formulas = require(Shared.Formulas)
 
 local ProfileService = require(script.Parent.ProfileService)
+local PetService = require(script.Parent.PetService)
 local Notifier = require(script.Parent.Notifier)
 
 local MonetizationService = {}
@@ -38,11 +39,14 @@ for _, item in Products do
 end
 
 -- Applique la livraison au profil (sans sauvegarder). Retourne true si livré.
-local function deliver(profile, item): boolean
+local function deliver(player: Player, profile, item): boolean
 	local delivery = item.Delivery
 	if delivery.Type == "Gold" then
 		profile.Gold = Formulas.clamp(profile.Gold + delivery.Amount, Economy.GoldCap)
 		return true
+	elseif delivery.Type == "Egg" then
+		-- Tirage et ajout dans le même profil que la preuve d'achat (aucune perte possible).
+		return PetService.openEgg(player, delivery.Egg) ~= nil
 	end
 	return false
 end
@@ -60,7 +64,7 @@ local function processPurchase(player: Player, item, purchaseId: string)
 			then Enum.ProductPurchaseDecision.PurchaseGranted
 			else Enum.ProductPurchaseDecision.NotProcessedYet
 	end
-	if not deliver(profile, item) then
+	if not deliver(player, profile, item) then
 		warn("[Monetization] Livraison non implémentée : " .. item.Key)
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
@@ -89,8 +93,18 @@ end
 
 -- Possession d'un pass, vérifiée côté serveur et mise en cache par joueur.
 local passCache: { [Player]: { [string]: boolean } } = {}
+local simulatedPasses: { [Player]: { [string]: boolean } } = {} -- Studio uniquement
+local passChanged = {}
+
+-- fn(player, key) appelé quand un pass vient d'être acheté (ou simulé dans Studio).
+function MonetizationService.onPassChanged(fn)
+	table.insert(passChanged, fn)
+end
 
 function MonetizationService.ownsPass(player: Player, key: string): boolean
+	if simulatedPasses[player] and simulatedPasses[player][key] then
+		return true
+	end
 	local item = productByKey[key]
 	if not item or item.Kind ~= "Pass" or item.Id == 0 or not item.Ready then
 		return false
@@ -122,6 +136,15 @@ function MonetizationService.simulate(player: Player, key: string)
 		return { ok = false, msg = Texts.ShopDisabled }
 	end
 	local item = productByKey[key]
+	if item and item.Kind == "Pass" and item.Ready then
+		-- Pass simulé pour la session (rien n'est enregistré).
+		simulatedPasses[player] = simulatedPasses[player] or {}
+		simulatedPasses[player][key] = true
+		for _, fn in passChanged do
+			task.spawn(fn, player, key)
+		end
+		return { ok = true, msg = "Simulation : pass « " .. item.Name .. " » actif pour cette session." }
+	end
 	if not item or item.Kind ~= "Product" or not item.Ready then
 		return { ok = false, msg = Texts.ShopDisabled }
 	end
@@ -132,13 +155,21 @@ end
 function MonetizationService.init()
 	MarketplaceService.ProcessReceipt = processReceipt
 	-- La fermeture de la fenêtre ne prouve rien : on revérifie la possession côté serveur.
-	MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, _passId, purchased)
+	MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, passId, purchased)
 		if purchased then
 			passCache[player] = nil
+			for _, item in Products do
+				if item.Kind == "Pass" and item.Id == passId then
+					for _, fn in passChanged do
+						task.spawn(fn, player, item.Key)
+					end
+				end
+			end
 		end
 	end)
 	Players.PlayerRemoving:Connect(function(player)
 		passCache[player] = nil
+		simulatedPasses[player] = nil
 	end)
 end
 
