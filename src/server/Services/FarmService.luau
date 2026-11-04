@@ -76,7 +76,7 @@ local function shake(part: BasePart)
 		rest = part.CFrame
 		part:SetAttribute("Rest", rest)
 	end
-	part.CFrame = (rest :: CFrame) * CFrame.Angles(math.rad(math.random(-14, 14)), 0, math.rad(math.random(-14, 14)))
+	part.CFrame = (rest :: CFrame) * CFrame.Angles(math.rad(math.random(-9, 9)), 0, math.rad(math.random(-9, 9)))
 	TweenService:Create(part, TweenInfo.new(0.35, Enum.EasingStyle.Elastic), { CFrame = rest }):Play()
 end
 
@@ -154,7 +154,7 @@ function FarmService.init()
 			if zone.Royal
 				then (zone.Name or "ZONE ROYALE") .. "\nx" .. tostring(zone.Mult)
 				else string.format("x%s\nRenaissance %d", tostring(zone.Mult), zone.Rebirths),
-			5,
+			8.6,
 			Vector2.new(8, 2.6)
 		)
 		label.Font = Enum.Font.FredokaOne

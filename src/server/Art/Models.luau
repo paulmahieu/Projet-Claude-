@@ -5527,20 +5527,223 @@ end
 -- Champ des champions ---------------------------------------------------------------------
 
 -- Mannequin d'entraînement autonome (poteau, bras, corps, tête). Retourne le corps.
+-- Pantin chevalier (planche du créateur) : mannequin de bois articulé (tête, torse, bassin,
+-- bras et jambes en segments, rotules brun foncé) portant casque, plastron à gemme dorée,
+-- épaulières, coudières, genouillères, ceinture à boucle, tabard bleu bordé d'argent, bottes,
+-- épée et bouclier. Toutes les pièces sont soudées à une racine ancrée au pied : secouer la
+-- racine fait osciller tout le pantin depuis son socle. `color` : couleur du tabard et du
+-- bouclier (zone). Retourne la racine.
 function Models.dummy(base: CFrame, parent: Instance, color: Color3): BasePart
-	column(parent, "DummyPole", 4.6, 0.45, base, C.WoodDark, Enum.Material.Wood)
-	part(
-		parent,
-		"DummyArms",
-		Vector3.new(2.8, 0.35, 0.35),
-		base * CFrame.new(0, 3.4, 0),
-		C.WoodDark,
-		Enum.Material.Wood
+	local m = newModel("PantinChevalier")
+	m.Parent = parent
+	local wood = Color3.fromRGB(214, 150, 78)
+	local woodDark = Color3.fromRGB(192, 128, 62)
+	local joint = Color3.fromRGB(110, 68, 42)
+	local steel = Color3.fromRGB(176, 180, 190)
+	local steelDark = Color3.fromRGB(132, 136, 148)
+	local leather = Color3.fromRGB(110, 70, 44)
+	local boot = Color3.fromRGB(116, 74, 48)
+	local W, M = Enum.Material.Wood, Enum.Material.Metal
+	local function p(name, size, cf, col, mat, props)
+		return part(m, name, size, base * cf, col, mat or Enum.Material.SmoothPlastic, props)
+	end
+	local function b(name, d, cf, col, mat)
+		return ball(m, name, d, base * cf, col, mat or Enum.Material.SmoothPlastic)
+	end
+	local function cyl(name, h, d, cf, col, mat)
+		return column(m, name, h, d, base * cf, col, mat or Enum.Material.SmoothPlastic)
+	end
+
+	-- Socle rond
+	cyl("Socle", 0.3, 2.8, CFrame.new(0, 0, 0), C.WoodDark, W)
+	cyl("SocleBord", 0.12, 3.0, CFrame.new(0, 0.05, 0), joint, W)
+
+	-- Jambes : botte, cheville, tibia, genou (genouillère), cuisse, hanche
+	for _, side in { -1, 1 } do
+		local x = side * 0.42
+		p("Botte", Vector3.new(0.72, 0.55, 1.0), CFrame.new(x, 0.58, -0.12), boot, Enum.Material.Fabric)
+		p(
+			"BotteTige",
+			Vector3.new(0.7, 0.35, 0.7),
+			CFrame.new(x, 0.98, 0.02),
+			boot:Lerp(Color3.new(0, 0, 0), 0.1),
+			Enum.Material.Fabric
+		)
+		cyl("Cheville", 0.16, 0.42, CFrame.new(x, 1.15, 0.02), joint, W)
+		p("Tibia", Vector3.new(0.52, 0.95, 0.56), CFrame.new(x, 1.78, 0.02), wood, W)
+		p(
+			"TibiaBiseau",
+			Vector3.new(0.4, 0.95, 0.6),
+			CFrame.new(x, 1.78, 0.02) * CFrame.Angles(0, math.rad(45), 0),
+			woodDark,
+			W
+		)
+		b("Genou", 0.46, CFrame.new(x, 2.36, 0.02), joint, W)
+		p(
+			"Genouillere",
+			Vector3.new(0.56, 0.48, 0.3),
+			CFrame.new(x, 2.38, -0.26) * CFrame.Angles(math.rad(-8), 0, 0),
+			steel,
+			M
+		)
+		p("Cuisse", Vector3.new(0.6, 1.05, 0.64), CFrame.new(x, 3.0, 0.02), wood, W)
+		b("Hanche", 0.42, CFrame.new(x, 3.58, 0.02), joint, W)
+	end
+
+	-- Bassin, ceinture, tabard et faltes
+	p("Bassin", Vector3.new(1.45, 0.55, 0.82), CFrame.new(0, 3.82, 0.02), wood, W)
+	p("Ceinture", Vector3.new(1.56, 0.24, 0.94), CFrame.new(0, 4.05, 0.02), leather, Enum.Material.Fabric)
+	p("Boucle", Vector3.new(0.34, 0.26, 0.08), CFrame.new(0, 4.05, -0.5), GOLD, M)
+	p("BoucleCentre", Vector3.new(0.16, 0.12, 0.1), CFrame.new(0, 4.05, -0.52), leather, Enum.Material.Fabric)
+	p("Tabard", Vector3.new(0.78, 1.15, 0.08), CFrame.new(0, 3.38, -0.48), color, Enum.Material.Fabric)
+	p(
+		"TabardPointe",
+		Vector3.new(0.55, 0.55, 0.08),
+		CFrame.new(0, 2.8, -0.48) * CFrame.Angles(0, 0, math.rad(45)),
+		color,
+		Enum.Material.Fabric
 	)
-	local body =
-		part(parent, "DummyBody", Vector3.new(1.5, 1.8, 0.9), base * CFrame.new(0, 3, 0), color, Enum.Material.Fabric)
-	ball(parent, "DummyHead", 1.1, base * CFrame.new(0, 4.5, 0), C.Straw, Enum.Material.Fabric)
-	return body
+	for _, side in { -1, 1 } do
+		p("TabardBord", Vector3.new(0.07, 1.2, 0.1), CFrame.new(side * 0.41, 3.36, -0.49), steel, M)
+		p(
+			"Falte",
+			Vector3.new(0.5, 0.55, 0.86),
+			CFrame.new(side * 0.62, 3.72, 0.02) * CFrame.Angles(0, 0, side * math.rad(12)),
+			steelDark,
+			M
+		)
+	end
+
+	-- Torse et plastron
+	p("Torse", Vector3.new(1.5, 1.45, 0.86), CFrame.new(0, 4.92, 0.02), wood, W)
+	p("TorseHaut", Vector3.new(1.75, 0.55, 0.9), CFrame.new(0, 5.42, 0.02), wood, W)
+	p("Plastron", Vector3.new(1.62, 1.25, 0.14), CFrame.new(0, 5.0, -0.46), steel, M)
+	p("PlastronHaut", Vector3.new(1.8, 0.4, 0.16), CFrame.new(0, 5.5, -0.46), steel, M)
+	p("Dossiere", Vector3.new(1.62, 1.4, 0.14), CFrame.new(0, 5.05, 0.5), steelDark, M)
+	p(
+		"GemmePlastron",
+		Vector3.new(0.26, 0.26, 0.1),
+		CFrame.new(0, 5.12, -0.55) * CFrame.Angles(0, 0, math.rad(45)),
+		GOLD,
+		Enum.Material.Neon,
+		{ NoShadow = true }
+	)
+
+	-- Cou, tête et casque
+	cyl("Cou", 0.28, 0.38, CFrame.new(0, 5.7, 0.02), joint, W)
+	p("Tete", Vector3.new(0.78, 0.8, 0.78), CFrame.new(0, 6.32, 0.02), wood, W)
+	p("Casque", Vector3.new(0.92, 0.84, 0.92), CFrame.new(0, 6.34, 0.02), steel, M)
+	for _, side in { -1, 1 } do
+		p(
+			"CasqueJoue",
+			Vector3.new(0.12, 0.6, 0.7),
+			CFrame.new(side * 0.5, 6.25, -0.05) * CFrame.Angles(0, side * math.rad(-12), 0),
+			steelDark,
+			M
+		)
+	end
+	p(
+		"CasqueSommet",
+		Vector3.new(0.62, 0.32, 0.62),
+		CFrame.new(0, 6.86, 0.02) * CFrame.Angles(0, math.rad(45), 0),
+		steelDark,
+		M
+	)
+	p("CasqueCrete", Vector3.new(0.12, 0.2, 0.8), CFrame.new(0, 7.05, 0.02), steel, M)
+	p(
+		"Visiere",
+		Vector3.new(0.66, 0.14, 0.06),
+		CFrame.new(0, 6.42, -0.48),
+		Color3.fromRGB(28, 26, 30),
+		Enum.Material.SmoothPlastic
+	)
+	p("Ventail", Vector3.new(0.78, 0.3, 0.1), CFrame.new(0, 6.12, -0.49), steelDark, M)
+
+	-- Bras : épaule, épaulière, bras, coude (coudière), avant-bras, main
+	local hands = {}
+	for _, side in { -1, 1 } do
+		local shoulder = CFrame.new(side * 1.02, 5.38, 0.02) * CFrame.Angles(0, 0, side * math.rad(10))
+		b("Epaule", 0.42, shoulder, joint, W)
+		local pauldron = p(
+			"Epauliere",
+			Vector3.new(0.85, 0.5, 0.95),
+			shoulder * CFrame.new(side * 0.05, 0.18, 0),
+			steel,
+			M,
+			{ Class = "Part" }
+		)
+		local mesh = Instance.new("SpecialMesh")
+		mesh.MeshType = Enum.MeshType.Sphere
+		mesh.Parent = pauldron
+		p("Bras", Vector3.new(0.42, 0.8, 0.44), shoulder * CFrame.new(0, -0.55, 0), wood, W)
+		local elbow = shoulder * CFrame.new(0, -1.05, 0)
+		b("Coude", 0.36, elbow, joint, W)
+		p("Coudiere", Vector3.new(0.4, 0.34, 0.24), elbow * CFrame.new(0, 0, 0.18), steelDark, M)
+		p("AvantBras", Vector3.new(0.4, 0.75, 0.42), elbow * CFrame.new(0, -0.48, 0), wood, W)
+		local hand = elbow * CFrame.new(0, -1.0, 0)
+		p("Main", Vector3.new(0.42, 0.42, 0.46), hand, wood, W)
+		hands[side] = hand
+	end
+
+	-- Épée (main droite), lame vers le bas en avant
+	local grip = hands[1] * CFrame.Angles(math.rad(-35), 0, 0)
+	p("Poignee", Vector3.new(0.14, 0.5, 0.14), grip, leather, Enum.Material.Fabric)
+	p("Pommeau", Vector3.new(0.2, 0.2, 0.2), grip * CFrame.new(0, 0.32, 0) * CFrame.Angles(0, math.rad(45), 0), GOLD, M)
+	p("Garde", Vector3.new(0.75, 0.14, 0.16), grip * CFrame.new(0, -0.28, 0), GOLD, M)
+	p("Lame", Vector3.new(0.2, 1.9, 0.06), grip * CFrame.new(0, -1.3, 0), Color3.fromRGB(205, 208, 215), M)
+	p(
+		"LamePointe",
+		Vector3.new(0.14, 0.14, 0.06),
+		grip * CFrame.new(0, -2.25, 0) * CFrame.Angles(0, 0, math.rad(45)),
+		Color3.fromRGB(205, 208, 215),
+		M
+	)
+
+	-- Bouclier en écu (bras gauche) : bord d'argent, champ coloré, pointe
+	-- Tenu de face, légèrement tourné vers l'extérieur (comme sur la planche).
+	local shieldCf = hands[-1] * CFrame.new(-0.05, 0.55, -0.42) * CFrame.Angles(0, math.rad(25), 0)
+	p("BouclierBord", Vector3.new(1.2, 1.25, 0.12), shieldCf, steel, M)
+	p(
+		"BouclierPointeBord",
+		Vector3.new(0.86, 0.86, 0.12),
+		shieldCf * CFrame.new(0, -0.62, 0) * CFrame.Angles(0, 0, math.rad(45)),
+		steel,
+		M
+	)
+	p(
+		"BouclierChamp",
+		Vector3.new(0.98, 1.08, 0.16),
+		shieldCf * CFrame.new(0, 0.02, 0),
+		color,
+		Enum.Material.SmoothPlastic
+	)
+	p(
+		"BouclierPointe",
+		Vector3.new(0.68, 0.68, 0.16),
+		shieldCf * CFrame.new(0, -0.6, 0) * CFrame.Angles(0, 0, math.rad(45)),
+		color,
+		Enum.Material.SmoothPlastic
+	)
+
+	-- Racine ancrée au pied ; tout le reste y est soudé (le pantin oscille d'un bloc).
+	local root = part(m, "PantinRacine", Vector3.new(0.4, 0.4, 0.4), base * CFrame.new(0, 0.2, 0), joint, nil, {
+		Transparency = 1,
+		CanCollide = false,
+	})
+	root.CanQuery = false
+	m.PrimaryPart = root
+	for _, inst in m:GetDescendants() do
+		if inst:IsA("BasePart") and inst ~= root then
+			inst.CanCollide = inst.Name == "Socle"
+			local weld = Instance.new("WeldConstraint")
+			weld.Part0 = root
+			weld.Part1 = inst
+			weld.Parent = inst
+			inst.Anchored = false
+			inst.Massless = true
+		end
+	end
+	return root
 end
 
 --[[
@@ -5632,7 +5835,9 @@ function Models.farmIsland(origin: CFrame, cfg, zoneCenter, parent: Instance)
 			local body = Models.dummy(
 				center * CFrame.new(d * 6, 0.2, -5),
 				parent,
-				if zone.Royal then C.Rune else C.Straw:Lerp(C.Cloth, (i % 3) * 0.3)
+				if zone.Royal
+					then Color3.fromRGB(212, 160, 50)
+					else Color3.fromRGB(46, 84, 170):Lerp(C.Cloth, (i % 3) * 0.35)
 			)
 			table.insert(dummies, body)
 		end

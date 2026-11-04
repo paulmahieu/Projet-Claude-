@@ -54,7 +54,16 @@ end
 local scene = process.args[2] or "base"
 local function at(x, z) return roblox.CFrame.new(x, 0, z) end
 local V = roblox.Vector3.new
-if scene == "decors" then
+if scene == "pantin" then
+	-- Pantin chevalier : face, profil, dos (et une version de zone royale).
+	local holder = roblox.Instance.new("Model")
+	local blue = roblox.Color3.fromRGB(46, 84, 170)
+	Models.dummy(roblox.CFrame.new(-6, 0, 0) * roblox.CFrame.Angles(0, math.pi, 0), holder, blue)
+	Models.dummy(roblox.CFrame.new(0, 0, 0) * roblox.CFrame.Angles(0, math.pi / 2, 0), holder, blue)
+	Models.dummy(roblox.CFrame.new(6, 0, 0), holder, blue)
+	Models.dummy(roblox.CFrame.new(12, 0, 0) * roblox.CFrame.Angles(0, math.pi, 0), holder, roblox.Color3.fromRGB(212, 160, 50))
+	dump(holder)
+elseif scene == "decors" then
 	-- Nouveautés liées au pack : torche, minerai de cristal, portail du bastion à battants.
 	local GameCfg = loadData("/src/shared/Config/Game.luau", "Game")
 	local holder = roblox.Instance.new("Model")
