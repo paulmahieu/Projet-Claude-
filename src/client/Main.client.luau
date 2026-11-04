@@ -156,7 +156,7 @@ local objectiveLabel = Ui.label({
 	AnchorPoint = Vector2.new(0.5, 1),
 	Position = UDim2.new(0.5, 0, 1, -58),
 	Size = UDim2.new(0.5, 0, 0, 22),
-	Font = Enum.Font.GothamBold,
+	Font = Ui.Fonts.Bold,
 	TextSize = 15,
 	TextXAlignment = Enum.TextXAlignment.Center,
 	TextColor3 = C.Ether,
@@ -175,10 +175,10 @@ local groupPanel = Ui.create("Frame", {
 	BackgroundColor3 = C.Panel,
 	BackgroundTransparency = 0.1,
 	Parent = gui,
-}, { Ui.corner(10), Ui.stroke(), Ui.padding(10) })
+}, { Ui.corner(10), Ui.stroke(), Ui.sheen(), Ui.padding(10) })
 local groupTitle = Ui.label({
 	Size = UDim2.new(1, 0, 0, 20),
-	Font = Enum.Font.GothamBold,
+	Font = Ui.Fonts.Bold,
 	TextColor3 = C.Ether,
 	TextScaled = true,
 	Parent = groupPanel,
@@ -203,11 +203,11 @@ local giftPanel = Ui.button({
 	Text = "",
 	Parent = gui,
 })
-Ui.stroke().Parent = giftPanel
+Ui.goldEdge(giftPanel)
 local giftLabel = Ui.label({
 	Position = UDim2.fromOffset(10, 3),
 	Size = UDim2.new(1, -20, 0, 20),
-	Font = Enum.Font.GothamBold,
+	Font = Ui.Fonts.Bold,
 	TextSize = 13,
 	TextColor3 = C.Gold,
 	Parent = giftPanel,
@@ -271,7 +271,7 @@ local banner = Ui.label({
 	Size = UDim2.fromOffset(380, 34),
 	BackgroundTransparency = 0,
 	BackgroundColor3 = C.success,
-	Font = Enum.Font.GothamBold,
+	Font = Ui.Fonts.Bold,
 	TextXAlignment = Enum.TextXAlignment.Center,
 	TextSize = 15,
 	Visible = false,
@@ -424,7 +424,7 @@ function toast(text: string, kind: string?)
 		Size = UDim2.new(1, 0, 0, 40),
 		BackgroundTransparency = 0,
 		BackgroundColor3 = C[kind or "info"] or C.info,
-		Font = Enum.Font.GothamMedium,
+		Font = Ui.Fonts.Medium,
 		TextXAlignment = Enum.TextXAlignment.Center,
 		TextSize = 15,
 		Text = text,
@@ -432,6 +432,15 @@ function toast(text: string, kind: string?)
 	})
 	Ui.corner(8).Parent = frame
 	Ui.padding(6).Parent = frame
+	Ui.sheen(0.8).Parent = frame
+	Ui.create("UIStroke", {
+		Color = Color3.new(1, 1, 1),
+		Transparency = 0.75,
+		Thickness = 1.5,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		Parent = frame,
+	})
+	Ui.popIn(frame)
 
 	local labels = {}
 	for _, child in toastContainer:GetChildren() do
@@ -470,7 +479,7 @@ local menuButton = Ui.button({
 	Text = "Menu",
 	Parent = gui,
 })
-Ui.stroke().Parent = menuButton
+Ui.goldEdge(menuButton)
 
 -- Bouton « Mon bastion » : les joueurs apparaissent au point d'accueil (portails, œufs).
 local homeButton = Ui.button({
@@ -484,7 +493,7 @@ local homeButton = Ui.button({
 }, function()
 	request("GoToBastion", {})
 end)
-Ui.stroke().Parent = homeButton
+Ui.goldEdge(homeButton)
 
 local menu = Ui.create("Frame", {
 	AnchorPoint = Vector2.new(0.5, 0.5),
@@ -493,19 +502,38 @@ local menu = Ui.create("Frame", {
 	BackgroundColor3 = C.Panel,
 	Visible = false,
 	Parent = gui,
-}, { Ui.corner(12), Ui.stroke(), Ui.create("UISizeConstraint", { MaxSize = Vector2.new(580, 540) }) })
+}, { Ui.corner(12), Ui.stroke(), Ui.sheen(), Ui.create("UISizeConstraint", { MaxSize = Vector2.new(580, 540) }) })
 
-local tabBar = Ui.create("Frame", {
-	Position = UDim2.fromOffset(10, 10),
-	Size = UDim2.new(1, -70, 0, 44),
+-- Onglets : bande défilante horizontale (icône + nom lisible, même sur téléphone).
+local tabBar = Ui.create("ScrollingFrame", {
+	Position = UDim2.fromOffset(10, 8),
+	Size = UDim2.new(1, -70, 0, 54),
 	BackgroundTransparency = 1,
+	BorderSizePixel = 0,
+	ScrollBarThickness = 3,
+	ScrollBarImageColor3 = C.Border,
+	ScrollingDirection = Enum.ScrollingDirection.X,
+	AutomaticCanvasSize = Enum.AutomaticSize.X,
+	CanvasSize = UDim2.new(),
+	Selectable = false,
 	Parent = menu,
 })
 Ui.create("UIListLayout", {
 	FillDirection = Enum.FillDirection.Horizontal,
+	VerticalAlignment = Enum.VerticalAlignment.Center,
 	Padding = UDim.new(0, 6),
 	SortOrder = Enum.SortOrder.LayoutOrder,
 	Parent = tabBar,
+})
+Ui.create("UIPadding", { PaddingLeft = UDim.new(0, 3), PaddingRight = UDim.new(0, 3), Parent = tabBar })
+-- Filet doré sous les onglets
+Ui.create("Frame", {
+	Position = UDim2.fromOffset(10, 64),
+	Size = UDim2.new(1, -20, 0, 2),
+	BackgroundColor3 = C.Border,
+	BackgroundTransparency = 0.4,
+	BorderSizePixel = 0,
+	Parent = menu,
 })
 
 local closeButton = Ui.button({
@@ -518,10 +546,12 @@ local closeButton = Ui.button({
 })
 
 local content = Ui.create("ScrollingFrame", {
-	Position = UDim2.fromOffset(10, 62),
-	Size = UDim2.new(1, -20, 1, -72),
+	Position = UDim2.fromOffset(10, 72),
+	Size = UDim2.new(1, -20, 1, -82),
 	BackgroundTransparency = 1,
+	BorderSizePixel = 0,
 	ScrollBarThickness = 6,
+	ScrollBarImageColor3 = C.Border,
 	AutomaticCanvasSize = Enum.AutomaticSize.Y,
 	CanvasSize = UDim2.new(),
 	Selectable = false,
@@ -544,35 +574,59 @@ local function row(height: number?)
 		Size = UDim2.new(1, -8, 0, height or 56),
 		BackgroundColor3 = C.Row,
 		Parent = content,
-	}, { Ui.corner(8) })
+	}, {
+		Ui.corner(8),
+		Ui.sheen(0.82),
+		Ui.create("UIStroke", { Color = Color3.fromRGB(88, 72, 56), Thickness = 1, Transparency = 0.3 }),
+	})
 end
 
 local function heading(text: string)
 	order += 1
-	return Ui.label({
+	local label = Ui.label({
 		LayoutOrder = order,
-		Size = UDim2.new(1, -8, 0, 28),
-		Font = Enum.Font.GothamBold,
-		TextSize = 17,
+		Size = UDim2.new(1, -8, 0, 32),
+		Font = Ui.Fonts.Title,
+		TextSize = 19,
 		TextColor3 = C.Gold,
+		TextStrokeTransparency = 0.4,
+		TextYAlignment = Enum.TextYAlignment.Top,
 		Text = text,
 		Parent = content,
 	})
+	-- Filet doré dégradé sous le titre de section
+	Ui.create("Frame", {
+		Position = UDim2.new(0, 0, 1, -5),
+		Size = UDim2.new(1, 0, 0, 2),
+		BackgroundColor3 = C.Border,
+		BorderSizePixel = 0,
+		Parent = label,
+	}, {
+		Ui.create("UIGradient", {
+			Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 0),
+				NumberSequenceKeypoint.new(0.6, 0.5),
+				NumberSequenceKeypoint.new(1, 1),
+			}),
+		}),
+	})
+	return label
 end
 
-local function rowText(parent, title: string, subtitle: string?, rightReserve: number)
+local function rowText(parent, title: string, subtitle: string?, rightReserve: number, left: number?)
+	local x = left or 10
 	Ui.label({
-		Position = UDim2.fromOffset(10, 4),
-		Size = UDim2.new(1, -(rightReserve + 14), 0, 22),
-		Font = Enum.Font.GothamBold,
+		Position = UDim2.fromOffset(x, 4),
+		Size = UDim2.new(1, -(rightReserve + x + 4), 0, 22),
+		Font = Ui.Fonts.Bold,
 		Text = title,
 		TextTruncate = Enum.TextTruncate.AtEnd,
 		Parent = parent,
 	})
 	if subtitle then
 		Ui.label({
-			Position = UDim2.fromOffset(10, 26),
-			Size = UDim2.new(1, -(rightReserve + 14), 1, -30),
+			Position = UDim2.fromOffset(x, 26),
+			Size = UDim2.new(1, -(rightReserve + x + 4), 1, -30),
 			TextSize = 13,
 			TextColor3 = C.Muted,
 			TextYAlignment = Enum.TextYAlignment.Top,
@@ -889,7 +943,7 @@ local function renderUpgrades()
 				end)
 				button:FindFirstChildOfClass("UICorner").CornerRadius = UDim.new(0.5, 0)
 				if selectedNode == node.Id then
-					Ui.create("UIStroke", { Color = Color3.new(1, 1, 1), Thickness = 3, Parent = button })
+					Ui.goldEdge(button, Color3.new(1, 1, 1), 3)
 				end
 				firstButton = firstButton or button
 			end
@@ -900,7 +954,7 @@ local function renderUpgrades()
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromOffset(center + math.cos(angle) * dist, center + math.sin(angle) * dist),
 			Size = UDim2.fromOffset(90, 18),
-			Font = Enum.Font.GothamBold,
+			Font = Ui.Fonts.Bold,
 			TextSize = 12,
 			TextXAlignment = Enum.TextXAlignment.Center,
 			TextColor3 = color,
@@ -1078,13 +1132,27 @@ local function renderPets()
 		local def = petById[pet.PetId]
 		if def then
 			local equipped = table.find(state.Equipped, pet.Uid) ~= nil
-			local r = row(58)
+			local r = row(62)
 			r.BackgroundColor3 = C.Row:Lerp(rarityColor(def.Rarity), 0.18)
+			-- Portrait de face (vrai modèle dans un ViewportFrame)
+			local photo = Ui.create("Frame", {
+				Position = UDim2.fromOffset(6, 5),
+				Size = UDim2.fromOffset(52, 52),
+				BackgroundTransparency = 1,
+				Parent = r,
+			})
+			EggPreview.portrait(def, photo)
 			rowText(
 				r,
 				(if equipped then "✔ " else "") .. def.Name,
-				string.format("%s · +%d %%", Pets.Rarities[def.Rarity].Name, math.floor(def.Bonus * 100 + 0.5)),
-				236
+				string.format(
+					"%s · %s (+%d %%)",
+					Pets.Rarities[def.Rarity].Name,
+					Formulas.petMultiplierText(def.Bonus),
+					math.floor(def.Bonus * 100 + 0.5)
+				),
+				236,
+				66
 			)
 			rightButton(r, "Relâcher", C.Danger, 1, function()
 				request("ReleasePet", { Uid = pet.Uid })
@@ -1440,22 +1508,29 @@ local function renderPass()
 end
 
 local TABS = {
-	{ Id = "Group", Label = "Groupe", Render = renderGroup },
-	{ Id = "Pets", Label = "Compagnons", Render = renderPets },
-	{ Id = "Upgrades", Label = "Arbre", Render = renderUpgrades },
-	{ Id = "Rebirth", Label = "Renaissance", Render = renderRebirth },
-	{ Id = "Rewards", Label = "Cadeaux", Render = renderRewards },
-	{ Id = "Titles", Label = "Titres", Render = renderTitles },
-	{ Id = "Quests", Label = "Quêtes", Render = renderQuests },
-	{ Id = "Pass", Label = "Parcours", Render = renderPass },
-	{ Id = "Shop", Label = "Boutique", Render = renderShop },
+	{ Id = "Group", Icon = "🏰", Label = "Groupe", Render = renderGroup },
+	{ Id = "Pets", Icon = "🐾", Label = "Compagnons", Render = renderPets },
+	{ Id = "Upgrades", Icon = "🌳", Label = "Arbre", Render = renderUpgrades },
+	{ Id = "Rebirth", Icon = "🔁", Label = "Renaissance", Render = renderRebirth },
+	{ Id = "Rewards", Icon = "🎁", Label = "Cadeaux", Render = renderRewards },
+	{ Id = "Titles", Icon = "🎖", Label = "Titres", Render = renderTitles },
+	{ Id = "Quests", Icon = "📜", Label = "Quêtes", Render = renderQuests },
+	{ Id = "Pass", Icon = "🏅", Label = "Parcours", Render = renderPass },
+	{ Id = "Shop", Icon = "🛒", Label = "Boutique", Render = renderShop },
 }
 
 local tabButtons = {}
 function renderTab()
 	clearContent()
 	for _, tab in TABS do
-		tabButtons[tab.Id].BackgroundColor3 = if tab.Id == currentTab then C.reward else C.Row
+		local selected = tab.Id == currentTab
+		tabButtons[tab.Id].BackgroundColor3 = if selected then C.reward else C.Row
+		tabButtons[tab.Id].TextColor3 = if selected then Color3.new(1, 1, 1) else C.Muted
+		if selected then
+			Ui.goldEdge(tabButtons[tab.Id], C.Gold, 2)
+		else
+			Ui.goldEdge(tabButtons[tab.Id], Color3.fromRGB(20, 14, 10), 1.5).Transparency = 0.35
+		end
 		if tab.Id == currentTab then
 			tab.Render()
 		end
@@ -1465,26 +1540,49 @@ end
 for i, tab in TABS do
 	tabButtons[tab.Id] = Ui.button({
 		LayoutOrder = i,
-		Size = UDim2.new(1 / #TABS, -6, 1, 0),
+		-- Largeur ajustée au texte (AutomaticSize) : « Compagnons », « Renaissance » restent sur une ligne.
+		Size = UDim2.fromOffset(0, 44),
+		AutomaticSize = Enum.AutomaticSize.X,
 		BackgroundColor3 = C.Row,
-		TextScaled = true,
-		Text = tab.Label,
+		TextSize = 15,
+		Text = tab.Icon .. " " .. tab.Label,
 		Parent = tabBar,
 	}, function()
 		currentTab = tab.Id
 		renderTab()
 	end)
+	Ui.create("UIPadding", {
+		PaddingLeft = UDim.new(0, 14),
+		PaddingRight = UDim.new(0, 14),
+		Parent = tabButtons[tab.Id],
+	})
 end
 
 local function isGamepad(): boolean
 	return UserInputService:GetLastInputType().Name:sub(1, 7) == "Gamepad"
 end
 
+-- Fait défiler la bande d'onglets jusqu'à l'onglet actif.
+local function revealTab()
+	local button = tabButtons[currentTab]
+	if button then
+		local x = button.AbsolutePosition.X - tabBar.AbsolutePosition.X + tabBar.CanvasPosition.X
+		tabBar.CanvasPosition = Vector2.new(math.max(0, x - 40), 0)
+	end
+end
+
 local function setMenu(open: boolean)
+	if open ~= menuOpen then
+		Ui.setBlur(open)
+		if open then
+			Ui.popIn(menu)
+		end
+	end
 	menuOpen = open
 	menu.Visible = open
 	if open then
 		renderTab()
+		task.defer(revealTab)
 		if isGamepad() then
 			GuiService.SelectedObject = tabButtons[currentTab]
 		end
@@ -1573,11 +1671,11 @@ local eggPanel = Ui.create("Frame", {
 	BackgroundColor3 = C.Panel,
 	Visible = false,
 	Parent = gui,
-}, { Ui.corner(12), Ui.stroke(), Ui.create("UISizeConstraint", { MaxSize = Vector2.new(560, 600) }) })
+}, { Ui.corner(12), Ui.stroke(), Ui.sheen(), Ui.create("UISizeConstraint", { MaxSize = Vector2.new(560, 600) }) })
 local eggTitle = Ui.label({
 	Position = UDim2.fromOffset(14, 10),
 	Size = UDim2.new(1, -70, 0, 30),
-	Font = Enum.Font.GothamBold,
+	Font = Ui.Fonts.Bold,
 	TextSize = 20,
 	TextColor3 = C.Gold,
 	Parent = eggPanel,
@@ -1614,7 +1712,7 @@ Ui.create("UIPadding", { PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0
 local eggResult = Ui.label({
 	Position = UDim2.new(0, 14, 1, -100),
 	Size = UDim2.new(1, -28, 0, 30),
-	Font = Enum.Font.GothamBold,
+	Font = Ui.Fonts.Bold,
 	TextXAlignment = Enum.TextXAlignment.Center,
 	Parent = eggPanel,
 })
@@ -1661,6 +1759,10 @@ local function openEgg(eggId: string)
 			eggButton.BackgroundColor3 = C.Disabled
 		end
 	end
+	if not eggPanel.Visible then
+		Ui.setBlur(true)
+		Ui.popIn(eggPanel)
+	end
 	eggPanel.Visible = true
 	if UserInputService:GetLastInputType().Name:sub(1, 7) == "Gamepad" then
 		GuiService.SelectedObject = eggButton
@@ -1698,6 +1800,9 @@ onPriceLoaded = function()
 	end
 end
 eggClose.Activated:Connect(function()
+	if eggPanel.Visible then
+		Ui.setBlur(false)
+	end
 	eggPanel.Visible = false
 	currentEgg = nil
 	EggPreview.setSuppressed(false)
@@ -1760,17 +1865,7 @@ for i, entry in ICONS do
 		currentTab = entry.Tab
 		setMenu(true)
 	end)
-	Ui.create("UIStroke", {
-		Color = Color3.fromRGB(40, 28, 16),
-		Thickness = 3,
-		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-		Parent = button,
-	})
-	Ui.create("UIGradient", {
-		Rotation = 90,
-		Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(180, 180, 180)),
-		Parent = button,
-	})
+	Ui.goldEdge(button, Color3.fromRGB(40, 28, 16), 3)
 	Ui.label({
 		Position = UDim2.fromOffset(0, 2),
 		Size = UDim2.new(1, 0, 0, 32),

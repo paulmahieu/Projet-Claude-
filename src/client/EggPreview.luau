@@ -18,6 +18,7 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Pets = require(Shared.Config.Pets)
 local PetModels = require(Shared.PetModels)
 local Formulas = require(Shared.Formulas)
+local Ui = require(script.Parent.Ui)
 
 local EggPreview = {}
 
@@ -106,7 +107,7 @@ function EggPreview.card(def, chance: number, size: string, order: number?): Fra
 		Size = UDim2.fromOffset(if big then 58 else 44, if big then 18 else 14),
 		BackgroundColor3 = Color3.fromRGB(15, 13, 20),
 		BackgroundTransparency = 0.25,
-		Font = Enum.Font.GothamBold,
+		Font = Ui.Fonts.Bold,
 		TextSize = if big then 12 else 10,
 		TextColor3 = Color3.new(1, 1, 1),
 		Text = Formulas.chanceText(chance),
@@ -120,7 +121,7 @@ function EggPreview.card(def, chance: number, size: string, order: number?): Fra
 			Position = UDim2.fromOffset(4, y),
 			Size = UDim2.new(1, -8, 0, 30),
 			BackgroundTransparency = 1,
-			Font = Enum.Font.GothamBold,
+			Font = Ui.Fonts.Bold,
 			TextSize = 13,
 			TextWrapped = true,
 			TextColor3 = Color3.fromRGB(245, 236, 220),
@@ -131,7 +132,7 @@ function EggPreview.card(def, chance: number, size: string, order: number?): Fra
 			Position = UDim2.fromOffset(4, y),
 			Size = UDim2.new(1, -8, 0, 16),
 			BackgroundTransparency = 1,
-			Font = Enum.Font.GothamBold,
+			Font = Ui.Fonts.Bold,
 			TextSize = 13,
 			TextColor3 = color,
 			Text = Pets.Rarities[def.Rarity].Name,
@@ -143,7 +144,7 @@ function EggPreview.card(def, chance: number, size: string, order: number?): Fra
 			Position = UDim2.fromOffset(2, y),
 			Size = UDim2.new(1, -4, 0, 12),
 			BackgroundTransparency = 1,
-			Font = Enum.Font.GothamBold,
+			Font = Ui.Fonts.Bold,
 			TextSize = 10,
 			TextColor3 = color,
 			Text = Pets.Rarities[def.Rarity].Name,
@@ -154,7 +155,7 @@ function EggPreview.card(def, chance: number, size: string, order: number?): Fra
 		Position = UDim2.fromOffset(4, y),
 		Size = UDim2.new(1, -8, 0, if big then 22 else 18),
 		BackgroundTransparency = 1,
-		Font = Enum.Font.GothamBlack,
+		Font = Ui.Fonts.Black,
 		TextSize = if big then 19 else 15,
 		TextColor3 = GOLD,
 		TextStrokeTransparency = 0.5,
@@ -247,7 +248,7 @@ local function buildBoard(egg, adornee: BasePart)
 		Position = UDim2.fromOffset(8, 6),
 		Size = UDim2.new(1, -16, 0, 26),
 		BackgroundTransparency = 1,
-		Font = Enum.Font.GothamBold,
+		Font = Ui.Fonts.Bold,
 		TextSize = 18,
 		TextColor3 = Color3.fromRGB(255, 228, 160),
 		Text = egg.Name .. " · compagnons possibles",

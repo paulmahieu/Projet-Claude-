@@ -93,7 +93,7 @@ function StreetUi.start(gui: ScreenGui)
 		BackgroundTransparency = 0.15,
 		Visible = false,
 		Parent = gui,
-	}, { Ui.corner(10), Ui.stroke(), Ui.create("UISizeConstraint", { MaxSize = Vector2.new(460, 96) }) })
+	}, { Ui.corner(10), Ui.stroke(), Ui.sheen(), Ui.create("UISizeConstraint", { MaxSize = Vector2.new(460, 96) }) })
 	local title = Ui.label({
 		Position = UDim2.fromOffset(10, 4),
 		Size = UDim2.new(1, -20, 0, 34),
@@ -107,7 +107,7 @@ function StreetUi.start(gui: ScreenGui)
 	local power = Ui.label({
 		Position = UDim2.fromOffset(10, 40),
 		Size = UDim2.new(1, -20, 0, 22),
-		Font = Enum.Font.GothamBold,
+		Font = Ui.Fonts.Bold,
 		TextXAlignment = Enum.TextXAlignment.Center,
 		Parent = panel,
 	})

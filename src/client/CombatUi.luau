@@ -38,11 +38,11 @@ function CombatUi.start(gui: ScreenGui, toast: (string, string?) -> ())
 		BackgroundTransparency = 0.1,
 		Visible = false,
 		Parent = gui,
-	}, { Ui.corner(10), Ui.stroke(), Ui.create("UISizeConstraint", { MaxSize = Vector2.new(520, 54) }) })
+	}, { Ui.corner(10), Ui.stroke(), Ui.sheen(), Ui.create("UISizeConstraint", { MaxSize = Vector2.new(520, 54) }) })
 	local bossName = Ui.label({
 		Position = UDim2.fromOffset(10, 4),
 		Size = UDim2.new(1, -20, 0, 20),
-		Font = Enum.Font.GothamBold,
+		Font = Ui.Fonts.Bold,
 		TextXAlignment = Enum.TextXAlignment.Center,
 		Parent = bossFrame,
 	})
@@ -59,7 +59,7 @@ function CombatUi.start(gui: ScreenGui, toast: (string, string?) -> ())
 	}, { Ui.corner(6) })
 	local barText = Ui.label({
 		Size = UDim2.fromScale(1, 1),
-		Font = Enum.Font.GothamBold,
+		Font = Ui.Fonts.Bold,
 		TextSize = 13,
 		TextXAlignment = Enum.TextXAlignment.Center,
 		Parent = barBack,
@@ -152,7 +152,7 @@ function CombatUi.start(gui: ScreenGui, toast: (string, string?) -> ())
 		}, function()
 			use(id)
 		end)
-		Ui.stroke().Parent = buttons[id]
+		Ui.goldEdge(buttons[id])
 	end
 
 	local function bind(enabled: boolean)

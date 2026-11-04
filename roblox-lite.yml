@@ -46,3 +46,7 @@ globals:
     any: true
   print:
     any: true
+  ColorSequenceKeypoint:
+    any: true
+  NumberSequenceKeypoint:
+    any: true
