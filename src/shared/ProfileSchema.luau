@@ -29,6 +29,8 @@ function ProfileSchema.template()
 		NextPetUid = 1,
 		BossKills = {}, -- { [BossId] = nombre de victoires validées }
 		Street = { Stage = 1, Best = 0, Kills = 0 }, -- Rue des boss : étape en cours, meilleure, ennemis vaincus
+		Daily = { Day = 0, Cycle = 1, LastClaimDay = -1 }, -- calendrier 7 jours cumulés
+		Playtime = { Day = -1, Seconds = 0, Claimed = {} }, -- temps de jeu actif du jour UTC
 		Stats = { FirstJoin = 0, PlaySeconds = 0, Harvests = 0, TrophiesEarned = 0 },
 	}
 end

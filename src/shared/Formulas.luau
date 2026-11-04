@@ -388,6 +388,52 @@ function Formulas.trophies(base: number, trophyMult: number): number
 	return math.ceil(base * (1 + trophyMult))
 end
 
+-- Récompenses quotidiennes et de temps de jeu ------------------------------------------
+
+-- Numéro du jour UTC (00:00 UTC = changement de jour).
+function Formulas.utcDay(t: number, dayLength: number): number
+	return t // dayLength
+end
+
+-- Peut-on récupérer la récompense du jour ? (une par jour UTC, jours cumulés)
+function Formulas.dailyClaimable(daily, today: number): boolean
+	return today > daily.LastClaimDay
+end
+
+-- Prochaine récompense quotidienne : retourne { Day, Cycle, Reward, OpId }.
+function Formulas.dailyNext(rewardsCfg, daily)
+	local day = daily.Day + 1 -- 1..7
+	local list = if daily.Cycle <= 1 then rewardsCfg.Daily else rewardsCfg.Repeat
+	return {
+		Day = day,
+		Cycle = daily.Cycle,
+		Reward = list[day],
+		OpId = string.format("daily:%d:%d", daily.Cycle, day),
+	}
+end
+
+-- État après récupération (pur) : avance le jour, boucle sur un nouveau cycle après le 7e.
+function Formulas.dailyAdvance(daily, today: number, cycleLength: number)
+	local nextState = { Day = daily.Day + 1, Cycle = daily.Cycle, LastClaimDay = today }
+	if nextState.Day >= cycleLength then
+		nextState.Day = 0
+		nextState.Cycle += 1
+	end
+	return nextState
+end
+
+-- Paliers de temps de jeu franchis entre deux durées (secondes). Retourne leurs index.
+function Formulas.playtimeReached(tiers, before: number, after: number)
+	local reached = {}
+	for i, tier in tiers do
+		local s = tier.Minutes * 60
+		if before < s and after >= s then
+			table.insert(reached, i)
+		end
+	end
+	return reached
+end
+
 -- Champ des champions ------------------------------------------------------------------
 
 -- Rendement dans une zone de farm (par seconde) : base x zone x Concentration x personnel.

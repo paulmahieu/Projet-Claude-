@@ -35,6 +35,7 @@ local BossService = load("BossService")
 local StreetService = load("StreetService")
 local FarmService = load("FarmService")
 local LeaderboardService = load("LeaderboardService")
+local RewardService = load("RewardService")
 local Net = load("Net")
 
 -- Exécute une étape ; en cas d'erreur, la signale et continue.
@@ -87,6 +88,7 @@ call(BossService, "start", "BossService")
 call(StreetService, "start", "StreetService")
 call(FarmService, "start", "FarmService")
 call(LeaderboardService, "start", "LeaderboardService")
+call(RewardService, "start", "RewardService")
 call(ProfileService, "start", "ProfileService")
 Diagnostics.startVoidRescue()
 

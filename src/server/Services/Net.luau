@@ -22,6 +22,7 @@ local MonetizationService = require(script.Parent.MonetizationService)
 local RebirthService = require(script.Parent.RebirthService)
 local PetService = require(script.Parent.PetService)
 local BossService = require(script.Parent.BossService)
+local RewardService = require(script.Parent.RewardService)
 local ProfileService = require(script.Parent.ProfileService)
 local Formulas = require(Shared.Formulas)
 local Training = require(Shared.Config.Training)
@@ -64,6 +65,10 @@ local handlers = {
 			pets = PetService.snapshot(player),
 			devTools = MonetizationService.devToolsEnabled(),
 		}
+	end,
+
+	ClaimDaily = function(player)
+		return RewardService.claimDaily(player)
 	end,
 
 	GoToBastion = function(player)
@@ -181,6 +186,8 @@ local handlers = {
 		end
 		if p.Kind == "Gold" then
 			profile.Gold += 10000
+		elseif p.Kind == "NextDay" then
+			return RewardService.devNextDay(player)
 		elseif p.Kind == "Trophies" then
 			profile.Trophies += 500
 		elseif p.Kind == "Levels" then

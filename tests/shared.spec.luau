@@ -25,6 +25,7 @@ local Bosses = require("../src/shared/Config/Bosses")
 local Combat = require("../src/shared/Config/Combat")
 local Street = require("../src/shared/Config/Street")
 local Farm = require("../src/shared/Config/Farm")
+local Rewards = require("../src/shared/Config/Rewards")
 
 local passed, failed = 0, 0
 
@@ -820,6 +821,80 @@ test("cour royale : portails espacés, devant le donjon ; œufs dans la cour ; p
 		"route hors des remparts"
 	)
 	assert(Game.RingRoadRadius + Game.RingRoadWidth / 2 < Harvest.RingRadius - 12, "route avant les bosquets")
+end)
+
+----------------------------------------------------------------------------------------
+print("Récompenses quotidiennes et temps de jeu")
+
+test("quotidien : une fois par jour UTC, jours cumulés sans perte", function()
+	local daily = { Day = 0, Cycle = 1, LastClaimDay = -1 }
+	local day1 = Formulas.utcDay(1000 * 86400 + 5, Rewards.DayLength)
+	assert(Formulas.dailyClaimable(daily, day1), "premier jour")
+	daily = Formulas.dailyAdvance(daily, day1, #Rewards.Daily)
+	assert(not Formulas.dailyClaimable(daily, day1), "pas deux fois le même jour")
+	-- Absence de 5 jours : on reprend simplement au jour 2.
+	assert(Formulas.dailyClaimable(daily, day1 + 5), "après une absence")
+	eq(Formulas.dailyNext(Rewards, daily).Day, 2)
+end)
+
+test("quotidien : cycle de 7 jours puis récompenses répétables, compagnon une seule fois", function()
+	local daily = { Day = 0, Cycle = 1, LastClaimDay = -1 }
+	local pets = 0
+	for d = 1, 14 do
+		local nextReward = Formulas.dailyNext(Rewards, daily)
+		if nextReward.Reward.Pet then
+			pets += 1
+		end
+		eq(nextReward.OpId, string.format("daily:%d:%d", daily.Cycle, daily.Day + 1))
+		daily = Formulas.dailyAdvance(daily, d, #Rewards.Daily)
+	end
+	eq(daily.Cycle, 3)
+	eq(daily.Day, 0)
+	eq(pets, 1, "le compagnon n'est donné qu'au premier cycle")
+	for _, reward in Rewards.Repeat do
+		eq(reward.Pet, nil, "aucun objet unique dans les cycles répétés")
+	end
+end)
+
+test("temps de jeu : paliers franchis une seule fois, sessions additionnées", function()
+	local tiers = Rewards.Playtime
+	eq(#Formulas.playtimeReached(tiers, 0, 299), 0)
+	local first = Formulas.playtimeReached(tiers, 295, 300)
+	eq(#first, 1)
+	eq(first[1], 1)
+	eq(#Formulas.playtimeReached(tiers, 300, 305), 0, "pas de second crédit")
+	-- Une longue avance d'un coup franchit plusieurs paliers.
+	eq(#Formulas.playtimeReached(tiers, 0, 31 * 60), #tiers)
+	local last = 0
+	for _, tier in tiers do
+		assert(tier.Minutes > last, "paliers croissants")
+		last = tier.Minutes
+	end
+end)
+
+test("récompenses : compagnons existants, valeurs positives", function()
+	local ids = {}
+	for _, def in Pets.List do
+		ids[def.Id] = true
+	end
+	local function check(reward)
+		for key, value in reward do
+			if key == "Pet" then
+				assert(ids[value], "compagnon inconnu " .. tostring(value))
+			else
+				assert(value > 0, key .. " doit être positif")
+			end
+		end
+	end
+	for _, list in { Rewards.Daily, Rewards.Repeat } do
+		eq(#list, 7, "7 jours")
+		for _, reward in list do
+			check(reward)
+		end
+	end
+	for _, tier in Rewards.Playtime do
+		check(tier.Reward)
+	end
 end)
 
 print(string.format("\n%d réussi(s), %d échec(s)", passed, failed))

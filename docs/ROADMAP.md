@@ -37,8 +37,9 @@ Légende : ✅ implémenté · 🧪 testé automatiquement (Lune) · 🔍 à vé
 - ⏳ Annuaire MemoryStore groupe -> serveur, téléportation vers le bastion (décision R2)
 - ⏳ Serveur plein, échec de téléportation, attente sans copie modifiable
 - ⏳ Placement libre sur grille : aperçu, rotation, validation, annulation, limites, zones protégées
-- ⏳ Récompenses quotidiennes (7 jours cumulés, 00:00 UTC) et de temps de jeu (5/10/20/30 min)
-- ⏳ Mode de simulation des changements de journée (Studio)
+- ✅🧪🔍 Récompenses quotidiennes (7 jours cumulés, 00:00 UTC, compagnon offert au 1er cycle,
+  cycles répétables) et de temps de jeu actif (5/10/20/30 min), crédits idempotents
+- ✅🔍 Simulation du changement de jour (Studio : Menu > Cadeaux > Jour suivant)
 - ⏳ Propositions P2 / P3 si retenues
 
 ## Étape 3 — Première aventure

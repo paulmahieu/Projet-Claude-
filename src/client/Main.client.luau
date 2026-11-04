@@ -25,6 +25,7 @@ local Products = require(Shared.Config.Products)
 local Texts = require(Shared.Config.Texts)
 local Pets = require(Shared.Config.Pets)
 local Rebirth = require(Shared.Config.Rebirth)
+local Rewards = require(Shared.Config.Rewards)
 local Ui = require(script.Parent.Ui)
 local Effects = require(script.Parent.Effects)
 local PetFollowers = require(script.Parent.PetFollowers)
@@ -153,6 +154,76 @@ for i, mat in Materials do
 		Parent = groupPanel,
 	})
 end
+
+-- Encart cadeaux (sous le panneau du groupe) : temps de jeu et quotidien
+local giftPanel = Ui.button({
+	AnchorPoint = Vector2.new(1, 0),
+	Position = UDim2.new(1, -10, 0, 10 + 40 + 22 * #Materials + 8),
+	Size = UDim2.fromOffset(220, 46),
+	BackgroundColor3 = C.Panel,
+	AutoButtonColor = true,
+	Text = "",
+	Parent = gui,
+})
+Ui.stroke().Parent = giftPanel
+local giftLabel = Ui.label({
+	Position = UDim2.fromOffset(10, 3),
+	Size = UDim2.new(1, -20, 0, 20),
+	Font = Enum.Font.GothamBold,
+	TextSize = 13,
+	TextColor3 = C.Gold,
+	Parent = giftPanel,
+})
+local giftBarBack = Ui.create("Frame", {
+	Position = UDim2.new(0, 10, 0, 27),
+	Size = UDim2.new(1, -20, 0, 10),
+	BackgroundColor3 = Color3.fromRGB(18, 18, 22),
+	Parent = giftPanel,
+}, { Ui.corner(5) })
+local giftBar = Ui.create(
+	"Frame",
+	{ Size = UDim2.fromScale(0, 1), BackgroundColor3 = C.Free, Parent = giftBarBack },
+	{ Ui.corner(5) }
+)
+local dailyBadge = Ui.create("Frame", {
+	AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.new(1, -4, 0, 4),
+	Size = UDim2.fromOffset(16, 16),
+	BackgroundColor3 = Color3.fromRGB(230, 50, 50),
+	Visible = false,
+	Parent = giftPanel,
+}, { Ui.corner(8) })
+
+local function refreshGifts()
+	local played = player:GetAttribute("PlaySeconds") or 0
+	local nextTier = nil
+	local previous = 0
+	for _, tier in Rewards.Playtime do
+		if played < tier.Minutes * 60 then
+			nextTier = tier
+			break
+		end
+		previous = tier.Minutes * 60
+	end
+	if nextTier then
+		local goal = nextTier.Minutes * 60
+		local remaining = goal - played
+		giftLabel.Text = string.format("Cadeau dans %d:%02d", remaining // 60, remaining % 60)
+		giftBar.Size = UDim2.fromScale(math.clamp((played - previous) / (goal - previous), 0, 1), 1)
+	else
+		giftLabel.Text = "Cadeaux du jour terminés"
+		giftBar.Size = UDim2.fromScale(1, 1)
+	end
+	local claimable = player:GetAttribute("DailyClaimable") == true
+	dailyBadge.Visible = claimable
+	if claimable then
+		giftLabel.Text = "Quotidien prêt ! · " .. giftLabel.Text
+	end
+end
+for _, name in { "PlaySeconds", "DailyClaimable" } do
+	player:GetAttributeChangedSignal(name):Connect(refreshGifts)
+end
+refreshGifts()
 
 -- Bandeau d'état (haut centre) --------------------------------------------------------
 
@@ -892,11 +963,106 @@ local function renderRebirth()
 	end
 end
 
+-- Onglet Cadeaux (gratuit) : calendrier 7 jours et temps de jeu
+local function rewardText(reward): string
+	local parts = {}
+	if reward.Gold then
+		table.insert(parts, "+" .. Formulas.formatNumber(reward.Gold) .. " or")
+	end
+	if reward.Trophies then
+		table.insert(parts, "+" .. reward.Trophies .. " trophées")
+	end
+	if reward.Xp then
+		table.insert(parts, "+" .. reward.Xp .. " XP")
+	end
+	if reward.Pet and petById[reward.Pet] then
+		table.insert(parts, petById[reward.Pet].Name)
+	end
+	return table.concat(parts, " · ")
+end
+
+local function formatClock(seconds: number): string
+	seconds = math.max(0, math.floor(seconds))
+	return string.format("%d:%02d:%02d", seconds // 3600, (seconds % 3600) // 60, seconds % 60)
+end
+
+local function renderRewards()
+	local cycle = player:GetAttribute("DailyCycle") or 1
+	local done = player:GetAttribute("DailyDay") or 0
+	local claimable = player:GetAttribute("DailyClaimable") == true
+	local list = if cycle <= 1 then Rewards.Daily else Rewards.Repeat
+	heading(string.format("Récompense quotidienne · cycle %d (jours cumulés, rien n'est perdu)", cycle))
+	for day, reward in list do
+		local r = row(44)
+		local status = if day <= done
+			then "✔ récupéré"
+			elseif day == done + 1 then (if claimable then "aujourd'hui" else "demain")
+			else "à venir"
+		r.BackgroundColor3 = if day == done + 1 and claimable then C.Free:Lerp(C.Row, 0.5) else C.Row
+		rowText(r, string.format("Jour %d · %s", day, rewardText(reward)), nil, 130)
+		Ui.label({
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, -10, 0.5, 0),
+			Size = UDim2.fromOffset(120, 22),
+			TextXAlignment = Enum.TextXAlignment.Right,
+			TextColor3 = C.Muted,
+			Text = status,
+			Parent = r,
+		})
+	end
+	local claim = row(60)
+	if claimable then
+		rowText(claim, "Ta récompense du jour est prête !", "Gratuit, sans achat.", 220)
+		local button = rightButton(claim, "Récupérer gratuitement", C.Free, 1, function()
+			request("ClaimDaily", {})
+		end)
+		button.Size = UDim2.fromOffset(200, 44)
+	else
+		local resetAt = player:GetAttribute("DailyResetAt") or 0
+		rowText(
+			claim,
+			"Prochaine récompense dans " .. formatClock(resetAt - workspace:GetServerTimeNow()),
+			"Nouveau jour à 00:00 UTC.",
+			0
+		)
+	end
+
+	local played = player:GetAttribute("PlaySeconds") or 0
+	heading(string.format("Temps de jeu aujourd'hui : %d min", played // 60))
+	for _, tier in Rewards.Playtime do
+		local r = row(44)
+		local reached = played >= tier.Minutes * 60
+		rowText(r, string.format("%d min · %s", tier.Minutes, rewardText(tier.Reward)), nil, 130)
+		Ui.label({
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, -10, 0.5, 0),
+			Size = UDim2.fromOffset(120, 22),
+			TextXAlignment = Enum.TextXAlignment.Right,
+			TextColor3 = if reached then C.Free else C.Muted,
+			Text = if reached
+				then "✔ reçu"
+				else string.format("encore %d min", math.ceil((tier.Minutes * 60 - played) / 60)),
+			Parent = r,
+		})
+	end
+	if played >= Rewards.Playtime[#Rewards.Playtime].Minutes * 60 then
+		heading("Tous les cadeaux de temps de jeu du jour sont récupérés.")
+	end
+	if devTools then
+		local dev = row(52)
+		rowText(dev, "Test Studio", "Simule le passage au jour suivant.", 120)
+		rightButton(dev, "Jour suivant", C.info, 1, function()
+			request("DevBoost", { Kind = "NextDay" })
+		end)
+	end
+end
+
 local TABS = {
 	{ Id = "Group", Label = "Groupe", Render = renderGroup },
 	{ Id = "Pets", Label = "Compagnons", Render = renderPets },
 	{ Id = "Upgrades", Label = "Arbre", Render = renderUpgrades },
 	{ Id = "Rebirth", Label = "Renaissance", Render = renderRebirth },
+	{ Id = "Rewards", Label = "Cadeaux", Render = renderRewards },
 	{ Id = "Shop", Label = "Boutique", Render = renderShop },
 }
 
@@ -1141,6 +1307,18 @@ PetsUpdate.OnClientEvent:Connect(function(state)
 		renderTab()
 	end
 end)
+
+giftPanel.Activated:Connect(function()
+	currentTab = "Rewards"
+	setMenu(true)
+end)
+for _, name in { "DailyDay", "DailyClaimable", "PlaySeconds" } do
+	player:GetAttributeChangedSignal(name):Connect(function()
+		if menuOpen and currentTab == "Rewards" then
+			renderTab()
+		end
+	end)
+end
 
 for _, name in { "Rebirths", "Level", "RebirthLevel" } do
 	player:GetAttributeChangedSignal(name):Connect(function()

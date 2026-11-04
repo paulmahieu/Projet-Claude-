@@ -57,7 +57,7 @@ Le code vit dans `src/` (fichiers texte versionnés). **Rojo** le synchronise en
 | Commande | Rôle |
 |---|---|
 | `rojo build -o build/BastionsDEther.rbxl` | Régénère la place |
-| `lune run tests/shared.spec` | 57 tests automatiques (formules, verrous, groupes, hors ligne, configuration) |
+| `lune run tests/shared.spec` | 62 tests automatiques (formules, verrous, groupes, hors ligne, configuration) |
 | `selene src tests` | Analyse statique (variables non définies, erreurs courantes) |
 | `stylua src tests` | Formatage |
 
