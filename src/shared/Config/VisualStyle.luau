@@ -57,23 +57,23 @@ return {
 		Rock = { 150, 156, 170 },
 	},
 
-	-- Éclairage lumineux et vibrant, mais maîtrisé : plein jour clair, couleurs saturées, contraste
-	-- net, ombres lisibles ; le bloom ne fait briller que les vrais accents (néon, cristaux).
+	-- Éclairage doux et lisible : plein jour calme, couleurs naturelles, légère brume de profondeur ;
+	-- le bloom ne touche que les vrais accents (néon, cristaux).
 	Lighting = {
 		Style = "Soft", -- Lighting.LightingStyle si disponible
-		Brightness = 2.6,
-		ClockTime = 13.5,
-		ExposureCompensation = 0.15,
-		OutdoorAmbient = { 168, 170, 186 },
-		ColorShiftTop = { 255, 246, 228 }, -- soleil légèrement chaud sur les faces éclairées
-		ShadowSoftness = 0.25, -- ombres nettes et lisibles
-		EnvironmentDiffuseScale = 0.85,
-		EnvironmentSpecularScale = 0.25,
-		Atmosphere = { Density = 0.12, Haze = 0.3, Glare = 0.1, Color = { 200, 222, 246 }, Decay = { 130, 156, 210 } },
-		Bloom = { Intensity = 0.22, Threshold = 1.6, Size = 14 },
-		SunRays = { Intensity = 0.04, Spread = 0.6 },
-		Grading = { Saturation = 0.2, Contrast = 0.12, Brightness = 0.03, Tint = { 255, 251, 242 } },
+		Brightness = 2.0,
+		ClockTime = 14.2,
+		ExposureCompensation = -0.1,
+		OutdoorAmbient = { 128, 132, 146 }, -- plus bas : les ombres redonnent du volume
+		ColorShiftTop = { 252, 240, 222 }, -- soleil légèrement chaud
+		ShadowSoftness = 0.35,
+		EnvironmentDiffuseScale = 0.6,
+		EnvironmentSpecularScale = 0.2,
+		Atmosphere = { Density = 0.28, Haze = 1.2, Glare = 0, Color = { 199, 210, 224 }, Decay = { 106, 122, 150 } },
+		Bloom = { Intensity = 0.12, Threshold = 2.2, Size = 18 },
+		SunRays = { Intensity = 0.02, Spread = 0.5 },
+		Grading = { Saturation = -0.05, Contrast = 0.06, Brightness = 0, Tint = { 255, 250, 244 } },
 		-- Salles fermées (Rue des boss, Champ) : ambiance claire, jamais sombre.
-		IndoorAmbient = { 104, 100, 128 },
+		IndoorAmbient = { 92, 90, 108 },
 	},
 }
