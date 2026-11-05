@@ -69,12 +69,10 @@ end
 
 local function styleNeon(p: BasePart)
 	local cfg = Style.Neon
-	local s = p.Size
-	local volume = s.X * s.Y * s.Z
 	local isCrystal = hasPrefix(p.Name, cfg.CrystalNames)
 	local isFlame = hasPrefix(p.Name, cfg.FlameNames)
-	if not isCrystal and not isFlame and volume <= cfg.MaxVolume and math.max(s.X, s.Y, s.Z) <= cfg.MaxSide then
-		return -- petit accent : le néon reste
+	if not isCrystal and not isFlame then
+		return -- accent ou repère de jeu : le néon reste
 	end
 	p.Material = Enum.Material.SmoothPlastic
 	if isFlame then

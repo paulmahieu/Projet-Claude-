@@ -21,13 +21,12 @@ return {
 	KeepMaterials = { "Glass", "ForceField", "Water", "Neon" },
 	Reflectance = 0,
 
-	-- Néon autorisé seulement pour les petits accents (runes, braises, yeux, voyants) :
-	-- un volume plus gros ou un nom de cristal/flamme passe en SmoothPlastic.
+	-- Néon : gardé pour les accents et les repères de jeu (portails, runes, bordures de zones,
+	-- gemmes d'état, voyants). Seuls les cristaux (silhouettes blanches surexposées) et les
+	-- flammes (blocs jaunes) passent en surfaces lisses.
 	Neon = {
-		MaxVolume = 3, -- studs³
-		MaxSide = 2.5, -- studs
 		-- Noms (préfixes) de cristaux : facettes turquoise visibles au lieu d'une silhouette blanche.
-		CrystalNames = { "Crystal", "ThemeCrystal", "Shard", "Gem", "FloatingCrystal", "WallCrystal", "Orb" },
+		CrystalNames = { "Crystal", "ThemeCrystal", "Shard", "FloatingCrystal", "WallCrystal", "Orb" },
 		-- Noms de flammes : forme lisible, légèrement translucide (le Fire de Roblox fait l'effet).
 		FlameNames = { "Flame", "ThemeFlame", "Spark", "Mouth" },
 		FlameTransparency = 0.5,
@@ -37,7 +36,7 @@ return {
 	},
 
 	-- Lumières et feux : plafonnés (pas de grandes nappes orange ou cyan).
-	Lights = { MaxBrightness = 0.9, MaxRange = 16 },
+	Lights = { MaxBrightness = 1.2, MaxRange = 18 }, -- accents lumineux dosés, sans nappes
 	Fire = { MaxSize = 4, MaxHeat = 6 },
 
 	-- Palette de référence (blue-gray, sable, mousse, bordeaux, turquoise) et damier en deux tons.
@@ -58,18 +57,23 @@ return {
 		Rock = { 150, 156, 170 },
 	},
 
-	-- Éclairage doux de début d'après-midi.
+	-- Éclairage lumineux et vibrant, mais maîtrisé : plein jour clair, couleurs saturées, contraste
+	-- net, ombres lisibles ; le bloom ne fait briller que les vrais accents (néon, cristaux).
 	Lighting = {
 		Style = "Soft", -- Lighting.LightingStyle si disponible
-		Brightness = 2,
-		ClockTime = 14,
-		ExposureCompensation = 0,
-		OutdoorAmbient = { 150, 150, 165 },
-		EnvironmentDiffuseScale = 0.6,
-		EnvironmentSpecularScale = 0.15,
-		Atmosphere = { Density = 0.05, Haze = 0, Glare = 0, Color = { 214, 222, 236 }, Decay = { 150, 160, 186 } },
-		Bloom = { Intensity = 0.05, Threshold = 2.6, Size = 8 },
-		SunRays = { Intensity = 0.015, Spread = 0.5 },
-		Grading = { Saturation = 0.04, Contrast = 0.04, Brightness = 0.02, Tint = { 255, 252, 246 } },
+		Brightness = 2.6,
+		ClockTime = 13.5,
+		ExposureCompensation = 0.15,
+		OutdoorAmbient = { 168, 170, 186 },
+		ColorShiftTop = { 255, 246, 228 }, -- soleil légèrement chaud sur les faces éclairées
+		ShadowSoftness = 0.25, -- ombres nettes et lisibles
+		EnvironmentDiffuseScale = 0.85,
+		EnvironmentSpecularScale = 0.25,
+		Atmosphere = { Density = 0.12, Haze = 0.3, Glare = 0.1, Color = { 200, 222, 246 }, Decay = { 130, 156, 210 } },
+		Bloom = { Intensity = 0.22, Threshold = 1.6, Size = 14 },
+		SunRays = { Intensity = 0.04, Spread = 0.6 },
+		Grading = { Saturation = 0.2, Contrast = 0.12, Brightness = 0.03, Tint = { 255, 251, 242 } },
+		-- Salles fermées (Rue des boss, Champ) : ambiance claire, jamais sombre.
+		IndoorAmbient = { 104, 100, 128 },
 	},
 }

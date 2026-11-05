@@ -267,7 +267,11 @@ local function setupLighting()
 	Lighting.GlobalShadows = true
 	Lighting.OutdoorAmbient = rgb(L.OutdoorAmbient)
 	-- Lumière des lieux fermés (salles mystiques sous la carte) : jamais noir complet.
-	Lighting.Ambient = Color3.fromRGB(78, 76, 96)
+	Lighting.Ambient = rgb(L.IndoorAmbient)
+	Lighting.ColorShift_Top = rgb(L.ColorShiftTop)
+	pcall(function()
+		Lighting.ShadowSoftness = L.ShadowSoftness
+	end)
 	Lighting.EnvironmentDiffuseScale = L.EnvironmentDiffuseScale
 	Lighting.EnvironmentSpecularScale = L.EnvironmentSpecularScale
 	local function ensure(className: string, name: string)
