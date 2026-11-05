@@ -18,6 +18,15 @@ local Tree = require("../src/shared/Config/Tree")
 local Products = require("../src/shared/Config/Products")
 local Groups = require("../src/shared/Config/Groups")
 local Game = require("../src/shared/Config/Game")
+
+-- Point {x, z} dans la zone libre de la cour du château, à `margin` studs des bords.
+local function inCourtyard(xz, margin: number): boolean
+	local c = Game.Courtyard
+	return xz[1] - margin >= c.MinX
+		and xz[1] + margin <= c.MaxX
+		and xz[2] - margin >= c.MinZ
+		and xz[2] + margin <= c.MaxZ
+end
 local Harvest = require("../src/shared/Config/Harvest")
 local Rebirth = require("../src/shared/Config/Rebirth")
 local Pets = require("../src/shared/Config/Pets")
@@ -586,10 +595,7 @@ test("arènes : hors des parcelles, portails au hub, attaques valides", function
 		local d = math.sqrt(boss.Arena[1] ^ 2 + boss.Arena[2] ^ 2)
 		assert(d - boss.ArenaRadius > plotOuter, boss.Id .. " : arène trop proche des parcelles")
 		assert(d + boss.ArenaRadius < 600, boss.Id .. " : arène hors du sol (sol de 1 240 studs)")
-		assert(
-			math.sqrt(boss.Portal[1] ^ 2 + boss.Portal[2] ^ 2) < Game.CourtyardApothem - 10,
-			boss.Id .. " : portail hors de la cour royale"
-		)
+		assert(inCourtyard(boss.Portal, 3), boss.Id .. " : portail hors de la cour du château")
 		for _, attack in boss.Attacks do
 			assert(attack.Telegraph >= 1, boss.Id .. " : attaque non annoncée assez tôt")
 		end
@@ -653,8 +659,7 @@ test("rue et champ : salles fermées sous la carte, invisibles depuis la surface
 	local streetBottom = Street.Origin[2] + Street.Hall.Floor - 2
 	local farmTop = Farm.Origin[2] + Farm.Hall.Height + 2
 	assert(farmTop < streetBottom, "les deux salles ne se chevauchent pas")
-	local portal = math.sqrt(Street.Portal[1] ^ 2 + Street.Portal[2] ^ 2)
-	assert(portal < Game.CourtyardApothem - 10, "portail de la rue dans la cour royale")
+	assert(inCourtyard(Street.Portal, 3), "portail de la rue dans la cour du château")
 	for _, boss in Bosses do
 		local dx, dz = Street.Portal[1] - boss.Portal[1], Street.Portal[2] - boss.Portal[2]
 		assert(math.sqrt(dx * dx + dz * dz) >= 10, "portails trop proches")
@@ -725,7 +730,7 @@ test("zones sans chevauchement et lieux séparés (île, rue, arènes, hub)", fu
 		assert(zi < 56, "au plus 2 rangées (les classements sont derrière)")
 	end
 	assert(math.abs(Farm.Origin[2] - Street.Origin[2]) > 60, "île et rue à des hauteurs différentes")
-	assert(math.sqrt(Farm.Portal[1] ^ 2 + Farm.Portal[2] ^ 2) < Game.CourtyardApothem - 10, "portail dans la cour")
+	assert(inCourtyard(Farm.Portal, 3), "portail dans la cour")
 	for _, egg in Pets.Eggs do
 		local dx, dz = Farm.Portal[1] - egg.Position[1], Farm.Portal[2] - egg.Position[2]
 		assert(math.sqrt(dx * dx + dz * dz) >= 7, "portail trop proche de " .. egg.Id)
@@ -862,33 +867,42 @@ end)
 ----------------------------------------------------------------------------------------
 print("Cour royale")
 
-test("cour royale : portails espacés, devant le donjon ; œufs dans la cour ; portes alignées", function()
+test("cour du château : portails espacés, œufs et estrade dans la cour, route autour", function()
 	local portals = { Street.Portal, Farm.Portal }
 	for _, boss in Bosses do
 		table.insert(portals, boss.Portal)
 	end
+	local spawn = Game.HubSpawn
+	local function dist(a, b)
+		return math.sqrt((a[1] - b[1]) ^ 2 + (a[2] - b[2]) ^ 2)
+	end
 	for i = 1, #portals do
 		for j = i + 1, #portals do
-			local dx, dz = portals[i][1] - portals[j][1], portals[i][2] - portals[j][2]
-			assert(math.sqrt(dx * dx + dz * dz) >= 12.5, "portails qui se chevauchent")
+			assert(dist(portals[i], portals[j]) >= 12.5, "portails qui se chevauchent")
 		end
-		assert(portals[i][2] + 2.8 < Game.CourtyardApothem - 7 - 7 - 3, "portail contre les marches du donjon")
+		assert(dist(portals[i], spawn) > 7.5 + 6.5, "portail contre l'estrade")
 	end
-	for _, egg in Pets.Eggs do
-		assert(
-			math.sqrt(egg.Position[1] ^ 2 + egg.Position[2] ^ 2) < Game.CourtyardApothem - 8,
-			egg.Id .. " hors de la cour"
-		)
+	for i, egg in Pets.Eggs do
+		assert(inCourtyard(egg.Position, 3.2), egg.Id .. " hors de la cour")
+		assert(dist(egg.Position, spawn) > 7.5 + 3.5, egg.Id .. " sur l'estrade")
+		for j = i + 1, #Pets.Eggs do
+			assert(dist(egg.Position, Pets.Eggs[j].Position) >= 7, "œufs qui se chevauchent")
+		end
+		for _, p in portals do
+			assert(dist(egg.Position, p) >= 10, egg.Id .. " contre un portail")
+		end
 	end
-	-- Les portes donnent sur les allées des parcelles (angles multiples de 360 / PlotCount).
-	for _, g in Game.GateAngles do
-		eq(g % (360 / Game.PlotCount), 0, "porte alignée sur une allée de parcelle")
+	assert(inCourtyard(spawn, 7.5), "estrade dans la cour")
+	-- Passage dégagé entre l'estrade et le portail sud (x de -5 à 5, au sud de l'estrade).
+	for _, item in portals do
+		assert(math.abs(item[1]) > 5 + 6.5 or item[2] > spawn[2], "portail sur le passage du portail sud")
 	end
+	assert(Game.RingRoadRadius - Game.RingRoadWidth / 2 > Game.CastleRadius, "route hors des remparts")
+	assert(Game.RingRoadRadius + Game.RingRoadWidth / 2 < Harvest.RingRadius - 20, "route avant les bosquets")
 	assert(
-		Game.RingRoadRadius - Game.RingRoadWidth / 2 > Game.CourtyardApothem + Game.WallThickness + 5,
-		"route hors des remparts"
+		Game.RingRoadRadius + Game.RingRoadWidth / 2 < Game.PlotRingRadius - Game.PlotSize / 2,
+		"route avant les parcelles"
 	)
-	assert(Game.RingRoadRadius + Game.RingRoadWidth / 2 < Harvest.RingRadius - 12, "route avant les bosquets")
 end)
 
 ----------------------------------------------------------------------------------------

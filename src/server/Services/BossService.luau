@@ -546,13 +546,12 @@ function BossService.init()
 			if group and PlotService.get(group.Id) then
 				PlotService.teleportToPlot(player, group.Id)
 			else
-				teleport(player, CFrame.new(0, 5, 0))
+				teleport(player, PlotService.hubSpawnCFrame())
 			end
 		end)
 
 		-- Portail d'entrée, au hub.
-		local portalPos = Vector3.new(def.Portal[1], 1, def.Portal[2])
-		local portalModel, veil = Models.portal(CFrame.lookAt(portalPos, Vector3.new(0, 1, 0)), accent)
+		local portalModel, veil = Models.portal(PlotService.hubFacing(def.Portal), accent)
 		portalModel.Name = "Portal_" .. def.Id
 		portalModel.Parent = arenaFolder
 		local label = PlotService.makeBillboard(veil, def.Name, 8, Vector2.new(12, 3.6))

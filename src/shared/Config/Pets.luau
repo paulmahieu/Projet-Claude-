@@ -119,7 +119,7 @@ return {
 			Design = "Dragon",
 			Product = "RoyalEgg",
 			Color = { 255, 120, 40 },
-			Position = { -17.8, -16.1 },
+			Position = { -20, -12 },
 			Weights = {
 				SolarLion = 20,
 				RoyalGriffin = 17,
@@ -141,7 +141,7 @@ return {
 			Design = "Meadow",
 			Cost = 50,
 			Color = { 236, 222, 196 },
-			Position = { -11.6, -21.0 },
+			Position = { -12, -9 },
 			Weights = {
 				BarnCat = 20,
 				VillageDog = 20,
@@ -159,7 +159,7 @@ return {
 			Design = "Sylvan",
 			Cost = 150,
 			Color = { 120, 180, 80 },
-			Position = { -4.0, -23.7 },
+			Position = { -4, -7.5 },
 			Weights = {
 				BarnCat = 8,
 				VillageDog = 8,
@@ -182,7 +182,7 @@ return {
 			Design = "Frost",
 			Cost = 1500,
 			Color = { 120, 180, 255 },
-			Position = { 4.0, -23.7 },
+			Position = { 4, -7.5 },
 			Weights = {
 				SylvanFox = 7,
 				WoodRaccoon = 7,
@@ -206,7 +206,7 @@ return {
 			Design = "Arcane",
 			Cost = 15000,
 			Color = { 170, 110, 255 },
-			Position = { 11.6, -21.0 },
+			Position = { 12, -9 },
 			Weights = {
 				FrostWolf = 8,
 				GlacierBear = 8,
@@ -231,7 +231,7 @@ return {
 			Design = "Ether",
 			Product = "CelestialEgg",
 			Color = { 90, 230, 255 },
-			Position = { 17.8, -16.1 },
+			Position = { 20, -12 },
 			Weights = {
 				AstralKitsune = 16,
 				CelestialHydra = 12,

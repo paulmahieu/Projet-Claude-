@@ -17,7 +17,7 @@ return {
 		RecommendedPower = 20,
 		Arena = { 0, -490 }, -- au-delà des extensions de terrain des bastions
 		ArenaRadius = 55,
-		Portal = { -18.5, 28.5 },
+		Portal = { -32, -11 },
 		MaxHealth = 2500,
 		HealthPerExtraPlayer = 0.6,
 		RespawnSeconds = 90,
@@ -50,7 +50,7 @@ return {
 		RecommendedPower = 60,
 		Arena = { 490, 0 },
 		ArenaRadius = 55,
-		Portal = { -6.5, 33.4 },
+		Portal = { -32, -26 },
 		MaxHealth = 12000,
 		HealthPerExtraPlayer = 0.6,
 		RespawnSeconds = 120,

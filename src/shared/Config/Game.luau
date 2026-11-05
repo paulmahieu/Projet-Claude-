@@ -13,13 +13,17 @@ return {
 	PlotSize = 90,
 	PlotRingRadius = 200,
 
-	-- Cour royale (point d'apparition) : enceinte octogonale fermée par des remparts.
-	CourtyardApothem = 54, -- distance du centre à la face intérieure des remparts
-	WallHeight = 15,
-	WallThickness = 4,
-	GateAngles = { 0, 180, 270 }, -- portes : est, ouest, sud (le donjon occupe le nord)
-	GateWidth = 12,
-	RingRoadRadius = 72, -- route pavée qui fait le tour du château
+	-- Château royal (hub) : Art/CastleDesign à l'échelle CastleScale, centré sur l'origine, un seul
+	-- portail au sud (-Z). La cour s'étend environ de x = -43 à 43 et de z = -35 à -3 (le donjon
+	-- occupe le nord) : point d'apparition, œufs et portails y sont placés.
+	CastleScale = 0.6,
+	CastleRadius = 91, -- rayon de l'emprise au sol (coins des tours d'angle)
+	CastleGateFront = 56.6, -- distance du centre à l'entrée du passage du portail (côté -Z)
+	GateWidth = 10, -- largeur de la route du portail
+	HubSpawn = { 0, -20 }, -- centre de l'estrade d'apparition (x, z)
+	HubFloor = 0.27, -- dessus du dallage de la cour
+	Courtyard = { MinX = -43, MaxX = 43, MinZ = -34, MaxZ = -3 }, -- zone libre de la cour
+	RingRoadRadius = 97, -- route pavée qui fait le tour du château
 	RingRoadWidth = 10,
 
 	MaxGroupSize = 4,

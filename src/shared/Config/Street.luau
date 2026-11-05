@@ -22,7 +22,7 @@ return {
 	},
 	SectionLength = 40,
 	Width = 26,
-	Portal = { 6.5, 33.4 }, -- portail dans la cour royale, devant le donjon
+	Portal = { 32, -11 }, -- portail dans la cour du château (côté est)
 
 	-- Ennemis par vague : Base + floor(étape / PerStages), plafonné.
 	WaveBase = 3,

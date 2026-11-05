@@ -168,6 +168,11 @@ local function buildTerrain()
 	end
 end
 
+-- Centre de l'estrade d'apparition, au niveau du dallage de la cour du château.
+local function hubCenter(): Vector3
+	return Vector3.new(Game.HubSpawn[1], Game.HubFloor, Game.HubSpawn[2])
+end
+
 local function buildWorld()
 	local existing = workspace:FindFirstChild("World")
 	if existing then
@@ -189,20 +194,22 @@ local function buildWorld()
 		warn("[PlotService] Terrain : " .. tostring(terrainErr))
 	end
 
-	-- Cour royale : point d'apparition au centre d'un château fermé par des remparts ; on en
-	-- sort par les portes fortifiées (est, ouest, sud) pour rejoindre bastions et bosquets.
+	-- Château royal : point d'apparition dans la cour, devant le donjon ; on en sort par le
+	-- portail sud pour rejoindre la route en anneau, les bastions et les bosquets.
 	local castle = Instance.new("Folder")
 	castle.Name = "Castle"
 	castle.Parent = world
+	Models.setCastleDesign(require(script.Parent.Parent.Art.CastleDesign))
 	Models.castle(castle, Game)
 
+	local hub = hubCenter()
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "HubSpawn"
 	spawn.Anchored = true
 	spawn.Neutral = true
 	spawn.Size = Vector3.new(8, 0.2, 8)
-	-- Posé sur l'estrade, tourné vers les portails (+Z) ; les œufs sont dans le dos (-Z).
-	spawn.CFrame = CFrame.lookAt(Vector3.new(0, 1.95, 0), Vector3.new(0, 1.95, 10))
+	-- Posé sur l'estrade, tourné vers le donjon et les œufs (+Z).
+	spawn.CFrame = CFrame.lookAt(hub + Vector3.new(0, 0.95, 0), hub + Vector3.new(0, 0.95, 10))
 	spawn.Transparency = 1 -- l'estrade décorée tient lieu de point d'apparition
 	spawn.Duration = 0
 	spawn.Parent = world
@@ -210,18 +217,8 @@ local function buildWorld()
 	local decor = Instance.new("Folder")
 	decor.Name = "Decor"
 	decor.Parent = world
-	Models.hubPlaza(decor, 28)
-	Models.hubDecor(decor, 28)
-	-- Torches sur pied le long des allées de la cour (hors œufs et portails).
-	for _, spot in { { 0, 20 }, { 0, 40 }, { 180, 20 }, { 180, 40 }, { 90, 20 }, { 270, 40 } } do
-		local a = math.rad(spot[1])
-		local dir = Vector3.new(math.cos(a), 0, math.sin(a))
-		local perp = Vector3.new(-dir.Z, 0, dir.X)
-		for _, side in { -1, 1 } do
-			local pos = dir * spot[2] + perp * side * 5.2 + Vector3.new(0, 1, 0)
-			Models.torch(CFrame.lookAt(pos, Vector3.new(0, 1, 0)), decor)
-		end
-	end
+	Models.hubPlaza(decor, CFrame.new(hub))
+	Models.hubDecor(decor, CFrame.new(hub))
 	-- Extérieur : nappes d'herbe, touffes, fleurs, cailloux, arbres de prairie, mares.
 	local outdoorsOk, outdoorsErr = pcall(function()
 		local outside = Instance.new("Folder")
@@ -631,6 +628,17 @@ function PlotService.rename(groupId: string, name: string)
 	if plot then
 		plot.Sign.Text = name
 	end
+end
+
+-- Socle d'un objet du hub (portail, œuf) en {x, z}, posé sur la cour et tourné vers l'estrade.
+function PlotService.hubFacing(xz: { number }): CFrame
+	local hub = hubCenter()
+	return CFrame.lookAt(Vector3.new(xz[1], hub.Y, xz[2]), hub)
+end
+
+-- Retour au hub (sortie de la Rue, d'une arène ou du Champ) : au-dessus de l'estrade.
+function PlotService.hubSpawnCFrame(): CFrame
+	return CFrame.new(hubCenter() + Vector3.new(0, 4, 0))
 end
 
 function PlotService.world(): Folder

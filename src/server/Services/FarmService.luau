@@ -163,9 +163,7 @@ function FarmService.init()
 	end
 
 	-- Portail au hub et portail de retour sur l'île.
-	local portalPos = Vector3.new(Farm.Portal[1], 1, Farm.Portal[2])
-	local portalModel, veil =
-		Models.portal(CFrame.lookAt(portalPos, Vector3.new(0, 1, 0)), Color3.fromRGB(110, 210, 255))
+	local portalModel, veil = Models.portal(PlotService.hubFacing(Farm.Portal), Color3.fromRGB(110, 210, 255))
 	portalModel.Name = "Portal_Farm"
 	portalModel.Parent = folder
 	PlotService.makeBillboard(veil, "Champ des champions\nZones de farm x1 à x500", 8, Vector2.new(12, 3))
@@ -196,7 +194,7 @@ function FarmService.init()
 		if group and PlotService.get(group.Id) then
 			PlotService.teleportToPlot(player, group.Id)
 		elseif player.Character then
-			player.Character:PivotTo(CFrame.new(0, 5, 0))
+			player.Character:PivotTo(PlotService.hubSpawnCFrame())
 		end
 	end)
 

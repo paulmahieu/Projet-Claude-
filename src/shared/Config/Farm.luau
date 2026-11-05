@@ -10,7 +10,7 @@ return {
 	-- Salle mystique SOUS la carte (invisible depuis la surface), sous la Rue des boss.
 	Origin = { 0, -260, -260 },
 	Hall = { HalfWidth = 112, Front = 28, Back = -76, Height = 42, Floor = -26 },
-	Portal = { 18.5, 28.5 }, -- portail dans la cour royale, devant le donjon
+	Portal = { 32, -26 }, -- portail dans la cour du château (côté est)
 	ZoneSize = 22,
 	Gap = 6,
 	Columns = 7,

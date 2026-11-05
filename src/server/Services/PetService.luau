@@ -239,8 +239,7 @@ function PetService.init()
 	folder.Name = "Eggs"
 	folder.Parent = PlotService.world()
 	for _, egg in Pets.Eggs do
-		local pos = Vector3.new(egg.Position[1], 1, egg.Position[2])
-		local base = CFrame.lookAt(pos, Vector3.new(0, 1, 0)) -- face au centre du hub
+		local base = PlotService.hubFacing(egg.Position) -- face à l'estrade d'apparition
 		local model, plinth = Models.eggStand(base, toColor(egg.Color), egg.Product ~= nil, egg.Design)
 		model.Name = egg.Id
 		model.Parent = folder

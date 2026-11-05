@@ -35,6 +35,7 @@ end
 local PetModels = loadModule("/src/shared/PetModels.luau", "PetModels")
 local PetsCfg = loadData("/src/shared/Config/Pets.luau", "Pets")
 local BossesCfg = loadData("/src/shared/Config/Bosses.luau", "Bosses")
+Models.setCastleDesign(loadData("/src/server/Art/CastleDesign.luau", "CastleDesign"))
 
 -- Style visuel central (EnvironmentStyle + Config/VisualStyle), comme dans le jeu.
 local styleEnv = setmetatable({
@@ -456,11 +457,12 @@ elseif scene == "castle" then
 	local FarmCfg = loadData("/src/shared/Config/Farm.luau", "Farm")
 	local holder = roblox.Instance.new("Model")
 	Models.castle(holder, GameCfg)
-	Models.hubPlaza(holder, 28)
-	Models.hubDecor(holder, 28)
+	local hub = V(GameCfg.HubSpawn[1], GameCfg.HubFloor, GameCfg.HubSpawn[2])
+	Models.hubPlaza(holder, roblox.CFrame.new(hub))
+	Models.hubDecor(holder, roblox.CFrame.new(hub))
 	dump(holder)
 	local function lookCenter(pos)
-		return roblox.CFrame.lookAt(V(pos[1], 1, pos[2]), V(0, 1, 0))
+		return roblox.CFrame.lookAt(V(pos[1], hub.Y, pos[2]), hub)
 	end
 	local colors = { roblox.Color3.fromRGB(90, 170, 70), roblox.Color3.fromRGB(120, 210, 255) }
 	for i, boss in BossesCfg2 do
@@ -490,7 +492,7 @@ elseif scene == "hub" then
 	hub.CFrame = roblox.CFrame.new(0, 0.5, 0) * roblox.CFrame.Angles(0, 0, math.rad(90))
 	hub.Color = roblox.Color3.fromRGB(88, 90, 102)
 	hub.Parent = holder
-	Models.hubPlaza(holder, 28)
+	Models.hubPlaza(holder, roblox.CFrame.new(0, 1, 0))
 	dump(holder)
 	local function lookCenter(x, z)
 		return roblox.CFrame.lookAt(V(x, 1, z), V(0, 1, 0))

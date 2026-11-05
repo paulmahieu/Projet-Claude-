@@ -43,7 +43,7 @@ return {
 	},
 
 	-- Zone de récolte : entre chaque paire de parcelles, à cette distance du centre.
-	RingRadius = 115,
+	RingRadius = 128, -- au-delà de la route qui fait le tour du château
 	-- Disposition dans chaque « bosquet » : { type, décalage tangent, décalage radial }
 	Grove = {
 		{ "Tree", -8, -6 },

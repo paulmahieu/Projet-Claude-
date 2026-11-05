@@ -981,8 +981,7 @@ function StreetService.init()
 	end
 
 	-- Portail au hub : téléporte au début de la section de l'étape en cours.
-	local portalPos = Vector3.new(Street.Portal[1], 1, Street.Portal[2])
-	local portalModel, veil = Models.portal(CFrame.lookAt(portalPos, Vector3.new(0, 1, 0)), Color3.fromRGB(220, 70, 70))
+	local portalModel, veil = Models.portal(PlotService.hubFacing(Street.Portal), Color3.fromRGB(220, 70, 70))
 	portalModel.Name = "Portal_Street"
 	portalModel.Parent = folder
 	PlotService.makeBillboard(veil, "Rue des boss\nÉtapes, vagues et patrons", 8, Vector2.new(12, 3))
@@ -1018,7 +1017,7 @@ function StreetService.init()
 		if group and PlotService.get(group.Id) then
 			PlotService.teleportToPlot(player, group.Id)
 		else
-			teleport(player, CFrame.new(0, 5, 0))
+			teleport(player, PlotService.hubSpawnCFrame())
 		end
 	end)
 end
