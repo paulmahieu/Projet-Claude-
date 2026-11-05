@@ -73,7 +73,21 @@ local function at(x, z)
 	return roblox.CFrame.new(x, 0, z)
 end
 local V = roblox.Vector3.new
-if scene == "arene" then
+if scene == "themes" then
+	-- Les 4 thèmes d'arène de la Rue des boss, une section chacun, côte à côte (x = -60..60).
+	local ArenaThemes = loadModule("/src/shared/ArenaThemes.luau", "ArenaThemes")
+	local holder = roblox.Instance.new("Folder")
+	for i, id in ArenaThemes.Ids do
+		local frame = roblox.CFrame.new((i - 2.5) * 40, 0, 0)
+		local road = roblox.Instance.new("Part")
+		road.Size = V(26, 2, 40)
+		road.CFrame = frame * roblox.CFrame.new(0, -1, 0)
+		road.Color = roblox.Color3.fromRGB(120, 118, 112)
+		road.Parent = holder
+		ArenaThemes.buildSection(id, frame, holder, i * 7, true)
+	end
+	dump(holder)
+elseif scene == "arene" then
 	-- Arène des Cristaux (design du créateur), comme dans les arènes de boss.
 	local holder = roblox.Instance.new("Folder")
 	Models.crystalArena(roblox.CFrame.new(0, 0, 0), holder)

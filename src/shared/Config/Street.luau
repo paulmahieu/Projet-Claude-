@@ -11,6 +11,15 @@ return {
 	Origin = { 0, -160, 0 }, -- début de la rue
 	Hall = { HalfWidth = 19, Front = 26, Back = -404, Height = 34, Floor = -10 },
 	Sections = 10,
+	-- Thème d'arène (designs du créateur) : change toutes les ThemeEvery étapes, dans cet ordre,
+	-- puis recommence. Le décor est dessiné côté client selon l'étape du joueur.
+	ThemeEvery = 5,
+	Themes = {
+		{ Id = "Crystal", Name = "Arène des Cristaux" },
+		{ Id = "Ice", Name = "Salle des Glaces" },
+		{ Id = "Sanctuary", Name = "Cour du Sanctuaire" },
+		{ Id = "Forge", Name = "Arène de la Forge" },
+	},
 	SectionLength = 40,
 	Width = 26,
 	Portal = { 6.5, 33.4 }, -- portail dans la cour royale, devant le donjon

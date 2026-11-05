@@ -551,6 +551,18 @@ function Formulas.streetIsPatron(stage: number, cfg): boolean
 end
 
 -- Section (1..Sections) où se joue une étape.
+-- Thème d'arène (index dans cfg.Themes) de l'étape : change toutes les cfg.ThemeEvery étapes.
+function Formulas.streetTheme(stage: number, cfg): number
+	local every = cfg.ThemeEvery or 5
+	return (math.floor((math.max(stage, 1) - 1) / every) % #cfg.Themes) + 1
+end
+
+-- Étape correspondant à une section, dans le tour (10 sections) où se trouve `stage`.
+function Formulas.streetStageOfSection(stage: number, section: number, cfg): number
+	local lapStart = math.floor((math.max(stage, 1) - 1) / cfg.Sections) * cfg.Sections
+	return lapStart + section
+end
+
 function Formulas.streetSection(stage: number, cfg): number
 	return ((stage - 1) % cfg.Sections) + 1
 end

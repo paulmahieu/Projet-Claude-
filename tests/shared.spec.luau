@@ -782,6 +782,19 @@ test("migration v2 -> v3 : anciennes améliorations converties en nœuds", funct
 	eq(p.Trophies, 0)
 end)
 
+test("Rue des boss : thème d'arène toutes les 5 étapes", function()
+	eq(Formulas.streetTheme(1, Street), 1)
+	eq(Formulas.streetTheme(5, Street), 1)
+	eq(Formulas.streetTheme(6, Street), 2)
+	eq(Formulas.streetTheme(15, Street), 3)
+	eq(Formulas.streetTheme(20, Street), 4)
+	eq(Formulas.streetTheme(21, Street), 1)
+	eq(#Street.Themes, 4)
+	-- Étape 13 : le tour couvre les étapes 11 à 20 ; section 7 = étape 17 (thème Forge).
+	eq(Formulas.streetStageOfSection(13, 7, Street), 17)
+	eq(Formulas.streetTheme(Formulas.streetStageOfSection(13, 7, Street), Street), 4)
+end)
+
 test("aperçu des œufs : multiplicateur et probabilité lisibles", function()
 	eq(Formulas.petMultiplierText(0.1), "×1,1")
 	eq(Formulas.petMultiplierText(0.25), "×1,25")
