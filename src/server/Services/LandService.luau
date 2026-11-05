@@ -278,7 +278,7 @@ local function render(plot, data)
 		local entry = state.Floors[area.Id]
 		local isOwned = owned[area.Id] == true
 		entry.Floor.Color = if isOwned then PAVED else FALLOW
-		entry.Floor.Material = if isOwned then Enum.Material.Cobblestone else Enum.Material.Grass
+		entry.Floor.Material = Enum.Material.SmoothPlastic -- style lisse (Config/VisualStyle)
 		entry.Fallow.Parent = if isOwned then nil else entry.Floor.Parent
 		if isOwned and not entry.Paving then
 			entry.Paving = paveArea(plot, area.Rect, entry.Floor.Parent :: Instance)

@@ -36,8 +36,34 @@ local PetModels = loadModule("/src/shared/PetModels.luau", "PetModels")
 local PetsCfg = loadData("/src/shared/Config/Pets.luau", "Pets")
 local BossesCfg = loadData("/src/shared/Config/Bosses.luau", "Bosses")
 
+-- Style visuel central (EnvironmentStyle + Config/VisualStyle), comme dans le jeu.
+local styleEnv = setmetatable({
+	Instance = roblox.Instance,
+	Color3 = roblox.Color3,
+	Enum = roblox.Enum,
+	workspace = {},
+	game = {},
+	task = {
+		defer = function(f)
+			f()
+		end,
+	},
+	script = { Parent = { Config = { VisualStyle = "VisualStyle" } } },
+	require = function()
+		return loadData("/src/shared/Config/VisualStyle.luau", "VisualStyle")
+	end,
+}, { __index = _G })
+local EnvironmentStyle = luau.load(fs.readFile(root .. "/src/shared/EnvironmentStyle.luau"), {
+	environment = styleEnv,
+	debugName = "EnvironmentStyle",
+})()
+local raw = process.args[3] == "brut" or process.args[4] == "brut"
+
 local out = {}
 local function dump(model)
+	if not raw then
+		EnvironmentStyle.applyTree(model)
+	end
 	for _, p in model:GetDescendants() do
 		if p:IsA("BasePart") then
 			local cf = p.CFrame

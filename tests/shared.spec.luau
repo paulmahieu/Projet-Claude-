@@ -1354,6 +1354,74 @@ test("Groupe : champs de terrain et de machines par défaut", function()
 	eq(g.MachineAt, 0)
 end)
 
+test("Style visuel : surfaces lisses, néon limité, idempotent, exemptions", function()
+	local roblox = require("@lune/roblox")
+	local luau = require("@lune/luau")
+	local fs = require("@lune/fs")
+	local VisualStyle = require("../src/shared/Config/VisualStyle")
+	local env = setmetatable({
+		Instance = roblox.Instance,
+		Color3 = roblox.Color3,
+		Enum = roblox.Enum,
+		workspace = {},
+		game = {},
+		task = {
+			defer = function(f)
+				f()
+			end,
+		},
+		script = { Parent = { Config = {} } },
+		require = function()
+			return VisualStyle
+		end,
+	}, { __index = _G })
+	local ES = luau.load(fs.readFile("src/shared/EnvironmentStyle.luau"), { environment = env })()
+	local function newPart(name, size, material, color)
+		local p = roblox.Instance.new("Part")
+		p.Name = name
+		p.Size = size
+		p.Material = material
+		p.Color = color
+		return p
+	end
+	local folder = roblox.Instance.new("Folder")
+	local wall =
+		newPart("Wall", roblox.Vector3.new(4, 8, 4), roblox.Enum.Material.Cobblestone, roblox.Color3.new(0.5, 0.5, 0.6))
+	wall.Reflectance = 0.3
+	wall.Parent = folder
+	local crystal =
+		newPart("Crystal", roblox.Vector3.new(1, 3, 1), roblox.Enum.Material.Neon, roblox.Color3.fromRGB(240, 255, 252))
+	crystal.Parent = folder
+	local rune = newPart(
+		"Rune",
+		roblox.Vector3.new(0.3, 0.05, 1),
+		roblox.Enum.Material.Neon,
+		roblox.Color3.fromRGB(60, 230, 210)
+	)
+	rune.Parent = folder
+	local fire = roblox.Instance.new("Fire")
+	fire.Size = 9
+	fire.Parent = wall
+	local keep = newPart("Statue", roblox.Vector3.new(2, 2, 2), roblox.Enum.Material.Marble, roblox.Color3.new(1, 1, 1))
+	keep:SetAttribute("PreserveOriginalStyle", true)
+	keep.Parent = folder
+	local tele =
+		newPart("Telegraph", roblox.Vector3.new(0.2, 10, 10), roblox.Enum.Material.Neon, roblox.Color3.new(1, 0, 0))
+	tele.Parent = folder
+	ES.applyTree(folder)
+	local crystalColor = crystal.Color
+	ES.applyTree(folder) -- second passage : rien ne doit changer
+	eq(wall.Material, roblox.Enum.Material.SmoothPlastic)
+	eq(wall.Reflectance, 0)
+	eq(crystal.Material, roblox.Enum.Material.SmoothPlastic)
+	assert(crystal.Color == crystalColor, "couleur du cristal stable au second passage")
+	assert(crystal.Color.R < 0.8, "cristal pâle teinté vers le turquoise")
+	eq(rune.Material, roblox.Enum.Material.Neon) -- petit accent conservé
+	eq(fire.Size, VisualStyle.Fire.MaxSize)
+	eq(keep.Material, roblox.Enum.Material.Marble) -- exemption PreserveOriginalStyle
+	eq(tele.Material, roblox.Enum.Material.Neon) -- indicateur de gameplay intact
+end)
+
 test("Compagnons : 5 par rareté (Commun à Mythique), fiche de modèle pour chacun", function()
 	-- PetModels utilise les types Roblox : chargé avec la bibliothèque @lune/roblox.
 	local roblox = require("@lune/roblox")

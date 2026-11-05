@@ -145,6 +145,7 @@ end
 local function spawnBoss(arena: Arena)
 	local base = CFrame.new(arena.Center + Vector3.new(0, FLOOR_Y, 0))
 	local model, root = Models.boss(arena.Def, base)
+	model:SetAttribute("PreserveOriginalStyle", true) -- personnage : hors du style d'environnement
 	model.Parent = arena.Folder
 	arena.Model, arena.Root = model, root
 	arena.HpLabel = PlotService.makeBillboard(root, "", 11, Vector2.new(14, 3))

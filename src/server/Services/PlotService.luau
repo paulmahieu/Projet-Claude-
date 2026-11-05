@@ -20,6 +20,8 @@ local Models = require(script.Parent.Parent.Art.Models)
 local Outdoors = require(script.Parent.Parent.Art.Outdoors)
 local Harvest = require(Shared.Config.Harvest)
 local Bosses = require(Shared.Config.Bosses)
+local VisualStyle = require(Shared.Config.VisualStyle)
+local EnvironmentStyle = require(Shared.EnvironmentStyle)
 local CostPanel = require(script.Parent.Parent.Art.CostPanel)
 
 local Lighting = game:GetService("Lighting")
@@ -131,7 +133,7 @@ local function buildTerrain()
 	-- NB : Terrain.Decoration (herbe animée) ne peut pas être modifié par un script : c'était la
 	-- cause de l'arrêt du serveur au démarrage. À activer à la main si souhaité :
 	-- Explorer > Workspace > Terrain > propriété « Decoration ».
-	terrain:SetMaterialColor(Enum.Material.Grass, Color3.fromRGB(104, 160, 82))
+	terrain:SetMaterialColor(Enum.Material.Grass, Color3.fromRGB(125, 173, 107)) -- vert doux du sol (VisualStyle)
 	terrain:SetMaterialColor(Enum.Material.Ground, Color3.fromRGB(122, 98, 70))
 	terrain:SetMaterialColor(Enum.Material.Rock, Color3.fromRGB(128, 126, 122))
 	-- Eau des mares (Terrain) : claire, légèrement verte, petites vagues et reflets.
@@ -174,6 +176,13 @@ local function buildWorld()
 	world = Instance.new("Folder")
 	world.Name = "World"
 	world.Parent = workspace
+	-- Style visuel central : tout ce qui sera ajouté au monde (génération, clones, imports,
+	-- régénérations) est lissé par lots via l'événement DescendantAdded (Config/VisualStyle).
+	EnvironmentStyle.watch(world)
+	local ground = workspace:FindFirstChild("Ground")
+	if ground then
+		EnvironmentStyle.apply(ground)
+	end
 
 	local terrainOk, terrainErr = pcall(buildTerrain)
 	if not terrainOk then
@@ -244,14 +253,23 @@ end
 
 -- Éclairage doux de fin d'après-midi (réutilise les objets existants : pas de doublon).
 local function setupLighting()
-	Lighting.ClockTime = 15.5
-	Lighting.Brightness = 2.2
+	-- Valeurs centrales : Config/VisualStyle.Lighting (lumière douce, peu de bloom, pas de brume).
+	local L = VisualStyle.Lighting
+	local function rgb(c)
+		return Color3.fromRGB(c[1], c[2], c[3])
+	end
+	pcall(function()
+		(Lighting :: any).LightingStyle = (Enum :: any).LightingStyle[L.Style]
+	end)
+	Lighting.ClockTime = L.ClockTime
+	Lighting.Brightness = L.Brightness
+	Lighting.ExposureCompensation = L.ExposureCompensation
 	Lighting.GlobalShadows = true
-	Lighting.OutdoorAmbient = Color3.fromRGB(135, 128, 120)
+	Lighting.OutdoorAmbient = rgb(L.OutdoorAmbient)
 	-- Lumière des lieux fermés (salles mystiques sous la carte) : jamais noir complet.
-	Lighting.Ambient = Color3.fromRGB(70, 64, 92)
-	Lighting.EnvironmentDiffuseScale = 0.5
-	Lighting.EnvironmentSpecularScale = 0.3
+	Lighting.Ambient = Color3.fromRGB(78, 76, 96)
+	Lighting.EnvironmentDiffuseScale = L.EnvironmentDiffuseScale
+	Lighting.EnvironmentSpecularScale = L.EnvironmentSpecularScale
 	local function ensure(className: string, name: string)
 		local inst = Lighting:FindFirstChild(name)
 		if not inst then
@@ -262,27 +280,23 @@ local function setupLighting()
 		return inst
 	end
 	local atmosphere = ensure("Atmosphere", "BastionAtmosphere") :: Atmosphere
-	-- Brume légère : profondeur sans flou (une densité/brume élevée rendait les lointains flous).
-	atmosphere.Density = 0.1
-	atmosphere.Haze = 0
-	atmosphere.Glare = 0
-	atmosphere.Color = Color3.fromRGB(205, 215, 230)
-	atmosphere.Decay = Color3.fromRGB(110, 120, 140)
+	atmosphere.Density = L.Atmosphere.Density
+	atmosphere.Haze = L.Atmosphere.Haze
+	atmosphere.Glare = L.Atmosphere.Glare
+	atmosphere.Color = rgb(L.Atmosphere.Color)
+	atmosphere.Decay = rgb(L.Atmosphere.Decay)
 	local grading = ensure("ColorCorrectionEffect", "BastionGrading") :: ColorCorrectionEffect
-	grading.Saturation = 0.1
-	grading.Contrast = 0.1 -- un peu plus de contraste : formes plus nettes
+	grading.Saturation = L.Grading.Saturation
+	grading.Contrast = L.Grading.Contrast
+	grading.Brightness = L.Grading.Brightness
+	grading.TintColor = rgb(L.Grading.Tint)
 	local bloom = ensure("BloomEffect", "BastionBloom") :: BloomEffect
-	-- Halo discret autour des éléments lumineux (un halo large donnait un effet baveux).
-	bloom.Intensity = 0.12
-	bloom.Threshold = 2.2
-	bloom.Size = 10
-	-- Rayons de soleil discrets (effet intégré) quand on regarde vers le soleil.
+	bloom.Intensity = L.Bloom.Intensity
+	bloom.Threshold = L.Bloom.Threshold
+	bloom.Size = L.Bloom.Size
 	local rays = ensure("SunRaysEffect", "BastionSunRays") :: SunRaysEffect
-	rays.Intensity = 0.04
-	rays.Spread = 0.6
-	-- Teinte chaude d'après-midi, légèrement plus saturée pour l'herbe et les fleurs.
-	grading.TintColor = Color3.fromRGB(255, 251, 242)
-	grading.Saturation = 0.14
+	rays.Intensity = L.SunRays.Intensity
+	rays.Spread = L.SunRays.Spread
 end
 
 local function buildPlot(index: number, parent: Instance): Plot

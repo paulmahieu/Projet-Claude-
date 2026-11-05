@@ -17,6 +17,7 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Street = require(Shared.Config.Street)
 local Formulas = require(Shared.Formulas)
 local ArenaThemes = require(Shared.ArenaThemes)
+local EnvironmentStyle = require(Shared.EnvironmentStyle)
 local Ui = require(script.Parent.Ui)
 
 local StreetThemes = {}
@@ -150,6 +151,7 @@ local function refresh()
 				task.wait() -- étale la construction sur plusieurs images
 			end
 		end
+		EnvironmentStyle.applyTree(f) -- même style visuel que le reste du monde
 		builtKey = key
 		setGenericHidden(true)
 	end
