@@ -17,20 +17,35 @@ return {
 
 	-- Mult : multiplicateur d'XP et d'or ; Rebirths : renaissances requises ;
 	-- PassKey : pass Robux OU droit du profil (Entitlements) requis.
+	-- Puppet : pantin du créateur (Art/PuppetDesigns), du plus simple au plus riche.
 	Zones = {
-		{ Mult = 1, Rebirths = 0 },
-		{ Mult = 2, Rebirths = 1 },
-		{ Mult = 2.5, Rebirths = 2 },
-		{ Mult = 4, Rebirths = 3 },
-		{ Mult = 6, Rebirths = 5 },
-		{ Mult = 8, Rebirths = 7 },
-		{ Mult = 12, Rebirths = 10 },
-		{ Mult = 16, Rebirths = 14 },
-		{ Mult = 22, Rebirths = 19 },
-		{ Mult = 30, Rebirths = 25 },
-		{ Mult = 50, Rebirths = 0, PassKey = "RoyalTraining", Royal = true },
+		{ Mult = 1, Rebirths = 0, Puppet = "Epouvantail" },
+		{ Mult = 2, Rebirths = 1, Puppet = "Epouvantail" },
+		{ Mult = 2.5, Rebirths = 2, Puppet = "Vagabond" },
+		{ Mult = 4, Rebirths = 3, Puppet = "Vagabond" },
+		{ Mult = 6, Rebirths = 5, Puppet = "EpouvantailCorrompu" },
+		{ Mult = 8, Rebirths = 7, Puppet = "EpouvantailCorrompu" },
+		{ Mult = 12, Rebirths = 10, Puppet = "Scaphandrier" },
+		{ Mult = 16, Rebirths = 14, Puppet = "Scaphandrier" },
+		{ Mult = 22, Rebirths = 19, Puppet = "InsecteAlchimiste" },
+		{ Mult = 30, Rebirths = 25, Puppet = "InsecteAlchimiste" },
+		{ Mult = 50, Rebirths = 0, PassKey = "RoyalTraining", Royal = true, Puppet = "AlchimisteVapeur" },
 		-- Récompenses de la piste premium du parcours (droit durable du profil).
-		{ Mult = 100, Rebirths = 0, PassKey = "ChampionMat100", Royal = true, Name = "TAPIS DU CHAMPION" },
-		{ Mult = 500, Rebirths = 0, PassKey = "ChampionMat500", Royal = true, Name = "TAPIS DU HÉROS" },
+		{
+			Mult = 100,
+			Rebirths = 0,
+			PassKey = "ChampionMat100",
+			Royal = true,
+			Name = "TAPIS DU CHAMPION",
+			Puppet = "AlchimisteVapeur",
+		},
+		{
+			Mult = 500,
+			Rebirths = 0,
+			PassKey = "ChampionMat500",
+			Royal = true,
+			Name = "TAPIS DU HÉROS",
+			Puppet = "AlchimisteVapeur",
+		},
 	},
 }

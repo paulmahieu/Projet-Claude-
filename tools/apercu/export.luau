@@ -99,7 +99,17 @@ local function at(x, z)
 	return roblox.CFrame.new(x, 0, z)
 end
 local V = roblox.Vector3.new
-if scene == "themes" then
+if scene == "pantins" then
+	-- Les 6 pantins du créateur côte à côte, face à la caméra (-Z).
+	Models.setPuppetDesigns(loadData("/src/server/Art/PuppetDesigns.luau", "PuppetDesigns"))
+	local holder = roblox.Instance.new("Folder")
+	for i, kind in
+		{ "Epouvantail", "Vagabond", "EpouvantailCorrompu", "Scaphandrier", "InsecteAlchimiste", "AlchimisteVapeur" }
+	do
+		Models.puppet(kind, roblox.CFrame.new((i - 3.5) * 5, 0, 0), holder)
+	end
+	dump(holder)
+elseif scene == "themes" then
 	-- Les 4 thèmes d'arène de la Rue des boss, une section chacun, côte à côte (x = -60..60).
 	local ArenaThemes = loadModule("/src/shared/ArenaThemes.luau", "ArenaThemes")
 	local holder = roblox.Instance.new("Folder")

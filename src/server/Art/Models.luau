@@ -6153,6 +6153,71 @@ end
 -- épée et bouclier. Toutes les pièces sont soudées à une racine ancrée au pied : secouer la
 -- racine fait osciller tout le pantin depuis son socle. `color` : couleur du tabard et du
 -- bouclier (zone). Retourne la racine.
+-- Pantins du créateur (Art/PuppetDesigns, transmis par Models.setPuppetDesigns) ------------------
+local puppetDesigns: { [string]: any } = {}
+function Models.setPuppetDesigns(designs)
+	puppetDesigns = designs or {}
+end
+
+local PUPPET_SHAPES = { C = Enum.PartType.Cylinder }
+
+-- Pantin d'après un design : pièces reproduites telles quelles (formes, tailles, positions,
+-- rotations, couleurs, matériaux), soudées à une racine ancrée au pied (le pantin oscille d'un
+-- bloc quand on le frappe). `base` au sol, -Z = face. Retourne la racine (nil si design inconnu).
+function Models.puppet(kind: string, base: CFrame, parent: Instance): BasePart?
+	local design = puppetDesigns[kind]
+	if not design then
+		return nil
+	end
+	local m = newModel("Pantin_" .. kind)
+	m:SetAttribute("PuppetName", design.Name)
+	for i, d in design.Parts do
+		local size = Vector3.new(d[2], d[3], d[4])
+		local cf = base * CFrame.new(d[5], d[6], d[7]) * CFrame.Angles(math.rad(d[8]), math.rad(d[9]), math.rad(d[10]))
+		local color = Color3.fromRGB(bit32.rshift(d[11], 16) % 256, bit32.rshift(d[11], 8) % 256, d[11] % 256)
+		local material = (Enum.Material :: any)[d[12]] or Enum.Material.SmoothPlastic
+		local props = { CanCollide = false, NoShadow = math.max(d[2], d[3], d[4]) < 0.3 }
+		if d[13] and d[13] > 0 then
+			props.Transparency = d[13]
+		end
+		local shape = PUPPET_SHAPES[d[1]]
+		local uniformBall = d[1] == "S" and d[2] == d[3] and d[3] == d[4]
+		if shape then
+			props.Shape = shape
+		elseif uniformBall then
+			props.Shape = Enum.PartType.Ball
+		end
+		local p = part(m, "Piece" .. i, size, cf, color, material, props)
+		if d[1] == "S" and not uniformBall then
+			-- Ellipsoïde : maillage sphère étiré à la taille de la pièce.
+			local mesh = Instance.new("SpecialMesh")
+			mesh.MeshType = Enum.MeshType.Sphere
+			mesh.Parent = p
+		end
+	end
+	-- Socle discret (seule pièce solide) et racine invisible soudée à tout le reste.
+	column(m, "Socle", 0.2, 2.6, base, C.StoneDark, Enum.Material.Slate)
+	local root = part(m, "PantinRacine", Vector3.new(0.4, 0.4, 0.4), base * CFrame.new(0, 0.2, 0), C.StoneDark, nil, {
+		Transparency = 1,
+		CanCollide = false,
+	})
+	root.CanQuery = false
+	m.PrimaryPart = root
+	for _, inst in m:GetDescendants() do
+		if inst:IsA("BasePart") and inst ~= root then
+			inst.CanCollide = inst.Name == "Socle"
+			local weld = Instance.new("WeldConstraint")
+			weld.Part0 = root
+			weld.Part1 = inst
+			weld.Parent = inst
+			inst.Anchored = false
+			inst.Massless = true
+		end
+	end
+	m.Parent = parent
+	return root
+end
+
 function Models.dummy(base: CFrame, parent: Instance, color: Color3): BasePart
 	local m = newModel("PantinChevalier")
 	m.Parent = parent
@@ -6452,13 +6517,15 @@ function Models.farmIsland(origin: CFrame, cfg, zoneCenter, parent: Instance)
 		end
 		local dummies = {}
 		for d = -1, 1 do
-			local body = Models.dummy(
-				center * CFrame.new(d * 6, 0.2, -5) * CFrame.Angles(0, math.pi, 0), -- face aux joueurs
-				parent,
-				if zone.Royal
-					then Color3.fromRGB(212, 160, 50)
-					else Color3.fromRGB(46, 84, 170):Lerp(C.Cloth, (i % 3) * 0.35)
-			)
+			local spot = center * CFrame.new(d * 6, 0.2, -5) * CFrame.Angles(0, math.pi, 0) -- face aux joueurs
+			local body = zone.Puppet and Models.puppet(zone.Puppet, spot, parent)
+				or Models.dummy(
+					spot,
+					parent,
+					if zone.Royal
+						then Color3.fromRGB(212, 160, 50)
+						else Color3.fromRGB(46, 84, 170):Lerp(C.Cloth, (i % 3) * 0.35)
+				)
 			table.insert(dummies, body)
 		end
 		table.insert(zones, { Border = border, Dummies = dummies, Center = center })

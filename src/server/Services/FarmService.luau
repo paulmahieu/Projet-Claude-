@@ -140,6 +140,7 @@ function FarmService.init()
 	local geometry = Instance.new("Folder")
 	geometry.Name = "Geometry"
 	geometry.Parent = folder
+	Models.setPuppetDesigns(require(script.Parent.Parent.Art.PuppetDesigns))
 	zones = Models.farmIsland(origin, Farm, Formulas.zoneCenter, geometry)
 	-- Salle mystique fermée (sous la carte) : murs et plafond en faux ciel étoilé.
 	Models.mysticHall(origin, Farm.Hall, Color3.fromRGB(110, 210, 255), geometry, 13)

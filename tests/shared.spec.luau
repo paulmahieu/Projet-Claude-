@@ -782,6 +782,22 @@ test("migration v2 -> v3 : anciennes améliorations converties en nœuds", funct
 	eq(p.Trophies, 0)
 end)
 
+test("Champ : chaque zone a un pantin du créateur, pièces valides", function()
+	local designs = require("../src/server/Art/PuppetDesigns")
+	for i, zone in Farm.Zones do
+		local design = designs[zone.Puppet]
+		assert(design, "zone " .. i .. " : pantin inconnu " .. tostring(zone.Puppet))
+		assert(#design.Parts > 50, zone.Puppet)
+	end
+	for kind, design in designs do
+		for j, d in design.Parts do
+			assert(d[1] == "B" or d[1] == "S" or d[1] == "C", kind .. " pièce " .. j)
+			assert(d[2] > 0 and d[3] > 0 and d[4] > 0, kind .. " taille " .. j)
+			assert(type(d[11]) == "number" and type(d[12]) == "string", kind .. " couleur " .. j)
+		end
+	end
+end)
+
 test("Rue des boss : thème d'arène toutes les 5 étapes", function()
 	eq(Formulas.streetTheme(1, Street), 1)
 	eq(Formulas.streetTheme(5, Street), 1)
